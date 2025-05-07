@@ -1,6 +1,6 @@
 // import Lottie from "lottie-react";
 // import animationData from "../../../assets/animations/Drawing-animation.json"; 
-import Button from "../Button"; // Update path to your Lottie JSON file
+import Button from "../../Button"; // Update path to your Lottie JSON file
 
 const DrawingComparison = () => {
   return (
@@ -8,7 +8,7 @@ const DrawingComparison = () => {
 
        {/* Button */}
        <div className="flex justify-center items-center mb-6">
-        <Button text="Visit SketchSense" link="http://10.245.146.250:5001/" />
+        <Button text="Visit SketchSense" link="/sketchsense" />
       </div>
 
       {/* Title */}
