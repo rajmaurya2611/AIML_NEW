@@ -6,14 +6,10 @@ const DrawingComparison = () => {
   return (
     <div className="bg-[#F5F5F7] p-8 md:p-14 rounded-3xl mb-4 text-left">
 
-       {/* Button */}
-       <div className="flex justify-center items-center mb-6">
-        <Button text="Visit SketchSenseeee" link="/sketchsense" />
-      </div>
 
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-      <Button text="Visit LegalLens AI" link="/sketchsense" />
+      <Button text="Visit LegalLens AI" link="/sketchsens" />
     </div>
 
       {/* Title */}
