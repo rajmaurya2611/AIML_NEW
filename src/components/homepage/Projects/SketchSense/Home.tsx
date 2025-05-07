@@ -1,6 +1,6 @@
 import React, { useRef, useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import logo from "./assets_sketchsense/Logo.png";
+import logo from "./assets_sketchsense/logo.png";
 import api from "./lib_sketchsense/axios";
 
 function Home(): React.ReactElement {
