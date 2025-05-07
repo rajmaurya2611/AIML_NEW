@@ -8,6 +8,8 @@ import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
 import ComparisonPage from './components/homepage/Projects/LegalLens/comparison';
 import RiskAnalysisPage from './components/homepage/Projects/LegalLens/risk_analysis';
 import ClauseCheckPage from './components/homepage/Projects/LegalLens/clause_check';
+import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/backgroundBoxesDemo';
+import Home from './components/homepage/Projects/SketchSense/Home';
 
 function App() {
   return (
@@ -19,11 +21,15 @@ function App() {
         {/* "/legallens" renders the LegalLens page */}
         <Route path="/legallens" element={<Legal />} />
 
+        <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
+
         {/* 3. Nested pages under /legallens */}
         <Route path="/legallens/analysis" element={<AnalysisPage />} />
         <Route path="/legallens/comparison" element={<ComparisonPage />} />
         <Route path="/legallens/risk_analysis" element={<RiskAnalysisPage />} />
         <Route path="/legallens/clause" element={<ClauseCheckPage />} />
+
+        <Route path="/sketchsense/home" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );

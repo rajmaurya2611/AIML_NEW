@@ -1,7 +1,7 @@
 "use client";
 import { Carousel, Card } from "../../components/homepage/ui/apple-cards-carousel";
 import smt_small from "../../assets/images/projects/Smart Extract/Smt_small.png";
-import DrawingComparison from "./Projects/DrawingComparison";
+import DrawingComparison from "./Projects/SketchSense/DrawingComparison";
 import InvoiceInformationRetrieval from "./Projects/InvoiceInformationRetrieval";
 import MNA from "./Projects/LegalLens/M&A";
 import FinancialBot from "./Projects/FinancialBot";
