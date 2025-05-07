@@ -14,21 +14,21 @@ import Home from './components/homepage/Projects/SketchSense/Home';
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* "/" renders your existing homepage */}
+     <Routes>
+        {/* public homepage */}
         <Route path="/" element={<HomePage />} />
 
-        {/* "/legallens" renders the LegalLens page */}
-        <Route path="/legallens" element={<Legal />} />
-
-        <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
-
-        {/* 3. Nested pages under /legallens */}
-        <Route path="/legallens/analysis" element={<AnalysisPage />} />
+        {/* LegalLens */}
+        <Route path="/legallens"           element={<Legal />} />
+        <Route path="/legallens/analysis"  element={<AnalysisPage />} />
         <Route path="/legallens/comparison" element={<ComparisonPage />} />
         <Route path="/legallens/risk_analysis" element={<RiskAnalysisPage />} />
-        <Route path="/legallens/clause" element={<ClauseCheckPage />} />
+        <Route path="/legallens/clause"    element={<ClauseCheckPage />} />
 
+        {/* SketchSense login */}
+        <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
+
+        {/* SketchSense post-login “home” */}
         <Route path="/sketchsense/home" element={<Home />} />
       </Routes>
     </BrowserRouter>
