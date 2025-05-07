@@ -11,6 +11,11 @@ const DrawingComparison = () => {
         <Button text="Visit SketchSenseeee" link="/sketchsense" />
       </div>
 
+      {/* Button */}
+      <div className="flex justify-center items-center mb-6">
+      <Button text="Visit LegalLens AI" link="/legallens" />
+    </div>
+
       {/* Title */}
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">
         AI-Based Engineering CAD Drawing Comparison
