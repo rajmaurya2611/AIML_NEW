@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }, []);
 
   if (isAuthenticated === null) return <div>Loading...</div>;
-  return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/sketchsense" replace />;
 };
 
 export default ProtectedRoute;

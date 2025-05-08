@@ -1,6 +1,7 @@
 // src/App.js
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/homepage/Projects/SketchSense/protectedRoute';
 
 import HomePage from './components/homepage/Homepage';
 import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
@@ -29,7 +30,9 @@ function App() {
         <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
 
         {/* SketchSense post-login “home” */}
-        <Route path="/sketchsense/home" element={<Home />} />
+        <Route path="/sketchsense/home" element={<ProtectedRoute> <Home /> </ProtectedRoute> }/>
+        {/* <Route path="/sketchsense/home" element={<Home />} /> */}
+        
       </Routes>
     </BrowserRouter>
   );
