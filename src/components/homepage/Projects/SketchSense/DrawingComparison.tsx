@@ -9,7 +9,7 @@ const DrawingComparison = () => {
 
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-      <Button text="Visit LegalLens AI" link="/sketchsens" />
+      <Button text="Visit Sketchsense" link="/sketchsense" />
     </div>
 
       {/* Title */}

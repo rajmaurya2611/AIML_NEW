@@ -26,10 +26,10 @@ function App() {
         <Route path="/legallens/clause"    element={<ClauseCheckPage />} />
 
         {/* SketchSense login */}
-        <Route path="/sketchsens" element={<BackgroundBoxesDemo />} />
+        <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
 
         {/* SketchSense post-login “home” */}
-        <Route path="/sketchsens/home" element={<Home />} />
+        <Route path="/sketchsense/home" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );
