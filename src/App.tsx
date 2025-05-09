@@ -12,6 +12,7 @@ import ClauseCheckPage from './components/homepage/Projects/LegalLens/clause_che
 import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/backgroundBoxesDemo';
 import Home from './components/homepage/Projects/SketchSense/Home';
 import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
+import GloveMain from './components/homepage/Projects/GloveDetection/Glove_main';
 
 function App() {
   return (
@@ -36,6 +37,9 @@ function App() {
 
         {/* Persona Prime */}
         <Route path="/personaprime" element={<PersonaPrimeMain/>} />
+
+        {/* Persona Prime */}
+        <Route path="/gloveguardian" element={<GloveMain/>} />
 
       </Routes>
     </BrowserRouter>

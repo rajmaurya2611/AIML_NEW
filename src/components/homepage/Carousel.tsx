@@ -9,7 +9,7 @@ import ClauseLens from "../../assets/images/projects/MNA/ClauseLens_Small.png"
 import Fin_small from "../../assets/images/projects/Finallytics/Fin_small.png"
 import CrimpCrossSection from "./Projects/CrimpCrossSection";
 import quali from "../../assets/images/projects/CrimpCrossSection/crimp_small.png"
-import GloveDetection from "./Projects/GloveDetection";
+import GloveDetection from "./Projects/GloveDetection/GloveDetection";
 import DS from "./Projects/DataScience";
 import Dwg from "../../assets/images/projects/DrawingComparison/Dwg_sm.png"
 import Glove from "../../assets/images/projects/Glove Detection/Glove_sm.png"
