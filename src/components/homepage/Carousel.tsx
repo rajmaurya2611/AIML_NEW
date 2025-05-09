@@ -16,8 +16,8 @@ import Glove from "../../assets/images/projects/Glove Detection/Glove_sm.png"
 import Raw from "../../assets/images/projects/Raw Material/Raw_sm.png"
 import Mbimg from "../../assets/images/projects/MothersonBot/Motherson Bot.png"
 import Pbimg from "../../assets/images/projects/PersonaBot/Persona small.png"
-import MothersonBot from "./Projects/MothersonBot";
-import PersonaBot from "./Projects/PersonaBot";
+import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
+import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
 import KIPimage from "../../assets/images/projects/KIPBot/KIPBot.png"
 import KIPBot from "./Projects/KIPBot";
 import Forklift from "./Projects/Forklift";

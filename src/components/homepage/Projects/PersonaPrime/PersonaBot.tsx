@@ -1,11 +1,16 @@
-import Button from "../Button"; // Update path to your Lottie JSON file
+import Button from "../../Button"; // Update path to your Lottie JSON file
 
 const PersonaBot = () => {
   return (
     <div className="bg-[#F5F5F7] p-8 md:p-14 rounded-3xl mb-4 text-left">
-      {/* Button */}
+      {/* Button
       <div className="flex justify-center items-center mb-6">
         <Button text="Visit PersonaPrime" link="http://10.245.146.157:8795/" />
+      </div> */}
+
+      {/* Button */}
+      <div className="flex justify-center items-center mb-6">
+        <Button text="Visit PersonaPrime" link="/personaprime" />
       </div>
 
       {/* Title */}
