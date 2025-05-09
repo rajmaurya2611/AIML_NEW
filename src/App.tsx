@@ -11,6 +11,7 @@ import RiskAnalysisPage from './components/homepage/Projects/LegalLens/risk_anal
 import ClauseCheckPage from './components/homepage/Projects/LegalLens/clause_check';
 import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/backgroundBoxesDemo';
 import Home from './components/homepage/Projects/SketchSense/Home';
+import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
 
 function App() {
   return (
@@ -32,7 +33,10 @@ function App() {
         {/* SketchSense post-login “home” */}
         <Route path="/sketchsense/home" element={<ProtectedRoute> <Home /> </ProtectedRoute> }/>
         {/* <Route path="/sketchsense/home" element={<Home />} /> */}
-        
+
+        {/* Persona Prime */}
+        <Route path="/personaprime" element={<PersonaPrimeMain/>} />
+
       </Routes>
     </BrowserRouter>
   );

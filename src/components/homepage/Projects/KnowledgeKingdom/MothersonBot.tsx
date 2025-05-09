@@ -1,11 +1,16 @@
-import Button from "../Button"; // Update path to your Lottie JSON file
+import Button from "../../Button"; // Update path to your Lottie JSON file
 
 const MothersonBot = () => {
   return (
     <div className="bg-[#F5F5F7] p-8 md:p-14 rounded-3xl mb-4 text-left">
+       {/* Button
+       <div className="flex justify-center items-center mb-6">
+        <Button text="Visit KnowledgeKingdom" link="http://10.245.146.250:8794/" />
+      </div> */}
+
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-        <Button text="Visit KnowledgeKingdom" link="http://10.245.146.250:8794/" />
+        <Button text="Visit KnowledgeKingdom" link="/knowledgekingdom" />
       </div>
 
       {/* Title */}
