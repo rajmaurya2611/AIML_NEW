@@ -1,52 +1,29 @@
-// // Updated API call using your new endpoint.
-// export async function getChatbotResponse(message: string): Promise<string> {
-//   try {
-
-//     const API_URL = import.meta.env.VITE_CHATBOT_API_URL;
-
-//     const response = await fetch(API_URL, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({ prompt: message }),
-//     });
-    
-//     if (!response.ok) {
-//       throw new Error(`API error: ${response.statusText}`);
-//     }
-    
-//     const data = await response.json();
-//     // Assumes the API returns an object with a property named "response"
-//     return data.response;
-//   } catch (error) {
-//     console.error("Failed to get chatbot response:", error);
-//     throw error;
-//   }
-// }
-
-
 // api.ts
 export async function getChatbotResponse(
   message: string,
   temperature: number
 ): Promise<string> {
   try {
-    const API_URL = import.meta.env.VITE_PERSONAPRIME_API;
-    const response = await fetch(API_URL, {
+    // Base comes from your .env: VITE_PERSONAPRIME_API=/personaprime/api
+    const BASE = import.meta.env.VITE_PERSONAPRIME_API;
+    // append the actual backend path
+    const API_URL = `${BASE}/generate`;
+
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: message, temperature }),
     });
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
+    if (!res.ok) {
+      throw new Error(`API error ${res.status}: ${res.statusText}`);
     }
-    
-    const data = await response.json();
-    return data.response;
-  } catch (error) {
-    console.error("Failed to get chatbot response:", error);
-    throw error;
+
+    // assumes your service responds { response: "…" }
+    const { response: botReply } = await res.json();
+    return botReply;
+  } catch (err) {
+    console.error("Failed to get chatbot response:", err);
+    throw err;
   }
 }
