@@ -13,6 +13,7 @@ import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/
 import Home from './components/homepage/Projects/SketchSense/Home';
 import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
 import GloveMain from './components/homepage/Projects/GloveDetection/Glove_main';
+import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdom/KnowledgeKingdom_main';
 
 function App() {
   return (
@@ -37,6 +38,8 @@ function App() {
 
         {/* Persona Prime */}
         <Route path="/personaprime" element={<PersonaPrimeMain/>} />
+
+        <Route path="/knowledgekingdom" element={<KnowledgeKingdomMain/>} />
 
         {/* Persona Prime */}
         <Route path="/gloveguardian" element={<GloveMain/>} />
