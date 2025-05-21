@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/homepage/Projects/SketchSense/protectedRoute';
 
 import HomePage from './components/homepage/Homepage';
+import LoginLegallens from './components/homepage/Projects/LegalLens/LoginLegalLens';
+import LegalAuthRoute from './components/homepage/Projects/LegalLens/legalAuthRoute';
 import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
 import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
 import ComparisonPage from './components/homepage/Projects/LegalLens/comparison';
@@ -23,11 +25,52 @@ function App() {
         <Route path="/" element={<HomePage />} />
 
         {/* LegalLens */}
-        <Route path="/legallens"           element={<Legal />} />
-        <Route path="/legallens/analysis"  element={<AnalysisPage />} />
-        <Route path="/legallens/comparison" element={<ComparisonPage />} />
-        <Route path="/legallens/risk_analysis" element={<RiskAnalysisPage />} />
-        <Route path="/legallens/clause"    element={<ClauseCheckPage />} />
+       <Route path="/legallens/login" element={<LoginLegallens />} />
+
+<Route
+  path="/legallens"
+  element={
+    <LegalAuthRoute>
+      <Legal />
+    </LegalAuthRoute>
+  }
+/>
+
+<Route
+  path="/legallens/analysis"
+  element={
+    <LegalAuthRoute>
+      <AnalysisPage />
+    </LegalAuthRoute>
+  }
+/>
+
+<Route
+  path="/legallens/comparison"
+  element={
+    <LegalAuthRoute>
+      <ComparisonPage />
+    </LegalAuthRoute>
+  }
+/>
+
+{/* <Route
+  path="/legallens/risk_analysis"
+  element={
+    <LegalAuthRoute>
+      <RiskAnalysisPage />
+    </LegalAuthRoute>
+  }
+/>
+
+<Route
+  path="/legallens/clause"
+  element={
+    <LegalAuthRoute>
+      <ClauseCheckPage />
+    </LegalAuthRoute>
+  }
+/> */}
 
         {/* SketchSense login */}
         <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
