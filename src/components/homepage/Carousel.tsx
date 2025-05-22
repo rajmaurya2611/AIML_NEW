@@ -4,7 +4,7 @@ import smt_small from "../../assets/images/projects/Smart Extract/Smt_small.png"
 import DrawingComparison from "./Projects/SketchSense/DrawingComparison";
 import InvoiceInformationRetrieval from "./Projects/InvoiceInformationRetrieval";
 import MNA from "./Projects/LegalLens/M&A";
-import FinancialBot from "./Projects/FinancialBot";
+import FinancialBot from "./Projects/BudgetBeacon/FinancialBot";
 import ClauseLens from "../../assets/images/projects/MNA/ClauseLens_Small.png"
 import Fin_small from "../../assets/images/projects/Finallytics/Fin_small.png"
 import CrimpCrossSection from "./Projects/CrimpCrossSection";
@@ -20,7 +20,7 @@ import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
 import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
 import KIPimage from "../../assets/images/projects/KIPBot/KIPBot.png"
 import KIPBot from "./Projects/KIPBot";
-import Forklift from "./Projects/Forklift";
+import Forklift from "./Projects/Safelift/Forklift";
 import Forkliftimg from "../../assets/images/projects/Forklift/forklift_small.png"
 import PulseHR from "./Projects/PulseHR";
 import PulseHR_small from "../../assets/images/projects/PulseHR/PulseHR_small.png";
