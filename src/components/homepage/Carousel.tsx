@@ -19,7 +19,7 @@ import Pbimg from "../../assets/images/projects/PersonaBot/Persona small.png"
 import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
 import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
 import KIPimage from "../../assets/images/projects/KIPBot/KIPBot.png"
-import KIPBot from "./Projects/KIPBot";
+import KIPBot from "./Projects/RKIP/KIPBot";
 import Forklift from "./Projects/Safelift/Forklift";
 import Forkliftimg from "../../assets/images/projects/Forklift/forklift_small.png"
 import PulseHR from "./Projects/PulseHR";

@@ -1,11 +1,11 @@
-import Button from "../Button";
+import Button from "../../Button";
  
 const KIPBot = () => {
   return (
 <div className="bg-[#F5F5F7] p-8 md:p-14 rounded-3xl mb-4 text-left">
       {/* Button */}
 <div className="flex justify-center items-center mb-6">
-<Button text="Visit KIP Bot" link="http://10.245.146.250:5008/" />
+<Button text="Visit KIP Bot" link="/kip" />
 </div>
  
       {/* Title */}

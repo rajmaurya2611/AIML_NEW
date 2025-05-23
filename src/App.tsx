@@ -18,6 +18,7 @@ import GloveMain from './components/homepage/Projects/GloveDetection/Glove_main'
 import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdom/KnowledgeKingdom_main';
 import Safelift_Main from './components/homepage/Projects/Safelift/Safelift_main';
 import BudgetBeaconMain from './components/homepage/Projects/BudgetBeacon/BudgetBeaconMain';
+import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
 
 function App() {
   return (
@@ -93,6 +94,8 @@ function App() {
         <Route path="/safelift" element={<Safelift_Main/>} />
 
         <Route path="/budgetbeacon" element={<BudgetBeaconMain/>} />
+
+        <Route path="/kip" element={<RKIPApp/>} />
 
       </Routes>
     </BrowserRouter>
