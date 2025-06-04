@@ -1,8 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+//import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "./lib_knowledgekingdom/utils";
+import { cn } from "../KnowledgeKingdom/lib_knowledgekingdom/utils";
 import { AudioOutlined, AudioMutedOutlined } from "@ant-design/icons";
 
 export function PlaceholdersAndVanishInput({
@@ -62,7 +62,7 @@ export function PlaceholdersAndVanishInput({
       recognition.continuous = true;
       recognition.interimResults = false;
       recognition.lang = "en-US";
-      recognition.onresult = (event: { resultIndex: number; results: SpeechRecognitionResultList }) => {
+      recognition.onresult = (event: any) => {
         let transcript = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           transcript += event.results[i][0].transcript;
@@ -244,6 +244,7 @@ export function PlaceholdersAndVanishInput({
         ref={inputRef}
         value={value}
         type="text"
+        placeholder={placeholders[currentPlaceholder] || "Ask me anything..."}
         className={cn(
           "w-full relative text-sm sm:text-base z-50 border-none dark:text-white bg-transparent text-black h-full rounded-full focus:outline-none focus:ring-0 pl-4 sm:pl-10 pr-20",
           animating && "text-transparent dark:text-transparent"
@@ -253,7 +254,7 @@ export function PlaceholdersAndVanishInput({
       <button
         type="button"
         onClick={handleMicClick}
-        className="absolute right-10 top-1/2 space-x-4 z-50 -translate-y-1/2 h-8 w-8 rounded-full dark:bg-zinc-900 transition duration-200 flex items-center justify-center"
+        className="mic absolute right-10 top-1/2 space-x-4 z-50 -translate-y-1/2 h-8 w-8 rounded-full dark:bg-zinc-900 transition duration-200 flex items-center justify-center"
       >
         {isRecording ? (
           <AudioMutedOutlined style={{ color: "black", fontSize: "16px" }} />
@@ -261,7 +262,7 @@ export function PlaceholdersAndVanishInput({
           <AudioOutlined style={{ color: "black", fontSize: "16px" }} />
         )}
       </button>
-      <button
+      {/* <button
         disabled={!value}
         type="submit"
         className="absolute right-2 top-1/2 z-50 -translate-y-1/2 h-8 w-8 rounded-full disabled:bg-gray-400 bg-black dark:bg-zinc-900 dark:disabled:bg-zinc-800 transition duration-200 flex items-center justify-center"
@@ -296,9 +297,9 @@ export function PlaceholdersAndVanishInput({
           <path d="M13 18l6 -6" />
           <path d="M13 6l6 6" />
         </motion.svg>
-      </button>
+      </button> */}
 
-      <div className="absolute inset-0 flex items-center rounded-full pointer-events-none">
+      {/* <div className="absolute inset-0 flex items-center rounded-full pointer-events-none">
         <AnimatePresence mode="wait">
           {!value && (
             <motion.p
@@ -325,6 +326,10 @@ export function PlaceholdersAndVanishInput({
             </motion.p>
           )}
         </AnimatePresence>
+      </div> */}
+      <div className="btn-grp">
+        <button type="button" className="reason-btn" disabled>Reasoning</button>
+        <button type="button" className="web-search-btn" disabled>Web Search</button>
       </div>
     </form>
   );

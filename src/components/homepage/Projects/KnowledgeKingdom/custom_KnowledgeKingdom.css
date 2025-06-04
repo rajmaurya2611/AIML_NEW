@@ -1,0 +1,72 @@
+header .flex > div canvas {
+    display: none;
+}
+.fixed svg {
+    display: none;
+}
+form.w-full {
+    border: 0;
+    border-radius: 0.75rem;
+    max-width: 64rem;
+    padding-bottom: 110px;
+    position: relative;
+    box-shadow: 0px 0px 6px 1px #e3e3e3;
+}
+form.w-full input.text-sm {
+    min-height: 50px;
+    border-bottom: 1px solid #ddd;
+    border-radius: 0;
+    margin: 0px 30px;
+    padding-left: 10px;
+}
+.header-text {
+    color: #DA2128;
+}
+.header-logo {
+    color: #404040;
+}
+.header-logo button:hover {
+    color: #DA2128;
+}
+.header {
+    background-image: linear-gradient(to right, transparent, rgba(234, 56, 76, 0.3), transparent);
+    background-repeat: no-repeat;
+    background-position: bottom left;
+    background-size: 100% 2px;
+    padding-bottom: 20px;
+}
+.mic {
+    position: absolute;
+    top: 28px;
+    right: 20px;
+    border: 1px solid #ddd;
+}
+.btn-grp button {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 6px 15px;
+    margin: 15px 5px;
+    background-color: #efebeb;
+    font-size: 13px;
+    color: #6c6c6c;
+    cursor: no-drop;
+}
+.btn-grp {
+    margin-left: 24px;
+}
+.ms-query .mb-2 {
+    min-width: 200px;
+    background-color: #da212826;
+    padding: 8px 15px;
+    border-radius: 10px 10px 0px 10px;
+}
+.ms-propmt .mb-2 {
+    min-width: 200px;
+    background-color: #f3f3f3;
+    padding: 8px 15px;
+    border-radius: 10px 10px 10px 0px;
+}
+.ms-query button,
+.ms-propmt button {
+    color: #6e6e6e;
+}

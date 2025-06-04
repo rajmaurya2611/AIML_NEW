@@ -1,4 +1,4 @@
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+//import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { SaveOutlined, DeleteOutlined, StopOutlined } from "@ant-design/icons";
 
 interface HeaderProps {
@@ -9,20 +9,23 @@ interface HeaderProps {
 
 export default function Header({ onSave, onClear, onStop }: HeaderProps) {
   return (
-    <header className="bg-red-500 text-white shadow-md z-10">
+    <header className="header">
       <div className="container mx-auto flex justify-between items-center pt-2">
         {/* Logo and Title */}
-        <div className="flex items-center space-x-2">
-          <DotLottieReact
+        <div>
+          <img src="https://genai.motherson.com/assets/logo-CCGFL0fd.png" alt="logo" />
+        </div>
+        <div className="header-text flex items-center space-x-2">
+          {/* <DotLottieReact
             src="https://lottie.host/910d0a6d-d9bc-4e46-b80d-000bc077f82e/RZV3nE6vu1.lottie"
             loop
             autoplay
             style={{ width: "60px", height: "60px" }}
-          />
+          /> */}
           <h1 className="text-2xl font-bold">Knowledge Kingdom</h1>
         </div>
         {/* Action Buttons */}
-        <div className="flex items-center space-x-4">
+        <div className="header-logo flex items-center space-x-4">
           <button
             onClick={onSave}
             title="Save Chats"

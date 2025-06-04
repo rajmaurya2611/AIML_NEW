@@ -3,6 +3,7 @@ import ChatWindow from "./ChatWindow";
 import { getChatbotResponse } from "./api_knowledgekingdom/api";
 import { PlaceholdersAndVanishInput } from "./placeholders-and-vanish-input";
 import Header from "./Header";
+import './custom_KnowledgeKingdom.css';
 
 export interface Message {
   text: string;
@@ -10,7 +11,7 @@ export interface Message {
   timestamp: string;
 }
 
-export default function KnowledgeKingdomMain() {
+export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   
@@ -119,7 +120,7 @@ export default function KnowledgeKingdomMain() {
       {/* Input Section */}
       <div className="p-4">
         <PlaceholdersAndVanishInput 
-          placeholders={["Hello I am Motherson Bot!", "Ask something about Motherson"]}
+          placeholders={["Hello this KnowledgeKingdom this side!", "Ask me something about Motherson"]}
           onSubmit={(e) => {
             e.preventDefault();
             const input = e.currentTarget.querySelector("input");

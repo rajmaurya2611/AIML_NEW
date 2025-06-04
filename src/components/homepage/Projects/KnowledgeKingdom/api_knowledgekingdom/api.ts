@@ -10,13 +10,14 @@ export async function getChatbotResponse(message: string): Promise<string> {
       },
       body: JSON.stringify({ prompt: message }),
     });
-
+    
     if (!response.ok) {
-      throw new Error(`API error ${response.status}: ${response.statusText}`);
+      throw new Error(`API error: ${response.statusText}`);
     }
-
-    const { response: botReply } = await response.json();
-    return botReply;
+    
+    const data = await response.json();
+    // Assumes the API returns an object with a property named "response"
+    return data.response;
   } catch (error) {
     console.error("Failed to get chatbot response:", error);
     throw error;

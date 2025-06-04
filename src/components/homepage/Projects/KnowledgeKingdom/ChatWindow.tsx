@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
-import { BackgroundBeams } from './background-beams';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+// import { BackgroundBeams } from './background-beams';
+//import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { CustomerServiceOutlined, CopyOutlined } from '@ant-design/icons';
 import Lottie from 'lottie-react';
-import backgroundAnimation from './assets_knowledgekingdom/animations/bg.json'; // Adjust the path as needed
+import backgroundAnimation from '../KnowledgeKingdom/assets_knowledgekingdom/animations/bg.json'; // Adjust the path as needed
 
 interface Message {
   text: string;
@@ -22,8 +22,8 @@ interface ChatWindowProps {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
-  userStyle = 'bg-gray-700 text-white',
-  botStyle = 'bg-gray-700 text-white',
+  userStyle = 'ms-query',
+  botStyle = 'ms-propmt',
 }) => {
   const isSpeakingRef = useRef<boolean>(false);
 
@@ -65,9 +65,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Chat container with beams and background animation */}
       <div className="relative w-full h-full rounded-md overflow-hidden">
         {/* Background beams */}
-        <div className="fixed inset-0 z-0">
+        {/* <div className="fixed inset-0 z-0">
           <BackgroundBeams className="w-full h-full text-primary opacity-80" />
-        </div>
+        </div> */}
 
         {/* Background animation using lottie-react */}
         <div className="fixed inset-0 z-0 pointer-events-none">
@@ -93,14 +93,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               key={index}
               className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.sender === 'bot' && (
+              {/* {message.sender === 'bot' && (
                 <DotLottieReact
                   src="https://lottie.host/910d0a6d-d9bc-4e46-b80d-000bc077f82e/RZV3nE6vu1.lottie"
                   loop
                   autoplay
                   style={{ width: '60px', height: '60px', marginRight: '10px' }}
                 />
-              )}
+              )} */}
 
               <div
                 className={`max-w-3xl px-4 py-2 rounded-lg break-words flex flex-col ${
@@ -171,7 +171,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     justifyContent: 'center',
                   }}
                 >
-                  <DotLottieReact
+                  {/* <DotLottieReact
                     src="https://lottie.host/f2413721-41cb-473d-a5f8-7c66293cde14/86pBQ0ZvuQ.lottie"
                     loop
                     autoplay
@@ -179,7 +179,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       transform: 'scale(2)',
                       transformOrigin: 'center',
                     }}
-                  />
+                  /> */}
                 </div>
               )}
             </div>
