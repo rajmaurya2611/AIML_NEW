@@ -3,7 +3,7 @@ import ChatWindow from "./ChatWindow";
 import { getChatbotResponse } from "./api_knowledgekingdom/api";
 import { PlaceholdersAndVanishInput } from "./placeholders-and-vanish-input";
 import Header from "./Header";
-import './custom_KnowledgeKingdom.css';
+import "./custom_KnowledgeKingdom.css"
 
 export interface Message {
   text: string;
@@ -11,7 +11,7 @@ export interface Message {
   timestamp: string;
 }
 
-export default function App() {
+export default function KnowledgeBotApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   
@@ -101,7 +101,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white text-black">
+    <div className="flex flex-col h-screen bg-[#F5F5F5] text-black">
       {/* Header Section with new actions */}
       <Header 
         onSave={handleSaveChats} 
@@ -109,10 +109,12 @@ export default function App() {
         onStop={handleStopResponse} 
       />
 
-      {/* Message Section */}
+       {/* Message and Textarea wrapper */}
+     <div className="ms-chat-wrapper max-w-5xl rounded-xl">
+       {/* Message Section */}
       <div
         ref={messageContainerRef}
-        className="flex-grow overflow-y-auto p-4 space-y-2"
+        className="ms-chat-inner flex-grow overflow-y-auto p-4 space-y-2"
       >
         <ChatWindow messages={messages} />
       </div>
@@ -120,7 +122,7 @@ export default function App() {
       {/* Input Section */}
       <div className="p-4">
         <PlaceholdersAndVanishInput 
-          placeholders={["Hello this KnowledgeKingdom this side!", "Ask me something about Motherson"]}
+          placeholders={["Hello I am Knowledge Bot!", "Ask something about Motherson"]}
           onSubmit={(e) => {
             e.preventDefault();
             const input = e.currentTarget.querySelector("input");
@@ -134,6 +136,7 @@ export default function App() {
           }}
         />
       </div>
+     </div>
     </div>
   );
 }

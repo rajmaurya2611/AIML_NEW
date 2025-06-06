@@ -4,9 +4,9 @@ import React, { useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
-import { CustomerServiceOutlined, CopyOutlined } from '@ant-design/icons';
+import { CustomerServiceOutlined, CopyOutlined, LikeOutlined, DislikeOutlined, FileDoneOutlined } from '@ant-design/icons';
 import Lottie from 'lottie-react';
-import backgroundAnimation from '../KnowledgeKingdom/assets_knowledgekingdom/animations/bg.json'; // Adjust the path as needed
+import backgroundAnimation from './assets_knowledgekingdom/animations/bg.json'; // Adjust the path as needed
 
 interface Message {
   text: string;
@@ -23,7 +23,7 @@ interface ChatWindowProps {
 const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   userStyle = 'ms-query',
-  botStyle = 'ms-propmt',
+  botStyle = 'ms-prompt',
 }) => {
   const isSpeakingRef = useRef<boolean>(false);
 
@@ -87,7 +87,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
 
         {/* Chat messages */}
-        <div className="relative z-20 h-full overflow-y-auto space-y-4 p-4">
+        <div className="relative z-20 h-full overflow-y-auto space-y-4">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -141,25 +141,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   {message.text}
                 </ReactMarkdown>
 
+                {message.sender !== 'user' && (
                 <div className="flex gap-2 mt-1 self-end">
-                  <button
-                    onClick={() => speakText(message.text)}
-                    className="p-1 hover:bg-gray-300 rounded"
-                    title="Listen"
-                  >
-                    <CustomerServiceOutlined style={{ fontSize: '16px' }} />
+                  <button className="mx-1 rounded" title="Like">
+                    <LikeOutlined style={{ fontSize: '12px' }} />
                   </button>
-                  <button
-                    onClick={() => copyText(message.text)}
-                    className="p-1 hover:bg-gray-300 rounded"
-                    title="Copy"
-                  >
-                    <CopyOutlined style={{ fontSize: '16px' }} />
+                  <button className="mx-1 rounded" title="Dislike">
+                    <DislikeOutlined style={{ fontSize: '12px' }} />
+                  </button>
+                  <button onClick={() => speakText(message.text)} className="mx-1 rounded" title="Listen">
+                    <CustomerServiceOutlined style={{ fontSize: '12px' }} />
+                  </button>
+                  <button onClick={() => copyText(message.text)} className="mx-1 rounded" title="Copy">
+                    <CopyOutlined style={{ fontSize: '12px' }} />
+                  </button>
+                  <button className="mx-1 rounded" title="Feedback">
+                    <FileDoneOutlined style={{ fontSize: '12px' }} />
                   </button>
                 </div>
+              )}
+
               </div>
 
-              {message.sender === 'user' && (
+              {/* {message.sender === 'user' && (
                 <div
                   style={{
                     width: '50px',
@@ -171,7 +175,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     justifyContent: 'center',
                   }}
                 >
-                  {/* <DotLottieReact
+                  <DotLottieReact
                     src="https://lottie.host/f2413721-41cb-473d-a5f8-7c66293cde14/86pBQ0ZvuQ.lottie"
                     loop
                     autoplay
@@ -179,9 +183,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       transform: 'scale(2)',
                       transformOrigin: 'center',
                     }}
-                  /> */}
+                  />
                 </div>
-              )}
+              )} */}
             </div>
           ))}
         </div>

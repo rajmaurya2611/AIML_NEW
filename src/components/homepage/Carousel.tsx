@@ -100,7 +100,7 @@ const data = [
   },
   {
     category: "",
-    title: "KnowledgeKingdom",
+    title: "Knowledge Bot",
     src: Mbimg, // Direct reference to imported image
     content: <MothersonBot/>
   },

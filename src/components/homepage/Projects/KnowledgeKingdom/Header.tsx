@@ -22,7 +22,7 @@ export default function Header({ onSave, onClear, onStop }: HeaderProps) {
             autoplay
             style={{ width: "60px", height: "60px" }}
           /> */}
-          <h1 className="text-2xl font-bold">Knowledge Kingdom</h1>
+          <h1 className="text-2xl font-bold">Knowledge Bot</h1>
         </div>
         {/* Action Buttons */}
         <div className="header-logo flex items-center space-x-4">

@@ -2,7 +2,7 @@
 
 //import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "../KnowledgeKingdom/lib_knowledgekingdom/utils";
+import { cn } from "./lib_knowledgekingdom/utils";
 import { AudioOutlined, AudioMutedOutlined } from "@ant-design/icons";
 
 export function PlaceholdersAndVanishInput({
