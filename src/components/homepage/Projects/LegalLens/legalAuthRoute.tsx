@@ -1,13 +1,13 @@
-import { Navigate } from "react-router-dom";
+// import { Navigate } from "react-router-dom";
 
-const LegalAuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const isLegalLensLoggedIn = sessionStorage.getItem("isLegalLensLoggedIn") === "true";
+// const LegalAuthRoute = ({ children }: { children: React.ReactNode }) => {
+//   const isLegalLensLoggedIn = sessionStorage.getItem("isLegalLensLoggedIn") === "true";
 
-  if (!isLegalLensLoggedIn) {
-    return <Navigate to="/legallens/login" replace />;
-  }
+//   if (!isLegalLensLoggedIn) {
+//     return <Navigate to="/legallens" replace />;
+//   }
 
-  return children;
-};
+//   return children;
+// };
 
-export default LegalAuthRoute;
+// export default LegalAuthRoute;

@@ -19,7 +19,7 @@ import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
-import logo from "./assets_legal/logo.png";
+import logo from "../assets/logo.png";
 import { Link } from 'react-router-dom';
  
 const { Header, Sider, Content } = Layout;
@@ -27,7 +27,7 @@ const { TextArea } = Input;
 const { Option } = Select;
  
  
-const LEGALLENS_API_BASE = import.meta.env.VITE_LEGALLENS_BASE;
+const API_BASE = import.meta.env.VITE_API_BASE;
  
 const perspectives = [
   "Both Parties",
@@ -48,7 +48,7 @@ export default function RiskAnalysisPage() {
  
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`${LEGALLENS_API_BASE}/documents`);
+      const res = await axios.get(`${API_BASE}/documents`);
       setUploadedDocs(res.data.documents);
       // Reset state when refreshing
       setSelectedDoc(null);
@@ -70,7 +70,7 @@ export default function RiskAnalysisPage() {
     setLoading(true);
     setResult("");
     try {
-      const res = await axios.post(`${LEGALLENS_API_BASE}/risk-analysis`, {
+      const res = await axios.post(`${API_BASE}/risk-analysis`, {
         selected_doc: selectedDoc,
         perspective,
       });
@@ -86,7 +86,7 @@ export default function RiskAnalysisPage() {
     if (!feedbackRating || !result) return;
     setSubmittingFeedback(true);
     try {
-      await axios.post(`${LEGALLENS_API_BASE}/feedback`, {
+      await axios.post(`${API_BASE}/feedback`, {
         query: `Risk Analysis (${perspective})`,
         response: result,
         feedback: feedbackText,

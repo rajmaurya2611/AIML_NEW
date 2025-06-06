@@ -45,8 +45,7 @@ import React, {
     return (
       <MouseEnterContext.Provider value={[isMouseEntered, setIsMouseEntered]}>
         <div
-          className={cn("py-20 flex items-center justify-center", containerClassName)}
-          style={{ perspective: "1000px" }}
+          className={cn("inner-card-content py-20", containerClassName)}
         >
           <div
             ref={containerRef}

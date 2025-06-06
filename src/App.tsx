@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/homepage/Projects/SketchSense/protectedRoute';
 
 import HomePage from './components/homepage/Homepage';
-import LoginLegallens from './components/homepage/Projects/LegalLens/LoginLegalLens';
-import LegalAuthRoute from './components/homepage/Projects/LegalLens/legalAuthRoute';
 import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
 import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
 import ComparisonPage from './components/homepage/Projects/LegalLens/comparison';
@@ -28,32 +26,19 @@ function App() {
         <Route path="/" element={<HomePage />} />
 
         {/* LegalLens */}
-       <Route path="/legallens/login" element={<LoginLegallens />} />
+       <Route path="/legallens" element={<Legal/>} />
 
 <Route
-  path="/legallens"
+  path="legallens/analysis"
   element={
-    <LegalAuthRoute>
-      <Legal />
-    </LegalAuthRoute>
-  }
-/>
-
-<Route
-  path="/legallens/analysis"
-  element={
-    <LegalAuthRoute>
       <AnalysisPage />
-    </LegalAuthRoute>
   }
 />
 
 <Route
-  path="/legallens/comparison"
+  path="legallens/comparison"
   element={
-    <LegalAuthRoute>
       <ComparisonPage />
-    </LegalAuthRoute>
   }
 />
 

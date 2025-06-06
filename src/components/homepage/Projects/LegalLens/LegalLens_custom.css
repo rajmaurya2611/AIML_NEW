@@ -1,0 +1,117 @@
+
+/* Common */
+.gradient-btn {
+    background: linear-gradient(to right, #EB3333 0%, #851D1D 100%);
+}
+
+.custom-rate .ant-rate-star-zero .ant-rate-star-first,
+.custom-rate .ant-rate-star-zero .ant-rate-star-second {
+  color: #999 !important; /* Darker gray for unselected stars */
+}
+.ant-layout .ant-layout-sider {
+    background-color: #fdfdfd;
+    box-shadow: 1px 0px 6px -3px #565656;
+}
+.ant-layout .ant-layout-sider .text-sm {
+    color: #666666;
+}
+.ms-textarea {
+    background-color: #fff;
+    padding: 10px 10px 60px 10px;
+    box-shadow: 0px 0px 5px 1px #ddd;
+    border-radius: 8px;
+}
+.ms-textarea textarea {
+    border: 0;
+    background-color: unset;
+    border-bottom: 1px solid #ddd;
+    border-radius: 0;
+    padding-bottom: 20px;
+    position: relative;
+}
+.ms-textarea textarea:focus,
+.ms-textarea textarea:focus-within,
+.ms-textarea textarea:focus-visible,
+.ms-textarea textarea:active {
+    outline: 0;
+    border: 0;
+    box-shadow: none;
+}
+.custom-btns {
+    position: absolute;
+    bottom: 50px;
+}
+.custom-btns button {
+    margin-left: 10px;
+    border: 1px solid #ddd;
+    color: #818181;
+    background-color: #f1f1f1;
+    padding: 3px 6px;
+    border-radius: 5px;
+    cursor: not-allowed;
+}
+.w-full.bg-white.rounded.shadow {
+    margin-top: 20px;
+}
+.cards-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+.card-main {
+    background-color: #F7F7F7;
+    max-width: 700px;
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0px 0px 4px 1px #d1d1d1;
+    position: relative;
+}
+.card-wrapper-main {
+    display: flex;
+    flex-direction: row-reverse;
+    padding: 10px 10px;
+}
+.card-wrapper-main .cursor-pointer {
+    flex: 1 1 30%;
+    margin: 0;
+}
+.card-wrapper-main .card-wrapper-main-texts {
+    flex: 1 1 60%;
+    padding: 10px 10px 10px 20px;
+}
+.card-wrapper-main .cursor-pointer {
+    flex: 1 1 40%;
+    margin: 0;
+}
+.card-main .card-btn {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+}
+.card-main .card-btn button {
+    min-width: 100px;
+    color: #f3f3f3;
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+/* Ant Layout */
+.ms-main-layout {
+    background-color: #FCFBFB;
+    margin: 20px 50px;
+    box-shadow: 0px 0px 8px 0px #ddd;
+}
+.ms-prompt > div {
+    background-color: #FCE1E2;
+    color: #282828;
+    font-weight: 500;
+}
+.ms-response hr {
+    display: none;
+}
+.header-icons button {
+    border: 0;
+    background-color: unset;
+    color: #f5f5f5;
+}
