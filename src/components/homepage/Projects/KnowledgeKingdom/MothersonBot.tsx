@@ -10,7 +10,7 @@ const MothersonBot = () => {
 
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-        <Button text="Visit Knowledge Bot" link="/knowledgekingdom" />
+        <Button text="Visit Knowledge Bot" link="/knowledgebot" />
       </div>
 
       {/* Title */}

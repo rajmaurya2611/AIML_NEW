@@ -70,7 +70,7 @@ function App() {
         {/* Persona Prime */}
         <Route path="/personaprime" element={<PersonaPrimeMain/>} />
 
-        <Route path="/knowledgekingdom" element={<KnowledgeKingdomMain/>} />
+        <Route path="/knowledgebot" element={<KnowledgeKingdomMain/>} />
 
         {/* Persona Prime */}
         <Route path="/gloveguardian" element={<GloveMain/>} />
