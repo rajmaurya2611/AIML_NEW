@@ -24,6 +24,8 @@ import Forklift from "./Projects/Safelift/Forklift";
 import Forkliftimg from "../../assets/images/projects/Forklift/forklift_small.png"
 import PulseHR from "./Projects/PulseHR";
 import PulseHR_small from "../../assets/images/projects/PulseHR/PulseHR_small.png";
+import do33Image from "../../assets/images/projects/DO33/do33_small.jpg";
+import DO33 from "./Projects/DO33/do33";
 
 //import Forkliftcard from "./Projects/Forklift"
 // import M_Translate from "../../assets/images/homepage/M translate.jpg"
@@ -121,6 +123,12 @@ const data = [
     title: "PersonaPrime",
     src: Pbimg, // Direct reference to imported image
     content: <PersonaBot/>
+  },
+  {
+    category: "",
+    title: "DO33",
+    src: do33Image, // Direct reference to imported image
+    content: <DO33/>
   },
   
   

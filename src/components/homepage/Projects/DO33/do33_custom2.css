@@ -1,0 +1,131 @@
+
+@layer base {
+  :root {
+    --background: 0, 0%, 96%;
+    --foreground: 0 0% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+
+    --primary: 352 82% 57%;
+    --primary-foreground: 0 0% 100%;
+    --primary-accent: #DA2128;
+
+    --secondary: 0 100% 97%;
+    --secondary-foreground: 352 82% 57%;
+
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 100% 97%;
+    --accent-foreground: 352 82% 57%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 352 82% 57%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Markdown styling within chat bubbles */
+.chat-markdown {
+  @apply text-sm leading-relaxed;
+}
+
+.chat-markdown p {
+  @apply mb-2;
+}
+
+.chat-markdown p:last-child {
+  @apply mb-0;
+}
+
+.chat-markdown strong {
+  @apply font-bold;
+}
+
+.chat-markdown em {
+  @apply italic;
+}
+
+.chat-markdown code {
+  @apply px-1 py-0.5 bg-black/5 rounded text-sm;
+}
+
+.chat-markdown pre {
+  @apply p-3 bg-black/10 rounded-md my-2 overflow-x-auto;
+}
+
+.chat-markdown pre code {
+  @apply bg-transparent p-0;
+}
+
+.chat-markdown ul {
+  @apply list-disc pl-5 mb-2;
+}
+
+.chat-markdown ol {
+  @apply list-decimal pl-5 mb-2;
+}
+
+.chat-markdown h1, 
+.chat-markdown h2, 
+.chat-markdown h3, 
+.chat-markdown h4 {
+  @apply font-bold my-2;
+}
+
+.chat-markdown h1 {
+  @apply text-xl;
+}
+
+.chat-markdown h2 {
+  @apply text-lg;
+}
+
+.chat-markdown blockquote {
+  @apply border-l-4 border-chat-red pl-4 italic my-2;
+}
+
+.chat-markdown a {
+  @apply text-chat-red hover:underline;
+}
+
+.chat-markdown table {
+  @apply border-collapse w-full my-4;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  @apply border border-black/10 p-1.5 text-sm;
+}
+
+.chat-markdown th {
+  @apply bg-black/5;
+}

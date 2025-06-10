@@ -1,16 +1,3 @@
-// /** @type {import('tailwindcss').Config} */
-// export default {
-//   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-//   theme: {
-//     extend: {
-//       fontFamily: {
-//         rubik: ["Poppins", "sans-serif"],
-//       },
-//     },
-//   },
-//   plugins: [],
-// };
-
 const defaultTheme = require("tailwindcss/defaultTheme");
 const colors = require("tailwindcss/colors");
 const {
@@ -19,14 +6,110 @@ const {
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{ts,tsx}"],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
-      // Add any additional theme extensions here
+      fontFamily: {
+        rubik: ["Poppins", "sans-serif"],
+      },
+      container: {
+        center: true,
+        padding: '2rem',
+        screens: {
+          '2xl': '1400px'
+        }
+      },
+      colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))'
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-background))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          primary: 'hsl(var(--sidebar-primary))',
+          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+          border: 'hsl(var(--sidebar-border))',
+          ring: 'hsl(var(--sidebar-ring))'
+        },
+        chat: {
+          red: {
+            DEFAULT: '#c53030', // darker red
+            dark: '#a31620',    // even darker, if needed
+            light: '#ffeeee',
+          }
+        }
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
+      },
+      keyframes: {
+        'accordion-down': {
+          from: {
+            height: '0'
+          },
+          to: {
+            height: 'var(--radix-accordion-content-height)'
+          }
+        },
+        'accordion-up': {
+          from: {
+            height: 'var(--radix-accordion-content-height)'
+          },
+          to: {
+            height: '0'
+          }
+        },
+        'pulse-light': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' }
+        }
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-light': 'pulse-light 1.5s ease-in-out infinite'
+      }
     },
   },
-  plugins: [addVariablesForColors],
+  plugins: [
+    require("tailwindcss-animate"),
+    addVariablesForColors // assuming this function is defined elsewhere
+  ],
 };
 
 function addVariablesForColors({ addBase, theme }) {
@@ -39,3 +122,35 @@ function addVariablesForColors({ addBase, theme }) {
     ":root": newVars,
   });
 }
+
+
+
+//Final Initial config file before DO33
+// const defaultTheme = require("tailwindcss/defaultTheme");
+// const colors = require("tailwindcss/colors");
+// const {
+//   default: flattenColorPalette,
+// } = require("tailwindcss/lib/util/flattenColorPalette");
+
+// /** @type {import('tailwindcss').Config} */
+// module.exports = {
+//   content: ["./src/**/*.{ts,tsx}"],
+//   darkMode: "class",
+//   theme: {
+//     extend: {
+//       // Add any additional theme extensions here
+//     },
+//   },
+//   plugins: [addVariablesForColors],
+// };
+
+// function addVariablesForColors({ addBase, theme }) {
+//   const allColors = flattenColorPalette(theme("colors"));
+//   const newVars = Object.fromEntries(
+//     Object.entries(allColors).map(([key, val]) => [`--${key}`, val])
+//   );
+
+//   addBase({
+//     ":root": newVars,
+//   });
+// }

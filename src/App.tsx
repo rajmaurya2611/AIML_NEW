@@ -17,6 +17,7 @@ import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdo
 import Safelift_Main from './components/homepage/Projects/Safelift/Safelift_main';
 import BudgetBeaconMain from './components/homepage/Projects/BudgetBeacon/BudgetBeaconMain';
 import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
+import DO33Main from './components/homepage/Projects/DO33/do33_main';
 
 function App() {
   return (
@@ -32,6 +33,13 @@ function App() {
   path="legallens/analysis"
   element={
       <AnalysisPage />
+  }
+/>
+
+<Route
+  path="/do33"
+  element={
+      <DO33Main />
   }
 />
 
@@ -81,6 +89,7 @@ function App() {
         <Route path="/budgetbeacon" element={<BudgetBeaconMain/>} />
 
         <Route path="/kip" element={<RKIPApp/>} />
+
 
       </Routes>
     </BrowserRouter>
