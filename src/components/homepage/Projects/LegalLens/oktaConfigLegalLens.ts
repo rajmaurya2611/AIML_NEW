@@ -4,11 +4,13 @@ import { OktaAuth } from "@okta/okta-auth-js";
 export const oktaAuthLegal = new OktaAuth({
   issuer:   import.meta.env.VITE_LEGAL_OKTA_ISSUER!,
   clientId: import.meta.env.VITE_LEGAL_OKTA_CLIENT_ID!,
-  redirectUri: `${window.location.origin}/login/callback`,
+  redirectUri: `${window.location.origin}/legallens/login/callback`,
   scopes: ["openid", "profile", "email"],
   tokenManager: { storage: "sessionStorage" },  // or "localStorage"
 });
 
+
+//Do not use this in production, it is only for testing purposes
 // DEBUG – expose it for one test run
 // @ts-ignore
-window.oktaAuthLegal = oktaAuthLegal;
+//window.oktaAuthLegal = oktaAuthLegal;
