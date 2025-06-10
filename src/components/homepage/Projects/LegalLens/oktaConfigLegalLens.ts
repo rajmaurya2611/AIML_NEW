@@ -6,6 +6,7 @@ export const oktaAuthLegal = new OktaAuth({
   clientId: import.meta.env.VITE_LEGAL_OKTA_CLIENT_ID!,
   redirectUri: `${window.location.origin}/legallens/login/callback`,
   scopes: ["openid", "profile", "email"],
+  pkce: false,  // Enable PKCE for enhanced security
   tokenManager: { storage: "sessionStorage" },  // or "localStorage"
 });
 
@@ -14,4 +15,4 @@ export const oktaAuthLegal = new OktaAuth({
 // DEBUG – expose it for one test run
 // @ts-ignore
 //console.table(window.oktaAuthLegal.options
-window.oktaAuthLegal = oktaAuthLegal;
+//window.oktaAuthLegal = oktaAuthLegal;
