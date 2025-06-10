@@ -4,9 +4,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/homepage/Projects/SketchSense/protectedRoute';
 
 import HomePage from './components/homepage/Homepage';
-import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
-import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
-import ComparisonPage from './components/homepage/Projects/LegalLens/comparison';
+//import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
+//import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
+//import ComparisonPage from './components/homepage/Projects/LegalLens/comparison';
 //import RiskAnalysisPage from './components/homepage/Projects/LegalLens/risk_analysis';
 //import ClauseCheckPage from './components/homepage/Projects/LegalLens/clause_check';
 import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/backgroundBoxesDemo';
@@ -18,6 +18,7 @@ import Safelift_Main from './components/homepage/Projects/Safelift/Safelift_main
 import BudgetBeaconMain from './components/homepage/Projects/BudgetBeacon/BudgetBeaconMain';
 import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
 import DO33Main from './components/homepage/Projects/DO33/do33_main';
+import LegalLensRoot from './components/homepage/Projects/LegalLens/root';
 
 function App() {
   return (
@@ -27,14 +28,24 @@ function App() {
         <Route path="/" element={<HomePage />} />
 
         {/* LegalLens */}
-       <Route path="/legallens" element={<Legal/>} />
+       {/* <Route path="/legallens" element={<Legal/>} />
 
 <Route
   path="legallens/analysis"
   element={
       <AnalysisPage />
   }
+/> 
+
+<Route
+  path="legallens/comparison"
+  element={
+      <ComparisonPage />
+  }
 />
+*/}
+
+ <Route path="/legallens/*" element={<LegalLensRoot/>} />
 
 <Route
   path="/do33"
@@ -43,12 +54,7 @@ function App() {
   }
 />
 
-<Route
-  path="legallens/comparison"
-  element={
-      <ComparisonPage />
-  }
-/>
+
 
 {/* <Route
   path="/legallens/risk_analysis"

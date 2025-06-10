@@ -1,13 +1,16 @@
-// import { Navigate } from "react-router-dom";
+// src/apps/legallens/AuthRoute.tsx
+import { useOktaAuth } from "@okta/okta-react";
+import { Outlet, useLocation } from "react-router-dom";
+import { Spin } from "antd";
 
-// const LegalAuthRoute = ({ children }: { children: React.ReactNode }) => {
-//   const isLegalLensLoggedIn = sessionStorage.getItem("isLegalLensLoggedIn") === "true";
+export default function AuthRoute() {
+  const { authState, oktaAuth } = useOktaAuth();
+  const { pathname } = useLocation();
 
-//   if (!isLegalLensLoggedIn) {
-//     return <Navigate to="/legallens" replace />;
-//   }
-
-//   return children;
-// };
-
-// export default LegalAuthRoute;
+  if (!authState) return <Spin className="block mx-auto mt-32" size="large" />;
+  if (!authState.isAuthenticated) {
+    oktaAuth.signInWithRedirect({ originalUri: pathname });
+    return null;
+  }
+  return <Outlet />;
+}
