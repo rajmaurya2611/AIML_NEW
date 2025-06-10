@@ -13,4 +13,5 @@ export const oktaAuthLegal = new OktaAuth({
 //Do not use this in production, it is only for testing purposes
 // DEBUG – expose it for one test run
 // @ts-ignore
-//window.oktaAuthLegal = oktaAuthLegal;
+//console.table(window.oktaAuthLegal.options
+window.oktaAuthLegal = oktaAuthLegal;
