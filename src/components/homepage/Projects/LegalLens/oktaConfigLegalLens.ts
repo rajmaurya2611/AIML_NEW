@@ -8,3 +8,7 @@ export const oktaAuthLegal = new OktaAuth({
   scopes: ["openid", "profile", "email"],
   tokenManager: { storage: "sessionStorage" },  // or "localStorage"
 });
+
+// DEBUG – expose it for one test run
+// @ts-ignore
+window.oktaAuthLegal = oktaAuthLegal;
