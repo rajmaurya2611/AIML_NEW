@@ -13,12 +13,14 @@ import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/
 import Home from './components/homepage/Projects/SketchSense/Home';
 import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
 import GloveMain from './components/homepage/Projects/GloveDetection/Glove_main';
-import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdom/KnowledgeKingdom_main';
+//import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdom/KnowledgeKingdom_main';
 import Safelift_Main from './components/homepage/Projects/Safelift/Safelift_main';
 import BudgetBeaconMain from './components/homepage/Projects/BudgetBeacon/BudgetBeaconMain';
 import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
-import DO33Main from './components/homepage/Projects/DO33/do33_main';
+//import DO33Main from './components/homepage/Projects/DO33/do33_main';
 import LegalLensRoot from './components/homepage/Projects/LegalLens/root';
+import DO33Root from './components/homepage/Projects/DO33/root';
+import KnowledgeRoot from './components/homepage/Projects/KnowledgeKingdom/root';
 
 function App() {
   return (
@@ -47,12 +49,8 @@ function App() {
 
  <Route path="/legallens/*" element={<LegalLensRoot/>} />
 
-<Route
-  path="/do33"
-  element={
-      <DO33Main />
-  }
-/>
+<Route path="/do33/*"        element={<DO33Root/>} />
+  <Route path="/knowledgebot/*" element={<KnowledgeRoot/>} />
 
 
 
@@ -84,7 +82,6 @@ function App() {
         {/* Persona Prime */}
         <Route path="/personaprime" element={<PersonaPrimeMain/>} />
 
-        <Route path="/knowledgebot" element={<KnowledgeKingdomMain/>} />
 
         {/* Persona Prime */}
         <Route path="/gloveguardian" element={<GloveMain/>} />
