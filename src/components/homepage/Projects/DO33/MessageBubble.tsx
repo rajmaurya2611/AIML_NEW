@@ -73,7 +73,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
               </div>
             )} */}
 
-            {message.sources && message.sources.length > 0 && (
+            {/* {message.sources && message.sources.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-semibold mb-2 text-gray-800">📂 Source files used (click to view):</p>
                 <div className="flex flex-wrap gap-2">
@@ -90,7 +90,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
 
 
             {/* Feedback buttons */}
