@@ -127,13 +127,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       />
                     ),
                     td: ({ node, ...props }) => (
-                      <td className="px-4 py-2 text-sm border border-gray-300 text-white" {...props} />
+                      <td className="px-4 py-2 text-sm border border-gray-300 text-black" {...props} />
                     ),
                     ul: ({ node, ...props }) => (
-                      <ul className="list-disc pl-5 space-y-1 text-white" {...props} />
+                      <ul className="list-disc pl-5 space-y-1 text-black" {...props} />
                     ),
                     li: ({ node, ...props }) => (
-                      <li className="text-base text-white" {...props} />
+                      <li className="text-base text-black" {...props} />
                     ),
                     p: ({ node, ...props }) => <p className="mb-2" {...props} />,
                   }}
