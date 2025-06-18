@@ -151,7 +151,7 @@
 
 
 // src/apps/do33/components/Index.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Message, ChatOption } from "../types_do33/chat";
 import ChatHeader from "../ChatHeader";
@@ -168,7 +168,6 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const botResponseIntervalRef = useRef<number | null>(null);
 
   /* Reset session on mount */
   useEffect(() => {
@@ -272,26 +271,7 @@ const Index = () => {
   };
 
   /* Save, clear, stop handlers (unchanged) */
-  const handleSaveChats = () => {
-    const dataStr = messages
-      .map((m) => `[${m.timestamp.toLocaleTimeString()}] ${m.sender.toUpperCase()}: ${m.content}`)
-      .join("\n");
-    const blob = new Blob([dataStr], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = "chats.txt";
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleClearChats = () => setMessages([]);
-  const handleStopResponse = () => {
-    if (botResponseIntervalRef.current !== null) {
-      clearInterval(botResponseIntervalRef.current);
-      botResponseIntervalRef.current = null;
-    }
-  };
+  
 
   /* ---- JSX ---- */
   return (
