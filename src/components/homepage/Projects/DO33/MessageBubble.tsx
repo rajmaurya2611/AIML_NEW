@@ -187,7 +187,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
 >
 
           {isUser ? (
-<p className="text-sm">{message.content}</p>
+<p className="text-white text-sm">{message.content}</p>
 
           ) : (
 <div>
@@ -226,7 +226,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
 
                 )} */}
  
-              {/* {message.sources && message.sources.length > 0 && (
+              {message.sources && message.sources.length > 0 && (
 <div className="mt-4">
 <p className="text-sm font-semibold mb-2 text-gray-800">
 
@@ -257,7 +257,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
 
               )}
 
-*/}
+
 
               {/* Feedback buttons */}
 <div className="flex justify-end mt-2 pt-2 border-t border-gray-200/50">
