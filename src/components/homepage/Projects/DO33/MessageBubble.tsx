@@ -187,7 +187,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onLike, onDislik
 >
 
           {isUser ? (
-<p className="text-white text-sm">{message.content}</p>
+<p className="text-white">{message.content}</p>
 
           ) : (
 <div>
