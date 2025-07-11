@@ -195,7 +195,7 @@
 // }
 
 import { useRef, useEffect } from "react";
-import logo from "./assets_talentAI/ms_logo.png";
+import logo from "../../assets/ms_logo.png";
 import html2pdf from "html2pdf.js";
 
 export default function Preview({
@@ -208,7 +208,7 @@ export default function Preview({
   formData = {},
 }) {
   const {
-    companyDetails = "Motherson Technology Services Limited (MTSL) is the dedicated technology arm of the Samvardhana Motherson Group, one of the world’s leading automotive component manufacturers. With a global presence in 41+ countries, MTSL delivers comprehensive IT and digital transformation services across 12 industry verticals, including automotive, manufacturing, healthcare, logistics, IT and more. We specialize in offering scalable technology solutions through our expertise in application services, infrastructure, cloud, cybersecurity, IoT, data analytics, and enterprise platforms. Headquartered in India – Noida , MTSL operates across key geographies including North America, Europe, Asia-Pacific, and the Middle East, enabling agile and responsive support for clients worldwide. As part of a globally trusted group ranked among the Fortune India 500, MTSL continues to drive innovation and operational excellence, empowering businesses to stay ahead in a rapidly evolving digital landscape.",
+    companyDetails = "Motherson Technology Services Limited (MTSL) is the dedicated technology arm of the Samvardhana Motherson Group, one of the world’s leading automotive component manufacturers. With a global presence in 41+ countries, MTSL delivers comprehensive IT and digital transformation services across 12 industry verticals, including automotive, manufacturing, healthcare, logistics, IT and more.",
     companyParentName = "Motherson Group",
     companyName = "Motherson Technology Services Ltd.",
   } = formData;
@@ -256,7 +256,7 @@ export default function Preview({
         className="flex-1 border rounded p-4 bg-white mb-4 overflow-auto"
         style={{
           fontFamily: 'Poppins, sans-serif',
-          fontSize: '14px',
+          fontSize: '12px',
           lineHeight: '1.6',
           wordBreak: 'break-word',
           whiteSpace: 'normal',
