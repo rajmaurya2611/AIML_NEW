@@ -195,7 +195,7 @@
 // }
 
 import { useRef, useEffect } from "react";
-import logo from "../../assets/ms_logo.png";
+import logo from "./assets_talentAI/ms_logo.png";
 import html2pdf from "html2pdf.js";
 
 export default function Preview({
