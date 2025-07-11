@@ -6,3 +6,10 @@
   color: #5f5e5e !important; /* light grey */
 }
 
+.input {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  width: 100%;
+}

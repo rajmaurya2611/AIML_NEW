@@ -1,12 +1,17 @@
-import Button from "../Button";
+import Button from "../../Button";
 
 const PulseHR = () => {
   return (
     <div className="bg-[#F5F5F7] p-8 md:p-14 rounded-3xl mb-4 text-left">
       
       {/* Button */}
-      <div className="flex justify-center items-center mb-6">
+      {/* <div className="flex justify-center items-center mb-6">
         <Button text="See Demo" link="http://10.245.146.250:8796/" />
+      </div> */}
+
+       {/* Button */}
+      <div className="flex justify-center items-center mb-6">
+        <Button text="Visit Talent AI" link="/talentai" />
       </div>
 
       {/* Title */}

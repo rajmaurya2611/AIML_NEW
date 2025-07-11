@@ -21,6 +21,9 @@ import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
 import LegalLensRoot from './components/homepage/Projects/LegalLens/root';
 import DO33Root from './components/homepage/Projects/DO33/root';
 import KnowledgeRoot from './components/homepage/Projects/KnowledgeKingdom/root';
+import TalentAIMain from './components/homepage/Projects/TalentAI/TalentAIMain'
+import CVRanker from './components/homepage/Projects/TalentAI/CvRanker';
+import JdGenerator from './components/homepage/Projects/TalentAI/JdGenerator';
 
 function App() {
   return (
@@ -92,6 +95,10 @@ function App() {
         <Route path="/budgetbeacon" element={<BudgetBeaconMain/>} />
 
         <Route path="/kip" element={<RKIPApp/>} />
+
+        <Route path="/talentai" element={<TalentAIMain/>} />
+         <Route path="/talentai/CvRanker" element={<CVRanker/>} />
+         <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
 
 
       </Routes>

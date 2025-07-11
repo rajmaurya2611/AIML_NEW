@@ -22,7 +22,7 @@ import KIPimage from "../../assets/images/projects/KIPBot/KIPBot.png"
 import KIPBot from "./Projects/RKIP/KIPBot";
 import Forklift from "./Projects/Safelift/Forklift";
 import Forkliftimg from "../../assets/images/projects/Forklift/forklift_small.png"
-import PulseHR from "./Projects/PulseHR";
+import PulseHR from "./Projects/TalentAI/PulseHR";
 import PulseHR_small from "../../assets/images/projects/PulseHR/PulseHR_small.png";
 import do33Image from "../../assets/images/projects/DO33/do33_small.jpg";
 import DO33 from "./Projects/DO33/do33";
@@ -78,7 +78,7 @@ const data = [
   },
   {
     category: "",
-    title: "PulseHR",
+    title: "TalentAI",
     src: PulseHR_small, // Direct reference to imported image
     content: <PulseHR/>,
   },

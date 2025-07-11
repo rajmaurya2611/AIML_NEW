@@ -1,0 +1,24 @@
+.mainHeader{
+    background-color: #DA2128;
+    width: 100%;
+    height: 50px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.mothersonLogo{
+    margin-left: 1vw;
+}
+.mainHeader .appName{
+    color: #FFFFFF;
+    font-size: 27px;
+    padding-left: 2%;
+    margin-top: 18px;
+}
+.vertical-line{
+    width: 1px;                /* Line thickness */
+    height: 50px;             /* Line height */
+    background-color: white; 
+    margin-left:5px;
+}

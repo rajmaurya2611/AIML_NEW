@@ -1,0 +1,70 @@
+.cvRankerContainer{
+    display: flex;
+    flex-direction: row;
+    background-color: white;
+    min-height: 100vh;
+}
+.cvRankerUploader{
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    padding-left: 11%;
+}
+.rankCVButton{
+    margin-top: 6vh;
+    width: 25%;
+    background-color: #DA2128;
+    color: white;
+    border: none;
+    height: 40px;
+    border-radius: 5px;
+    align-self: center;
+}
+.rankCVButton:hover {
+  cursor: pointer;
+}
+.cvRankerUploader input{
+    margin-top: 1vh;
+    height: 50px;
+    width: 300px;
+    border: 2px solid #D9D9D9;
+    border-radius: 5px;
+    padding-left: 15px;
+}
+.blank{
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+}
+.mainText{
+    margin-top: 10vh;
+    color: #555555;
+    font-size: 20px;
+    font-weight: 200;
+}
+
+.file-dropzone {
+  display: block;
+  width: 100%;
+  padding: 30px;
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+  background-color: #f9f9f9;
+  color: #555;
+}
+
+.file-dropzone:hover {
+  border-color: #888;
+  background-color: #f1f1f1;
+}
+
+.upload-text {
+  color:#DA2128 ;
+}
+
+/* highlight top border for each candidate block */
+.candidate-row-start td {
+  border-top: 2px solid #1890ff !important;
+}

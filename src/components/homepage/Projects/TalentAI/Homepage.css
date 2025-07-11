@@ -1,0 +1,145 @@
+.homepageContainer{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 10vh;
+}
+
+
+.appDescriptionContainer{
+    background-color: #C21D23;
+    display: flex;
+    flex-direction: row;
+    height: 325px;
+    width: 98%;
+    margin-top: 50px;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+p, h1, h2, h3, h4, h5, h6{
+      font-family: 'Poppins', sans-serif;
+    }
+    
+.appDescription{
+    position: relative;
+    background: linear-gradient(to right, #C6141B, #DA2128);
+    z-index: 2;
+    height: 87%;
+    width: 100%;
+    border-radius: 30px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+.appDescription::after {
+    position: absolute;
+    content: "";
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #0000006b;
+    z-index: -1;
+}
+/* .appDescriptionBackgroundImage{
+        position: absolute;
+    z-index: -1;
+    opacity: 80%;
+    border-radius: 25px;
+    top: 0;
+} */
+.appDescription h1{
+    color: #FFFFFF;
+    font-size: 40px;
+    font-weight: 600;
+    margin-left: 2%;
+    margin-top: 30px;
+    
+}
+.appDescription strong {
+   color: #ffffff;
+    margin-left: 30px;
+    margin-bottom: 5px;
+}
+.appDescription p {
+   color: #ffffff;
+    white-space: pre;
+    font-size: 18px;
+    font-weight: lighter;
+    line-height: 25px;
+    margin-left: 30px;
+    margin-top: 15px;
+}
+
+.appDescription .date{
+    position: absolute;
+    top: 3px;
+    right: 50px;
+}
+.featuresContainer{
+    display: flex;
+    flex-direction: column;
+    width: 98%;
+    margin-top: 5vh;
+
+}
+.featuresContainer h1{
+    font-size: 35px;
+}
+
+.cardsContainer{
+    display: flex;
+    flex-direction: row;
+    margin-top: 25px;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.featureCard{
+    position: relative;
+    background-color: white;
+    height: 300px;
+    width: 21%;
+    border-radius: 20px;
+}
+
+.featureCardName {
+    color: #19181B;
+    position: absolute;
+    top: 9%;
+    font-size: 16px;
+    font-weight: 600;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.featureCardImage{
+    height: 34%;
+    position: absolute;
+    top: 23%;
+    left: 32%;
+}
+
+.featureCardDescription{
+    position: absolute;
+    top: 63%;
+    color: grey;
+    font-size: 12px;
+    width: 80%;
+    text-align: center;
+    margin-left: 10%;
+}
+
+.featureCardButton{
+    position: absolute;
+    border: none;
+    bottom: 10%;
+    width: 80%;
+    background-color: #DA2128;
+    color: white;
+    /* border-radius: 16px; */
+    height: 12%;
+    border-radius: 10px;
+    margin-left: 10%;
+}

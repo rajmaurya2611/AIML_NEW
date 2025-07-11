@@ -1,0 +1,12 @@
+input:active,
+input:focus-visible,
+textarea:active,
+textarea:focus-visible {
+    outline: 1px solid #DA2128;
+}
+.sidebar {
+    box-shadow: 1px 4px 4px 0px #ddd;
+}
+.preview-jd {
+    margin: 20px 20px;
+}
