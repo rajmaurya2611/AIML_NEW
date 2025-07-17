@@ -545,7 +545,7 @@ const handleDownloadPDF = () => {
         <button
           onClick={handleDownloadPDF}
           disabled={!text}
-          className="bg-primary text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-[#DA2129] text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Download&nbsp;PDF
         </button>
