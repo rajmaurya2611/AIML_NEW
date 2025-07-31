@@ -1,5 +1,3 @@
-// src/pages/JobFitRanker/JobFitRanker.jsx
-
 import React, { useState } from "react";
 import {
   Upload,
@@ -8,42 +6,49 @@ import {
   Typography,
   message,
 } from "antd";
-import MainHeader from "../MainHeader";
-import Sidebar from "../Sidebar";
+import MainHeader from "../../components/common/MainHeader/MainHeader";
+import Sidebar from "../../components/common/sidebar/Sidebar";
 import { openCVRankingResultTab } from './openRankingTab';
-
+ 
 const { Dragger } = Upload;
-const { Text } = Typography;
-
+const { Title, Text } = Typography;
+ 
 export default function JobFitRanker() {
   const [jdFiles, setJdFiles] = useState([]);
   const [cvFiles, setCvFiles] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [analyzingJobKeys, setAnalyzingJobKeys] = useState(new Set());
-
+  const [loading, setLoading] = useState(false); // global loading for JD upload / Rank All Jobs
+  const [analyzingJobKeys, setAnalyzingJobKeys] = useState(new Set()); // per-row loading for "Rank CVs" buttons
+ 
+  // Handle Job Description files upload
   const handleJDChange = async ({ fileList }) => {
-    if (fileList.length > 5) return message.error("Maximum 5 JD files allowed");
+    if (fileList.length > 5) {
+      message.error("Maximum 5 JD files allowed");
+      return;
+    }
     setLoading(true);
-    setJdFiles(fileList.map(f => f.originFileObj || f));
+    setJdFiles(fileList);
+ 
     try {
       const parsedJobs = await Promise.all(
         fileList.map(async (fileWrapper) => {
           const file = fileWrapper.originFileObj || fileWrapper;
           const formData = new FormData();
           formData.append("pdf_file_JD", file);
+ 
           try {
-            const res = await fetch(
-              `${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/send_jd`,
-              { method: "POST", body: formData }
-            );
+            const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/send_jd`, {
+              method: "POST",
+              body: formData,
+            });
             const data = await res.json();
             return {
-              key: file.name,
+              key: file.name, // unique key per job
               title: data.Job_Title || "Untitled JD",
               file,
               fileName: file.name,
               candidates: [],
+              analyzed: [],
               status: "idle",
             };
           } catch {
@@ -53,6 +58,7 @@ export default function JobFitRanker() {
               file,
               fileName: file.name,
               candidates: [],
+              analyzed: [],
               status: "error",
             };
           }
@@ -63,27 +69,34 @@ export default function JobFitRanker() {
       setLoading(false);
     }
   };
-
+ 
+  // Handle CV files upload
   const handleCVChange = ({ fileList }) => {
-    if (fileList.length > 10) return message.error("Maximum 10 CVs allowed");
-    setCvFiles(fileList.map(f => f.originFileObj || f));
+    if (fileList.length > 10) {
+      message.error("Maximum 10 CVs allowed");
+      return;
+    }
+    setCvFiles(fileList.map((f) => f.originFileObj || f));
   };
-
+ 
+  // "Rank All Jobs" button handler
   const handleRankAll = async () => {
     setLoading(true);
     const updatedJobs = await Promise.all(
       jobs.map(async (job) => {
         const fd = new FormData();
-        cvFiles.forEach(f => fd.append("pdf_files_CV", f));
+        cvFiles.forEach((f) => fd.append("pdf_files_CV", f));
         fd.append("pdf_files_JD", job.file);
+ 
         try {
-          const res = await fetch(
-            `${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/generate_Jd_fitment`,
-            { method: "POST", body: fd }
-          );
+          const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/generate_Jd_fitment`, {
+            method: "POST",
+            body: fd,
+          });
           const data = await res.json();
-          const matchEntry = data.find(r => r.job_title === job.title) || {};
-          return { ...job, candidates: matchEntry.matches || [], status: "done" };
+          const matchEntry = data.find((r) => r.job_title === job.title) || {};
+          const matches = matchEntry.matches || [];
+          return { ...job, candidates: matches, status: "done" };
         } catch {
           return { ...job, status: "error" };
         }
@@ -92,141 +105,217 @@ export default function JobFitRanker() {
     setJobs(updatedJobs);
     setLoading(false);
   };
-
+ 
+  // Per-row "Rank CVs" button handler
   const handleAnalyzeMatch = async (job) => {
-    if (!cvFiles.length) {
-      return message.warning("Please upload CVs before analyzing matches.");
-    }
-    setAnalyzingJobKeys(s => new Set(s).add(job.key));
-
-    // Fetch skills
-    const skillFd = new FormData();
-    skillFd.append("pdf_file_JD", job.file);
-    let skillArr = [];
-    try {
-      const skillRes = await fetch(
-        `${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`,
-        { method: "POST", body: skillFd }
-      );
-      skillArr = await skillRes.json();
-      if (typeof skillArr === "string") skillArr = JSON.parse(skillArr);
-    } catch {
-      message.error("Failed to fetch skills/weightages.");
-      setAnalyzingJobKeys(s => { const ns = new Set(s); ns.delete(job.key); return ns; });
+    if (!cvFiles || cvFiles.length === 0) {
+      message.warning("Please upload CVs before analyzing matches.");
       return;
     }
-
-    // Prepare analyze_matches
-    const analyzeFd = new FormData();
-    analyzeFd.append("pdf_file_JD", job.file);
-    const matched = cvFiles.filter(cv => job.candidates.includes(cv.name));
-    (matched.length ? matched : cvFiles)
-      .forEach(f => analyzeFd.append("pdf_files_CV", f));
-    analyzeFd.append("skills", skillArr.map(r => r[0]).join("@"));
-    analyzeFd.append("weightages", skillArr.map(r => r[1]).join(","));
-
-    // Fetch ranking
+ 
+    // Show spinner on this row
+    setAnalyzingJobKeys((prev) => new Set(prev).add(job.key));
+ 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/analyze_matches`,
-        { method: "POST", body: analyzeFd }
+      // Step 1: Fetch skills and weightages robustly
+      const skillFd = new FormData();
+      skillFd.append("pdf_file_JD", job.file);
+      let skillArr = [];
+      try {
+        const skillRes = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
+          method: "POST",
+          body: skillFd,
+        });
+        const skillRaw = await skillRes.text();
+ 
+        // Parse repeatedly until you get an array (handle backend double-encoding)
+        skillArr = skillRaw;
+        while (typeof skillArr === "string") {
+          skillArr = JSON.parse(skillArr);
+        }
+ 
+        if (!Array.isArray(skillArr)) {
+          message.error("Unexpected response: skills/weightages was not an array.");
+          return;
+        }
+ 
+        // Remove header row if present
+        if (
+          skillArr.length &&
+          typeof skillArr[0][0] === "string" &&
+          skillArr[0][0].toLowerCase().includes("skill")
+        ) {
+          skillArr = skillArr.slice(1);
+        }
+ 
+        if (skillArr.length === 0) {
+          message.error("No skills extracted from JD. Please check your JD file.");
+          return;
+        }
+      } catch {
+        message.error("Failed to fetch skills/weightages.");
+        return;
+      }
+ 
+      // Step 2: Prepare form data and filter CVs for analyze_matches
+      const analyzeFd = new FormData();
+      analyzeFd.append("pdf_file_JD", job.file);
+ 
+      // Filter CV files that exactly match candidate names returned earlier
+      const matchedCvFiles = cvFiles.filter((cv) => {
+        if (!cv.name) return false;
+        return job.candidates.includes(cv.name);
+      });
+      const finalCvFiles = matchedCvFiles.length > 0 ? matchedCvFiles : cvFiles;
+      finalCvFiles.forEach((f) => analyzeFd.append("pdf_files_CV", f));
+ 
+      analyzeFd.append(
+        "skills",
+        skillArr.map(([skill]) => skill).join("@")
       );
+      analyzeFd.append(
+        "weightages",
+        skillArr.map(([_, weight]) => weight).join(",")
+      );
+ 
+      // Step 3: Fetch results from /analyze_matches
+      const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/analyze_matches`, {
+        method: "POST",
+        body: analyzeFd,
+      });
+ 
       if (!res.ok) {
         const errMsg = await res.text();
         message.error("Failed to analyze matches: " + errMsg);
-      } else {
-        const ranking = await res.json();
-        const candidates = ranking.map((row,i) => {
-          const name = row[0], email = row[row.length-2], phone = row[row.length-1];
-          let pairs = [];
-          if (Array.isArray(row[1]) && Array.isArray(row[2])) {
-            row[1].forEach((s,j) => pairs.push([s, row[2][j] ?? "-"]));
-          } else if (Array.isArray(row[1]) && Array.isArray(row[1][0])) {
-            pairs = row[1];
-          }
-          return { key:String(i), name, pairs, email, phone };
-        });
-        const skillsDisplay = skillArr.slice(1).map(([s,w]) => ({
-          skill: s, weight: parseInt(String(w).replace("%",""),10) || 0
-        }));
-        openCVRankingResultTab({ skills: skillsDisplay, candidates });
+        return;
       }
-    } catch (err) {
-      message.error("Analyze matches request failed.");
+      const ranking = await res.json();
+ 
+      // Step 4: Map response into candidates array for UI
+      const candidates = ranking.map((row, i) => {
+        const name = row[0];
+        const email = row[row.length - 2];
+        const phone = row[row.length - 1];
+        let pairs = [];
+        if (Array.isArray(row[1]) && Array.isArray(row[2])) {
+          row[1].forEach((skillName, j) => {
+            pairs.push([skillName, row[2][j] ?? "-"]);
+          });
+        } else if (Array.isArray(row[1]) && Array.isArray(row[1][0])) {
+          pairs = row[1];
+        }
+        return { key: String(i), name, pairs, email, phone };
+      });
+ 
+      // Step 5: Convert skillArr into skill objects for UI
+      const skills = skillArr.map(([skillText, weight]) => ({
+        skill: skillText,
+        weight: parseInt(String(weight).replace("%", ""), 10) || 0,
+      }));
+ 
+      // Step 6: Open new tab with results
+      openCVRankingResultTab({ skills, candidates });
     } finally {
-      setAnalyzingJobKeys(s => { const ns = new Set(s); ns.delete(job.key); return ns; });
+      setAnalyzingJobKeys((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(job.key);
+        return newSet;
+      });
     }
   };
-
+ 
+  // Table columns config
   const columns = [
-    { title: "Job Title", dataIndex: "title", key: "title", render: t => <Text strong>JD - {t}</Text> },
     {
-      title: "Candidate Name", key: "candidates",
-      render: (_,r) => r.candidates.length
-        ? r.candidates.map((c,i) => <div key={i}><Text>{c}</Text></div>)
-        : <Text type="secondary">No matches</Text>
+      title: "Job Title",
+      dataIndex: "title",
+      key: "title",
+      render: (text) => <Text strong>JD - {text}</Text>,
+    },
+    {
+      title: "Candidate Name",
+      key: "candidates",
+      render: (_, record) => (
+        <>
+          {record.candidates.length > 0 ? (
+            record.candidates.map((c, i) => <div key={i}><Text>{c}</Text></div>)
+          ) : (
+            <Text type="secondary">No matches</Text>
+          )}
+        </>
+      ),
     },
     {
       title: "",
       key: "actions",
-      render: (_,r) => (
+      render: (_, record) => (
         <Button
           type="primary"
-          className="bg-[#DA2129]"
-          loading={analyzingJobKeys.has(r.key)}
-          onClick={() => handleAnalyzeMatch(r)}
-          disabled={r.status!=="done" || analyzingJobKeys.has(r.key)}
+          className="bg-[#DA2128]"
+          loading={analyzingJobKeys.has(record.key)}
+          onClick={() => handleAnalyzeMatch(record)}
+          disabled={record.status !== "done" || analyzingJobKeys.has(record.key)}
         >
           Rank CVs
         </Button>
       ),
     },
   ];
-
+ 
   return (
     <main>
       <MainHeader />
       <Sidebar />
       <div className="flex flex-col lg:flex-row gap-6 p-6 pl-20">
+        {/* Left panel */}
         <div className="w-[30%] space-y-4">
-          <h2 className="text-xl font-semibold text-[#DA2129]">Job Fit Ranker</h2>
+          <h2 className="text-xl font-semibold text-[#DA2128]">Job Fit Ranker</h2>
+ 
           <div>
             <Text className="font-bold mb-1 inline-block">Upload CVs</Text>
             <Dragger
-              action={null}
               multiple
+              fileList={cvFiles.map((f) => ({ uid: f.uid || f.name, name: f.name || f.uid }))}
               beforeUpload={() => false}
               onChange={handleCVChange}
-              fileList={cvFiles.map(f => ({ uid: f.uid||f.name, name: f.name||f.uid }))}
               accept=".pdf,.doc,.docx"
               disabled={loading}
             >
               <p className="ant-upload-text">
-                Drag & drop or <span className="text-[#DA2129]">choose CVs</span> <span className="text-gray-500">(upto 10)</span>
+                Drag & drop or <span className="text-[#DA2128]">choose CVs </span>
+                <span className="text-gray-500">(upto 10)</span>
               </p>
             </Dragger>
           </div>
+ 
           <div>
             <Text className="font-bold mb-1 inline-block">Upload JDs</Text>
             <Dragger
-              action={null}
               multiple
+              fileList={jdFiles}
               beforeUpload={() => false}
               onChange={handleJDChange}
-              fileList={jdFiles.map(f => ({ uid: f.name, name: f.name }))}
               accept=".pdf,.doc,.docx"
               disabled={loading}
             >
               <p className="ant-upload-text">
-                Drag & drop or <span className="text-[#DA2129]">choose JDs</span> <span className="text-gray-500">(upto 5)</span>
+                Drag & drop or <span className="text-[#DA2128]">choose JDs </span>
+                <span className="text-gray-500">(upto 5)</span>
               </p>
             </Dragger>
           </div>
+ 
           <p className="text-sm mb-5 text-gray-500">Note: Number of JDs should not be greater than CVs</p>
-          {loading && <p className="mt-2 text-[#DA2129] text-sm font-semibold">Evaluating uploaded files, please wait...</p>}
+ 
+          {loading && (
+            <p className="mt-2 text-[#DA2128] text-sm font-semibold">
+              Evaluating the uploaded files, please wait...
+            </p>
+          )}
+ 
           <Button
             type="primary"
-            className="bg-[#DA2129]"
+            className="bg-[#DA2128]"
             loading={loading}
             disabled={!jobs.length || !cvFiles.length}
             onClick={handleRankAll}
@@ -234,20 +323,27 @@ export default function JobFitRanker() {
             Rank All Jobs
           </Button>
         </div>
+ 
+        {/* Right panel */}
         <div className="w-[70%]">
           <span className="font-bold mb-2 text-sm inline-block">Candidates ranked as per JD</span>
           <Table
-            dataSource={jobs.map(j => ({ ...j, key: j.key }))}
+            dataSource={jobs.map((job) => ({ ...job, key: job.key }))}
             pagination={false}
             bordered
             columns={columns}
             locale={{ emptyText: jobs.length ? "No candidates matched" : "" }}
           />
+ 
+          {/* Loading text below table for any analyzing jobs */}
           {analyzingJobKeys.size > 0 && (
-            <p className="mt-2 text-[#DA2129] text-sm font-semibold">Analyzing candidate matches, please wait...</p>
+            <p className="mt-2 text-[#DA2128] text-sm font-semibold">
+              Analyzing candidate matches, please wait...
+            </p>
           )}
         </div>
       </div>
     </main>
   );
 }
+ 
