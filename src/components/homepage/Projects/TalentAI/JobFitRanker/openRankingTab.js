@@ -7,5 +7,5 @@ export function openCVRankingResultTab({ skills, candidates }) {
   sessionStorage.setItem(dataKey, JSON.stringify({ skills, candidates }));
 
   // Open new tab with route that will read dataKey from URL
-  window.open(`/cv-ranking-result?dataKey=${dataKey}`, "_blank");
+  window.open(`/talentai/cv-ranking-result?dataKey=${dataKey}`, "_blank");
 }
