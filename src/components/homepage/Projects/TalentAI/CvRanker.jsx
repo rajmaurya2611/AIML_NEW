@@ -271,7 +271,7 @@ const sendFeedback = async ok=>{
       <div className="flex flex-col lg:flex-row gap-6 p-6 pl-20">
         {/* Left panel: JD & skills */}
         <div className="w-[30%] h-1/2 lg:w-[30%] space-y-4">
-          <h2 className="text-xl font-semibold text-primary">CV Ranker</h2>
+          <h2 className="text-xl font-semibold text-[#DA2128]">CV Ranker</h2>
 
           <div className="upload-jd">
             <Text className="font-bold mb-2 inline-block">Upload JD</Text>
@@ -283,7 +283,7 @@ const sendFeedback = async ok=>{
               disabled={loading}
             >
               {/* <p className="ant-upload-drag-icon"><InboxOutlined/></p> */}
-              <p className="ant-upload-text">Drag & drop or <span className="text-primary">choose JD </span><span className="text-gray-500">(only one)</span></p>
+              <p className="ant-upload-text">Drag & drop or <span className="text-[#DA2128]">choose JD </span><span className="text-gray-500">(only one)</span></p>
             </Dragger>
           </div>
 
@@ -298,7 +298,7 @@ const sendFeedback = async ok=>{
               disabled={loading}
             >
               {/* <p className="ant-upload-drag-icon"><InboxOutlined/></p> */}
-              <p className="ant-upload-text">Drag & drop or <span className="text-primary">choose CVs </span><span className="text-gray-500">(upto 10)</span></p>
+              <p className="ant-upload-text">Drag & drop or <span className="text-[#DA2128]">choose CVs </span><span className="text-gray-500">(upto 10)</span></p>
             </Dragger>
           </div>
 
@@ -341,7 +341,7 @@ const sendFeedback = async ok=>{
 
           <Button
             type="primary"
-            className="bg-primary"
+            className="bg-[#DA2128]"
             loading={loading}
             onClick={skillRows.length ? generateRanking : fetchSkills}
           >
@@ -373,7 +373,7 @@ const sendFeedback = async ok=>{
                   Thumbs Down
                 </Button> */}
                 <Button type="primary"
-                  className="bg-primary"
+                  className="bg-[#DA2128]"
                   onClick={exportExcel}>Export Excel</Button>
               </div>
             </>

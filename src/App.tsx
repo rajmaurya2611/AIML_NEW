@@ -102,7 +102,7 @@ function App() {
          <Route path="/talentai/CvRanker" element={<CVRanker/>} />
          <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
          <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
-         <Route path="/cv-ranking-result" element={<CvRankingResultPage/>}/>
+         <Route path="/talentai/cv-ranking-result" element={<CvRankingResultPage/>}/>
         
 
       </Routes>
