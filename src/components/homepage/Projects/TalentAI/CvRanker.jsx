@@ -92,7 +92,7 @@ export default function CVRanker() {
     const fd = new FormData();
     fd.append("pdf_file_JD", jd.originFileObj || jd);
     try {
-      const res = await fetch(`${import.meta.env.VITE_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
+      const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
         method: "POST",
         body: fd
       });
@@ -127,7 +127,7 @@ export default function CVRanker() {
     fd.append("skills", skillRows.map(r=>r.skill).join("@"));
     fd.append("weightages", skillRows.map(r=>r.weight + "%"));
     try {
-      const res  = await fetch(`${import.meta.env.VITE_BASE_URL}/cv_analyzer/generate_ranking`, { method: "POST", body: fd });
+      const res  = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/generate_ranking`, { method: "POST", body: fd });
       const data = await res.json();
       setParsedData(data);
 
@@ -200,7 +200,7 @@ const tableRows = useMemo(() => {
 // ── Feedback download ─────────────────────────────────────────────────
 const sendFeedback = async ok=>{
   try {
-    const res = await fetch(`${import.meta.env.VITE_BASE_URL}/jd_maker/api/feedback`,{
+    const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_maker/api/feedback`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({feedback:ok,source:"cv_analyzer"})
