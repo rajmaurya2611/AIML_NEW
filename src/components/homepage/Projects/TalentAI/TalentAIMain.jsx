@@ -55,7 +55,7 @@ and conduct insightful interviews effortlessly.`}
                   <button className="featureCardButton">Rank Candidates</button>
               </Link>
               {/* Feature card for job fit ranker  */}
-              <Link to="http://10.245.146.250:8790/jd_fitment" className="featureCard">
+              <Link to="/talentai/JobFitRanker" className="featureCard">
                 <p className="featureCardName">Job Fit Ranker</p>
                 <img className="featureCardImage" src={jobFitRanker} alt="jobFitRanker" />
                 <p className="featureCardDescription">Evaluates and aligns CVs with suitable job descriptions.</p>

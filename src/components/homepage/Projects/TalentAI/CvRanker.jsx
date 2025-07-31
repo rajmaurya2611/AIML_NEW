@@ -18,7 +18,8 @@ import {
   Table,
   Typography,
   message,
-  Input
+  Input,
+  Tooltip
 } from "antd";
 import * as XLSX from "xlsx";
 import "antd/dist/reset.css";
@@ -34,6 +35,11 @@ export default function CVRanker() {
   const [candidates, setCandidates] = useState([]);    // mapped rows
   const [parsedData, setParsedData] = useState([]);    // raw backend output
   const [loading, setLoading]       = useState(false);
+
+  // ── JD File name extraction ────────────────────────────────────────────
+  const jdFileNameRaw = jd ? (jd.name || jd.originFileObj?.name || "") : "";
+  const jdFileNameWithoutExt = jdFileNameRaw.split(".")[0] || "";
+  const jdFileName = jdFileNameWithoutExt.replace(/ /g, "_");
 
   // ── Total-weight enforcement ───────────────────────────────────────────
   const totalWeight = useMemo(
@@ -86,12 +92,14 @@ export default function CVRanker() {
     const fd = new FormData();
     fd.append("pdf_file_JD", jd.originFileObj || jd);
     try {
-      const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
+      const res = await fetch(`${import.meta.env.VITE_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
         method: "POST",
         body: fd
       });
       const raw = await res.json();            // JSON string from LLM
       const arr = JSON.parse(raw);
+      console.log("arr");
+      console.log(arr);
 // drop the header row at index 0
   const data = arr;
 
@@ -119,7 +127,7 @@ export default function CVRanker() {
     fd.append("skills", skillRows.map(r=>r.skill).join("@"));
     fd.append("weightages", skillRows.map(r=>r.weight + "%"));
     try {
-      const res  = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/generate_ranking`, { method: "POST", body: fd });
+      const res  = await fetch(`${import.meta.env.VITE_BASE_URL}/cv_analyzer/generate_ranking`, { method: "POST", body: fd });
       const data = await res.json();
       setParsedData(data);
 
@@ -167,30 +175,32 @@ export default function CVRanker() {
   const updateWeight= (i,v) => { const n=parseInt(v,10); if(!isNaN(n)){ const c=[...skillRows]; c[i].weight=n; setSkillRows(c); }};
   const deleteSkill = i       => setSkillRows(skillRows.filter((_,idx)=>idx!==i));
 
-  // ── Build flattened rows with rowSpan ──────────────────────────────────
-  const tableRows = useMemo(() => {
-    const rows = [];
-    candidates.forEach((cand, idx) => {
-      const span = cand.pairs.length;
-      cand.pairs.forEach(([sk, sc], j) => {
-        rows.push({
-          key:      `${idx}-${j}`,
-          name:     cand.name,
-          skill:    sk,
-          score:    `${sc}`,
-          email:    cand.email,
-          phone:    cand.phone,
-          rowSpan:  j === 0 ? span : 0
-        });
+// ── Build flattened rows with rowSpan ──────────────────────────────────
+const tableRows = useMemo(() => {
+  const rows = [];
+  candidates.forEach((cand, idx) => {
+    const sortedPairs = [...cand.pairs].sort((a, b) => Number(b[1]) - Number(a[1])); // Sort by descending score
+    const span = sortedPairs.length;
+    sortedPairs.forEach(([sk, sc], j) => {
+      rows.push({
+        key:      `${idx}-${j}`,
+        name:     cand.name,
+        skill:    sk,
+        score:    `${sc}`,
+        email:    cand.email,
+        phone:    cand.phone,
+        rowSpan:  j === 0 ? span : 0,
+        group:    idx,
       });
     });
-    return rows;
-  }, [candidates]);
+  });
+  return rows;
+}, [candidates]);
 
 // ── Feedback download ─────────────────────────────────────────────────
 const sendFeedback = async ok=>{
   try {
-    const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_maker/api/feedback`,{
+    const res = await fetch(`${import.meta.env.VITE_BASE_URL}/jd_maker/api/feedback`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({feedback:ok,source:"cv_analyzer"})
@@ -228,7 +238,7 @@ const sendFeedback = async ok=>{
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     XLSX.utils.book_append_sheet(wb, ws, "Rankings");
-    XLSX.writeFile(wb, `CV_Ranking_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, `${jdFileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
     message.success("Excel exported");
   };
 
@@ -260,11 +270,11 @@ const sendFeedback = async ok=>{
       <Sidebar/>
       <div className="flex flex-col lg:flex-row gap-6 p-6 pl-20">
         {/* Left panel: JD & skills */}
-        <div className="w-[40%] h-1/2 lg:w-[40%] space-y-4">
-          <Title level={4}>Find Best-Fit Candidates</Title>
+        <div className="w-[30%] h-1/2 lg:w-[30%] space-y-4">
+          <h2 className="text-xl font-semibold text-primary">CV Ranker</h2>
 
           <div className="upload-jd">
-            <Text className="font-bold mb-2">Upload JD</Text>
+            <Text className="font-bold mb-2 inline-block">Upload JD</Text>
             <Dragger
               fileList={jd?[jd]:[]}
               beforeUpload={()=>false}
@@ -273,12 +283,12 @@ const sendFeedback = async ok=>{
               disabled={loading}
             >
               {/* <p className="ant-upload-drag-icon"><InboxOutlined/></p> */}
-              <p className="ant-upload-text">Drag & drop or choose JD</p>
+              <p className="ant-upload-text">Drag & drop or <span className="text-primary">choose JD </span><span className="text-gray-500">(only one)</span></p>
             </Dragger>
           </div>
 
           <div className="upload-cvs">
-            <Text className="font-bold mb-2">Upload CVs (PDF/DOC/DOCX or ZIP)</Text>
+            <Text className="font-bold mb-2 inline-block">Upload CVs (PDF/DOC/DOCX or ZIP)</Text>
             <Dragger
               multiple
               fileList={cvs}
@@ -288,23 +298,25 @@ const sendFeedback = async ok=>{
               disabled={loading}
             >
               {/* <p className="ant-upload-drag-icon"><InboxOutlined/></p> */}
-              <p className="ant-upload-text">Drag & drop or choose CVs</p>
+              <p className="ant-upload-text">Drag & drop or <span className="text-primary">choose CVs </span><span className="text-gray-500">(upto 10)</span></p>
             </Dragger>
           </div>
 
           {skillRows.length>0 && (
             <div>
-              {/* <Text>Skills & Weightages (must total 100%)</Text> */}
+              <Text className="font-bold mb-2">Key Skills:</Text>
               {skillRows.map((r,i)=>(
                 i===0?null:(
                 <div key={i} className="flex items-center gap-2 mt-1">
-                  <Input
-                    value={r.skill}
-                    onChange={e=>updateSkill(i,e.target.value)}
-                    placeholder="Skill"
-                    disabled={loading}
-                    style={{width:220}}
-                  />
+                  <Tooltip title={r.skill}>
+                    <Input
+                      value={r.skill}
+                      onChange={e => updateSkill(i, e.target.value)}
+                      placeholder="Skill"
+                      disabled={loading}
+                      style={{ width: 220 }}
+                    />
+                  </Tooltip>
                   {/* <Input
                     value={r.weight}
                     onChange={e=>updateWeight(i,e.target.value)}
@@ -332,25 +344,26 @@ const sendFeedback = async ok=>{
             className="bg-primary"
             loading={loading}
             onClick={skillRows.length ? generateRanking : fetchSkills}
-            style={{
-       backgroundColor: "#DA2129", // ← your primary
-       color: "#fff",
-     }}
           >
             {skillRows.length ? "Rank CVs" : "Extract Skills"}
           </Button>
         </div>
 
         {/* Right panel: results */}
-        <div className="w-[60%] lg:w-[60%] space-y-4">
+        <div className="w-[70%] lg:w-[70%] space-y-4">
           {tableRows.length>0 && (
             <>
+              <Text className="font-bold mb-2">{`Candidate CVs ranked for ${jdFileNameWithoutExt}`}</Text>
               <Table
                 columns={columns}
                 dataSource={tableRows}
                 pagination={false}
                 bordered
                 className="shadow rounded"
+                rowClassName={(_record, index) => {
+                  const group = tableRows[index]?.group ?? 0;
+                  return group % 2 === 0 ? "even-row" : "odd-row";
+                }}
               />
               <div className="flex gap-4">
                 {/* <Button icon={<LikeOutlined/>} onClick={()=>sendFeedback(true)}>
@@ -359,7 +372,9 @@ const sendFeedback = async ok=>{
                 <Button icon={<DislikeOutlined/>} onClick={()=>sendFeedback(false)}>
                   Thumbs Down
                 </Button> */}
-                <Button onClick={exportExcel}>Export Excel</Button>
+                <Button type="primary"
+                  className="bg-primary"
+                  onClick={exportExcel}>Export Excel</Button>
               </div>
             </>
           )}
@@ -368,10 +383,3 @@ const sendFeedback = async ok=>{
     </main>
   );
 }
-
-
-
-
-
-
-

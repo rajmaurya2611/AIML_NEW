@@ -24,6 +24,8 @@ import KnowledgeRoot from './components/homepage/Projects/KnowledgeKingdom/root'
 import TalentAIMain from './components/homepage/Projects/TalentAI/TalentAIMain'
 import CVRanker from './components/homepage/Projects/TalentAI/CvRanker';
 import JdGenerator from './components/homepage/Projects/TalentAI/JdGenerator';
+import JobFitRanker from './components/homepage/Projects/TalentAI/JobFitRanker/JobFitRanker';
+import CvRankingResultPage from './components/homepage/Projects/TalentAI/JobFitRanker/CVRankingResultPage';
 
 function App() {
   return (
@@ -99,7 +101,9 @@ function App() {
         <Route path="/talentai" element={<TalentAIMain/>} />
          <Route path="/talentai/CvRanker" element={<CVRanker/>} />
          <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
-
+         <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
+         <Route path="/cv-ranking-result" element={<CvRankingResultPage/>}/>
+        
 
       </Routes>
     </BrowserRouter>

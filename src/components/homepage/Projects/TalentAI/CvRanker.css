@@ -64,6 +64,18 @@
   color:#DA2128 ;
 }
 
+.ant-table-content tr.ant-table-row.odd-row {
+    background-color: #fdf2f2;
+}
+
+/* Change border around the whole table */
+.ant-table-cell {
+  border-color: #ddd !important;
+  border-inline-end: 1px solid #ddd !important;
+  border-inline-start: 1px solid #ddd !important;
+}
+
+
 /* highlight top border for each candidate block */
 .candidate-row-start td {
   border-top: 2px solid #1890ff !important;
