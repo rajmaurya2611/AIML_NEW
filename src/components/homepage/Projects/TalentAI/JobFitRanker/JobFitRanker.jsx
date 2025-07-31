@@ -6,8 +6,8 @@ import {
   Typography,
   message,
 } from "antd";
-import MainHeader from "../../components/common/MainHeader/MainHeader";
-import Sidebar from "../../components/common/sidebar/Sidebar";
+import MainHeader from "../MainHeader";
+import Sidebar from "../Sidebar";
 import { openCVRankingResultTab } from './openRankingTab';
  
 const { Dragger } = Upload;
