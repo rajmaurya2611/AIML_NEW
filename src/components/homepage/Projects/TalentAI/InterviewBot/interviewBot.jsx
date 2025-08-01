@@ -83,6 +83,29 @@ export default function InterviewBot() {
     startInterview(cv, jd);
   };
 
+  // CV and JD upload buttons related code here 
+  const uploadCvButton = useRef(null);
+  const uploadJdButton = useRef(null);
+  
+  const [cvUploadFileName,setCvUploadFileName] = useState("");
+  const [jdUploadFileName,setJdUploadFileName] = useState("");
+
+  const handleCvUploadInput = ()=>{
+    uploadCvButton.current.click();
+  }
+  const handleJdUploadInput = ()=>{
+     uploadJdButton.current.click();
+
+  }
+  const handleCvFileChange = (e) => {
+    setCvFile(e.target.files?.[0] || null)
+    setCvUploadFileName(e.target.files?.[0]?.name || "");
+
+  };
+  const handleJdFileChange = (e) => {
+    setJdFile(e.target.files?.[0] || null)
+    setJdUploadFileName(e.target.files?.[0]?.name || "");
+  }
   // Core interview start logic (extracting text, STT, LLM, etc.)
   const startInterview = async (cvArg, jdArg) => {
     setLoading(true);
@@ -219,14 +242,44 @@ export default function InterviewBot() {
     }
   };
 
-  // End interview
-  const endInterview = () => {
-    recognizerRef.current?.stopContinuousRecognitionAsync(
-      () => console.log("STT stopped"),
-      (err) => console.error(err)
-    );
-    setStarted(false);
-  };
+  // // End interview
+  // const endInterview = () => {
+  //   recognizerRef.current?.stopContinuousRecognitionAsync(
+  //     () => console.log("STT stopped"),
+  //     (err) => console.error(err)
+  //   );
+  //   setStarted(false);
+  // };
+
+   // End interview → save transcript & scorecard on server, then show ThankYouPage
+  const handleEndInterview = async () => {
+   // 1) stop STT and timer
+   recognizerRef.current?.stopContinuousRecognitionAsync(
+     () => console.log("STT stopped"),
+     err => console.error(err)
+   );
+   clearInterval(timerRef.current);
+
+   // 2) ask for candidate name
+   const name = window.prompt("Please enter your name to save your transcript:");
+   if (!name) {
+     alert("Name is required to save your transcript.");
+     return;
+   }
+
+   // 3) call backend save endpoint
+   try {
+     await axios.post(`${API_BASE}/api/chat/save`, {
+       name,
+       conversation: history,    // your full array of {role,content}
+     });
+     // 4) flip to ThankYouPage
+     setInterviewStatus(true);
+   } catch (err) {
+     console.error("Save error", err);
+     alert("Failed to save transcript & scorecard.");
+   }
+ };
 
   async function handleStartInterview() {
     setLoading(true);
@@ -437,33 +490,91 @@ export default function InterviewBot() {
               </button>
             </div>
             <div className="upload-section">
-              <label>
-                CV (PDF):
+              {/* <label>
+                UPLOAD CV 
                 <input
                   type="file"
                   accept="application/pdf"
                   onChange={(e) => setCvFile(e.target.files?.[0] || null)}
                 />
-              </label>
-              <label>
-                JD (PDF):
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setJdFile(e.target.files?.[0] || null)}
-                />
-              </label>
+              </label> */}
+              <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
+                <button 
+                  style={{
+                    margin: "1rem 0", 
+                    background: "#DA2128",
+                    color: "white",
+                    width: "150px",
+                    height: "35px",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    marginTop: "12px",
+                    marginBottom: "12px"
+                  }}
+                  onClick={handleCvUploadInput}>UPLOAD CV 
+                </button>
+                <p className="CvName" style={{fontSize: "10px"}}>{cvUploadFileName}</p>
+                  <input
+                    ref={uploadCvButton}
+                    id="cvUploadInput"
+                    hidden 
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleCvFileChange}
+                  />
+                </div>
+              <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
+                <button 
+                  style={{
+                      marginLeft: "25px", 
+                      background: "#DA2128",
+                      color: "white",
+                      width: "150px",
+                      height: "35px",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      marginTop: "12px",
+                      marginBottom: "12px"
+                    }}
+                  onClick={handleJdUploadInput}>
+                  UPLOAD JD 
+                  </button>
+                  <p className="JdName" style={{fontSize: "10px"}}>{jdUploadFileName}</p>
+                  {/* JD (PDF): */}
+                  
+                  <input
+                    ref={uploadJdButton}
+                    id="jdUploadInput"
+                    hidden
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleJdFileChange}
+                  />
+                </div>
+              
               <div style={{ marginLeft: 50 }}>
                 {/* optional Header component */}
               </div>
+              <button
+                onClick={() => startInterview(cvFile, jdFile)}
+                disabled={!cvFile || !jdFile}
+                
+                style={{
+                  margin: "1rem 0", 
+                  background: "#DA2128",
+                  color: "white",
+                  width: "150px",
+                  height: "35px",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  marginTop: "12px",
+                  marginBottom: "12px"
+                }}
+              >
+                Start Interview
+              </button>
             </div>
-            <button
-              onClick={() => startInterview(cvFile, jdFile)}
-              disabled={!cvFile || !jdFile}
-              style={{ margin: "1rem 0" }}
-            >
-              Start Interview
-            </button>
+            
 
             <div className="interview-bot-body">
               <div className="interview-bot-avatar-container">
@@ -477,7 +588,8 @@ export default function InterviewBot() {
                   />
                 </div>
                 <div className="interview-bot-interview-controls-section">
-                  <button className="interview-bot-end-interview-button" onClick={stopRecord}>
+                  {/* <button className="interview-bot-end-interview-button" onClick={stopRecord}> */}
+                  <button className="interview-bot-end-interview-button" onClick={handleEndInterview}>
                     End Interview
                   </button>
                 </div>
