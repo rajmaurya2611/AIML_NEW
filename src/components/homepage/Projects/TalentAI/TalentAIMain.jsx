@@ -62,7 +62,7 @@ and conduct insightful interviews effortlessly.`}
                 <button className="featureCardButton">View Fit Score</button>
               </Link>
               {/* Feature card for AI interview bot  */}
-              <Link to="http://10.245.146.250:8790/interview" className="featureCard">
+              <Link to="/talentai/interview" className="featureCard">
                 <p className="featureCardName">AI Interview Bot</p>
                 <img className="featureCardImage" src={aiInterviewBot} alt="aiInterviewBot" />
                 <p className="featureCardDescription">Conducts adaptive interviews with real-time question generation.</p>

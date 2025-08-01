@@ -26,6 +26,7 @@ import CVRanker from './components/homepage/Projects/TalentAI/CvRanker';
 import JdGenerator from './components/homepage/Projects/TalentAI/JdGenerator';
 import JobFitRanker from './components/homepage/Projects/TalentAI/JobFitRanker/JobFitRanker';
 import CvRankingResultPage from './components/homepage/Projects/TalentAI/JobFitRanker/CVRankingResultPage';
+import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/interviewBot';
 
 function App() {
   return (
@@ -103,6 +104,7 @@ function App() {
          <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
          <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
          <Route path="/talentai/cv-ranking-result" element={<CvRankingResultPage/>}/>
+         <Route path="/talentai/interview" element={<InterviewBot/>}/>
         
 
       </Routes>

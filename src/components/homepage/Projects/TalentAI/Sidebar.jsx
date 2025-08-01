@@ -111,7 +111,7 @@ export default function Sidebar() {
           </NavLink>
 
           <NavLink
-            to="http://10.245.146.250:8790/interview"
+            to="/talentai/interview"
             style={{
               paddingTop: "10px",
               paddingBottom: "10px",
@@ -208,7 +208,7 @@ export default function Sidebar() {
           </NavLink>
 
           <NavLink
-            to="http://10.245.146.250:8790/interview"
+            to="/talentai/interview"
             style={{
               paddingTop: "10px",
               paddingBottom: "10px",

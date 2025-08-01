@@ -1,0 +1,14 @@
+.interview-bot-camera-container{
+    position: absolute;
+    bottom: 0;
+    right: 10px;
+    width: 100%;
+    height: 64%;
+}
+
+.interview-bot-camera-container video{
+    position: relative;
+    border-radius: 10px;
+    left: 63%;
+    top: 25px;
+    }

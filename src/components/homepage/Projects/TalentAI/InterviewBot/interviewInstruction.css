@@ -1,0 +1,26 @@
+.interview-bot-instruction-popup{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.interview-bot-intruction-popup-body{
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    text-align: start;
+    overflow-y: auto;
+    height: 90%;
+    position: relative;
+}
+
+.interview-bot-intruction-popup-body h1, p{
+    color:#4f4e4e;
+}

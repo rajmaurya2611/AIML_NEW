@@ -53,6 +53,7 @@
     "jszip": "^3.10.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.513.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.45.0",
     "motion": "^12.10.4",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
@@ -72,6 +73,7 @@
     "tailwind-merge": "^3.2.0",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
+    "webm-duration-fix": "^1.0.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
