@@ -174,10 +174,10 @@ export default function CameraRecorder(props) {
             recorder.stop();
             setScreenRecording(false);
             setTimeout(()=>{
-                // saveButtonRef.current.click();
+                saveButtonRef.current.click();
                 // navigate("/")
 
-            },5000);    
+            },3000);    
         } 
     };
 

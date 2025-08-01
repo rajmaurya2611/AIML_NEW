@@ -260,6 +260,8 @@ export default function InterviewBot() {
    );
    clearInterval(timerRef.current);
 
+   
+
    // 2) ask for candidate name
    const name = window.prompt("Please enter your name to save your transcript:");
    if (!name) {
@@ -274,11 +276,13 @@ export default function InterviewBot() {
        conversation: history,    // your full array of {role,content}
      });
      // 4) flip to ThankYouPage
-     setInterviewStatus(true);
+    //  setInterviewStatus(true);
    } catch (err) {
      console.error("Save error", err);
      alert("Failed to save transcript & scorecard.");
    }
+
+   stopRecord();
  };
 
   async function handleStartInterview() {
@@ -332,10 +336,18 @@ export default function InterviewBot() {
     }, 1000); // every 1 second
   };
 
-  const stopRecord = () => {
+  // const stopRecord = () => {
+  //   setRecord(false);
+  //   setInterviewStatus(true);
+  // };
+
+  const stopRecord = ()=>{
     setRecord(false);
-    setInterviewStatus(true);
-  };
+    // Remove the content after 5 seconds from the DOM, 5 seconds is needed to save the video and stop the screen record
+    setTimeout(()=>{
+      setInterviewStatus(true);
+    },5000)
+  }
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
