@@ -104,6 +104,7 @@ function App() {
          <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
          <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
          <Route path="/talentai/cv-ranking-result" element={<CvRankingResultPage/>}/>
+         
          <Route path="/talentai/interview" element={<InterviewBot/>}/>
         
 
