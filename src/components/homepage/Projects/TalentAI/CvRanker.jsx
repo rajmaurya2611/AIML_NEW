@@ -1,4 +1,3 @@
-
 // src/pages/CvRanker/CvRanker.jsx
 
 import { useState, useMemo } from "react";
@@ -23,10 +22,10 @@ import {
 } from "antd";
 import * as XLSX from "xlsx";
 import "antd/dist/reset.css";
-
+ 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
-
+ 
 export default function CVRanker() {
   // ── State ─────────────────────────────────────────────────────────────
   const [cvs, setCvs]               = useState([]);
@@ -35,18 +34,18 @@ export default function CVRanker() {
   const [candidates, setCandidates] = useState([]);    // mapped rows
   const [parsedData, setParsedData] = useState([]);    // raw backend output
   const [loading, setLoading]       = useState(false);
-
+ 
   // ── JD File name extraction ────────────────────────────────────────────
   const jdFileNameRaw = jd ? (jd.name || jd.originFileObj?.name || "") : "";
   const jdFileNameWithoutExt = jdFileNameRaw.split(".")[0] || "";
   const jdFileName = jdFileNameWithoutExt.replace(/ /g, "_");
-
+ 
   // ── Total-weight enforcement ───────────────────────────────────────────
   const totalWeight = useMemo(
     () => skillRows.reduce((sum, r) => sum + (Number(r.weight) || 0), 0),
     [skillRows]
   );
-
+ 
   // ── CV upload w/ ZIP extraction ────────────────────────────────────────
   const beforeCVUpload = async file => {
     const isZip = file.type==="application/zip"||file.name.endsWith(".zip");
@@ -76,7 +75,7 @@ export default function CVRanker() {
     return Upload.LIST_IGNORE;
   };
   const handleCVChange = ({ fileList }) => setCvs(fileList);
-
+ 
   // ── JD upload ──────────────────────────────────────────────────────────
   const handleJDUpload = ({ fileList }) => {
     setJd(fileList[0]);
@@ -84,39 +83,85 @@ export default function CVRanker() {
     setCandidates([]);
     setParsedData([]);
   };
-
+ 
   // ── Fetch skills from backend ──────────────────────────────────────────
-  const fetchSkills = async () => {
-    if (!jd) return message.error("Please upload a JD first");
-    setLoading(true);
-    const fd = new FormData();
-    fd.append("pdf_file_JD", jd.originFileObj || jd);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
-        method: "POST",
-        body: fd
-      });
-      const raw = await res.json();            // JSON string from LLM
-      const arr = JSON.parse(raw);
-      console.log("arr");
-      console.log(arr);
-// drop the header row at index 0
-  const data = arr;
-
-  setSkillRows(
-    data.map(([skillText, w]) => ({
-      skill: skillText,
-      weight: parseInt(String(w).replace("%",""), 10) || 0
-    }))
-  );
-
-    } catch {
-      message.error("Error extracting skills");
-    } finally {
-      setLoading(false);
+  // Add this helper function inside your component or above fetchSkills
+function stripMarkdownCodeFence(str) {
+  if (typeof str !== "string") return str;
+ 
+  // Remove leading triple backticks + optional language label, e.g. ```
+  str = str.replace(/^```[a-zA-Z]*\s*/, '');
+ 
+  // Remove trailing triple backticks
+  str = str.replace(/\s*```$/, '');
+ 
+  return str;
+}
+ 
+ 
+const fetchSkills = async () => {
+  console.log("fetchSkills")
+  if (!jd) return message.error("Please upload a JD first");
+  setLoading(true);
+  const fd = new FormData();
+  fd.append("pdf_file_JD", jd.originFileObj || jd);
+  try {
+    const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
+      method: "POST",
+      body: fd
+    });
+ 
+    let raw = await res.json();
+ 
+    // Defensive repeated parsing and cleaning
+    let arr = raw;
+    while (typeof arr === "string") {
+      arr = stripMarkdownCodeFence(arr);
+      arr = JSON.parse(arr);
     }
-  };
-
+ 
+    // Validate arr and remove header row if present
+    if (
+      !Array.isArray(arr) ||
+      arr.length === 0 ||
+      !Array.isArray(arr)
+    ) {
+      message.error("Invalid response format for skills");
+      console.log("Invalid skills array:", arr);
+      setLoading(false);
+      return;
+    }
+ 
+    if (
+      typeof arr === "string" &&
+      arr.toLowerCase().includes("skill")
+    ) {
+      arr = arr.slice(1);
+    }
+ 
+    if (arr.length === 0) {
+      message.error("No skills extracted from JD. Please check your JD file.");
+      setLoading(false);
+      return;
+    }
+ 
+    // Map to skillRows with numeric weights
+    const skillData = arr.map(([skillText, w]) => ({
+      skill: skillText,
+      weight: parseInt(String(w).replace("%", ""), 10) || 0
+    }));
+ 
+    setSkillRows(skillData);
+ 
+  } catch (error) {
+    message.error("Error extracting skills");
+    console.error("fetchSkills error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+ 
+ 
   // ── Generate ranking ───────────────────────────────────────────────────
   const generateRanking = async () => {
     if (!cvs.length)           return message.error("Please upload CVs");
@@ -130,7 +175,7 @@ export default function CVRanker() {
       const res  = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/generate_ranking`, { method: "POST", body: fd });
       const data = await res.json();
       setParsedData(data);
-
+ 
       // Map into structured candidates
       const mapped = data.map((row, i) => {
         const name  = row[0];
@@ -149,14 +194,14 @@ export default function CVRanker() {
         }
         return { key: String(i), name, pairs, email, phone };
       });
-
+ 
       // Sort descending by total of scores
       mapped.sort((a,b) => {
         const sumA = a.pairs.reduce((s,[,sc]) => s + Number(sc), 0);
         const sumB = b.pairs.reduce((s,[,sc]) => s + Number(sc), 0);
         return sumB - sumA;
       });
-
+ 
       setCandidates(mapped);
       if (cvs.length !== data.length) {
         message.warning(`Duplicate: ${cvs.length - data.length} CV(s) dropped`);
@@ -168,13 +213,13 @@ export default function CVRanker() {
       setLoading(false);
     }
   };
-
+ 
   // ── Skill rows CRUD ───────────────────────────────────────────────────
   const addSkill    = () => skillRows.length < 10 && setSkillRows([...skillRows,{skill:"",weight:0}]);
   const updateSkill = (i,v) => { const c=[...skillRows]; c[i].skill=v; setSkillRows(c); };
   const updateWeight= (i,v) => { const n=parseInt(v,10); if(!isNaN(n)){ const c=[...skillRows]; c[i].weight=n; setSkillRows(c); }};
   const deleteSkill = i       => setSkillRows(skillRows.filter((_,idx)=>idx!==i));
-
+ 
 // ── Build flattened rows with rowSpan ──────────────────────────────────
 const tableRows = useMemo(() => {
   const rows = [];
@@ -196,7 +241,7 @@ const tableRows = useMemo(() => {
   });
   return rows;
 }, [candidates]);
-
+ 
 // ── Feedback download ─────────────────────────────────────────────────
 const sendFeedback = async ok=>{
   try {
@@ -214,8 +259,8 @@ const sendFeedback = async ok=>{
     message.error("Feedback failed");
   }
 };
-
-
+ 
+ 
   // ── Export to Excel (blank repeats) ───────────────────────────────────
   const exportExcel = () => {
     if (!tableRows.length) {
@@ -234,14 +279,14 @@ const sendFeedback = async ok=>{
         prev = r.name;
       }
     });
-
+ 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     XLSX.utils.book_append_sheet(wb, ws, "Rankings");
     XLSX.writeFile(wb, `${jdFileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
     message.success("Excel exported");
   };
-
+ 
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
     {
@@ -263,7 +308,7 @@ const sendFeedback = async ok=>{
     { title: "Skills", dataIndex: "skill" },
     { title: "Score out of 5",  dataIndex: "score" }
   ];
-
+ 
   return (
     <main>
       <MainHeader />
@@ -272,7 +317,7 @@ const sendFeedback = async ok=>{
         {/* Left panel: JD & skills */}
         <div className="w-[30%] h-1/2 lg:w-[30%] space-y-4">
           <h2 className="text-xl font-semibold text-[#DA2128]">CV Ranker</h2>
-
+ 
           <div className="upload-jd">
             <Text className="font-bold mb-2 inline-block">Upload JD</Text>
             <Dragger
@@ -286,7 +331,7 @@ const sendFeedback = async ok=>{
               <p className="ant-upload-text">Drag & drop or <span className="text-[#DA2128]">choose JD </span><span className="text-gray-500">(only one)</span></p>
             </Dragger>
           </div>
-
+ 
           <div className="upload-cvs">
             <Text className="font-bold mb-2 inline-block">Upload CVs (PDF/DOC/DOCX or ZIP)</Text>
             <Dragger
@@ -301,7 +346,7 @@ const sendFeedback = async ok=>{
               <p className="ant-upload-text">Drag & drop or <span className="text-[#DA2128]">choose CVs </span><span className="text-gray-500">(upto 10)</span></p>
             </Dragger>
           </div>
-
+ 
           {skillRows.length>0 && (
             <div>
               <Text className="font-bold mb-2">Key Skills:</Text>
@@ -338,7 +383,7 @@ const sendFeedback = async ok=>{
               </div> */}
             </div>
           )}
-
+ 
           <Button
             type="primary"
             className="bg-[#DA2128]"
@@ -348,7 +393,7 @@ const sendFeedback = async ok=>{
             {skillRows.length ? "Rank CVs" : "Extract Skills"}
           </Button>
         </div>
-
+ 
         {/* Right panel: results */}
         <div className="w-[70%] lg:w-[70%] space-y-4">
           {tableRows.length>0 && (

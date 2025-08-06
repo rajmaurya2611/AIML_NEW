@@ -118,44 +118,73 @@ export default function JobFitRanker() {
  
     try {
       // Step 1: Fetch skills and weightages robustly
+      function stripMarkdownCodeFence(str) {
+        if (typeof str !== "string") return str;
+ 
+        // Remove leading: ```json or ```
+        str = str.replace(/^```[a-zA-Z]*\s*/, '');
+ 
+        // Remove trailing: ```
+        str = str.replace(/\s*```$/, '');
+ 
+        return str;
+      }
+ 
+ 
+      // Inside your handleAnalyzeMatch function, replace your Step 1 skill fetching block with this:
+ 
       const skillFd = new FormData();
       skillFd.append("pdf_file_JD", job.file);
       let skillArr = [];
+ 
       try {
         const skillRes = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
           method: "POST",
           body: skillFd,
         });
-        const skillRaw = await skillRes.text();
  
-        // Parse repeatedly until you get an array (handle backend double-encoding)
+        let skillRaw = await skillRes.json();
+ 
+        // Defensive: handle string or double-encoded JSON or markdown code fences
         skillArr = skillRaw;
         while (typeof skillArr === "string") {
+          skillArr = stripMarkdownCodeFence(skillArr);
           skillArr = JSON.parse(skillArr);
         }
  
-        if (!Array.isArray(skillArr)) {
-          message.error("Unexpected response: skills/weightages was not an array.");
-          return;
-        }
- 
-        // Remove header row if present
+        // Remove header row if it exists
         if (
-          skillArr.length &&
-          typeof skillArr[0][0] === "string" &&
-          skillArr[0][0].toLowerCase().includes("skill")
+          Array.isArray(skillArr) &&
+          skillArr.length > 0 &&
+          Array.isArray(skillArr) &&
+          typeof skillArr === "string" &&
+          skillArr.toLowerCase().includes("skill")
         ) {
           skillArr = skillArr.slice(1);
         }
  
-        if (skillArr.length === 0) {
+        // Validate skillArr structure before proceeding
+        if (!Array.isArray(skillArr) || skillArr.length === 0) {
           message.error("No skills extracted from JD. Please check your JD file.");
+          console.log("Invalid or empty skillArr:", skillArr);
           return;
         }
-      } catch {
+ 
+        // Map skillArr to skill objects with numeric weight (strip % and parse int)
+        const skills = skillArr.map(([skillText, weight]) => ({
+          skill: skillText,
+          weight: parseInt(String(weight).replace("%", ""), 10) || 0,
+        }));
+ 
+        // 'skills' is now ready to be used in your next steps
+        // For example, use `skills` to append to your FormData, or open new tab, etc.
+ 
+      } catch (e) {
         message.error("Failed to fetch skills/weightages.");
+        console.error("Error fetching skills/weightages:", e);
         return;
       }
+ 
  
       // Step 2: Prepare form data and filter CVs for analyze_matches
       const analyzeFd = new FormData();
@@ -346,4 +375,3 @@ export default function JobFitRanker() {
     </main>
   );
 }
- 
