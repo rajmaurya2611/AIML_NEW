@@ -9,10 +9,8 @@ export default function MessageInput({ value, onChange, onSend, disabled }) {
         value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled}
+        // Rohan Singh
         placeholder="Type your message here..."
-        onCopy={e => { e.preventDefault(); alert("🔕 Copy disabled!"); }}
-        onPaste={e => { e.preventDefault(); alert("🔕 Paste disabled!"); }}
-        onCut={e => { e.preventDefault(); alert("🔕 Cut disabled!"); }}
         onContextMenu={e => e.preventDefault()}
         style={{
           border: "8px solid #f0e9e9",

@@ -1,12 +1,16 @@
-.mainHeader{
+
+.mainHeader {
     background-color: #DA2128;
     width: 100%;
     height: 50px;
     display: flex;
     flex-direction: row;
     align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
 }
-
+ 
 .mothersonLogo{
     margin-left: 1vw;
 }
@@ -16,13 +20,13 @@
     padding-left: 2%;
     margin-top: 18px;
 }
-.vertical-line{
-    width: 1px;                /* Line thickness */
-    height: 50px;             /* Line height */
-    background-color: white; 
-    margin-left:5px;
+.vertical-line {
+    width: 1px;
+    height: 50px;
+    background-color: white;
+    margin-left: 20px;
 }
-
+ 
 .interview-bot-header{    
     display: flex;
     flex-direction: row;
@@ -39,7 +43,7 @@
     color: #696969;
 }
 .interview-bot-time-left-container{
-    
+   
     border-radius: 30px;
     width: 100px;
     height: 45px;
@@ -51,9 +55,9 @@
     position: absolute;
     right: 5%;
 }
-
+ 
 .interview-bot-body{
-    
+   
     display: flex;
     flex-direction: row;
     padding-bottom: 100px;
@@ -63,7 +67,7 @@
     display: flex;
     flex-direction: column;
     width: 65vw;
-
+ 
 }
 .interview-bot-interview-section{
     display: flex;
@@ -72,13 +76,13 @@
     margin-top: 20px;
     position: relative;
 }
-
+ 
 .interview-bot-interview-controls-section{
     display: flex;
     flex-direction: row;
     justify-content: center;
 }
-
+ 
 .interview-bot-end-interview-button {
     background: #DA2128;
     color: white;
@@ -88,7 +92,7 @@
     font-size: 14px;
     margin-top: 12px;
     margin-bottom: 12px;
-
+ 
 }
 .interview-bot-transcript-container{
     width: 35vw;
@@ -96,7 +100,7 @@
     justify-content: center;
     align-items: start;
 }
-
+ 
 .interview-bot-transcript-header{
     display: flex;
     align-items: center;
@@ -106,9 +110,9 @@
     box-shadow: 0 3px 1px -1px #00000040;
     border-top-left-radius: 15px;
     border-top-right-radius: 15px;
-    
+   
 }
-
+ 
 .interview-bot-transcript{
     height: 86%;
     width: 80%;
@@ -119,7 +123,7 @@
     position: relative;
     margin-top: 25px;
 }
-
+ 
 .interview-bot-transcript-body{
     overflow-y: scroll;
     padding-bottom: 80px;
@@ -136,7 +140,7 @@
     justify-content: space-around;
     width: 100%;
 }
-
+ 
 .interview-bot-message{
     display: flex;
     flex-direction: column;
@@ -155,19 +159,19 @@
 .interview-bot-message-body p{
     margin-top: 5px;
 }
-
+ 
 .interview-bot-record-button{
     position: relative;
     left: 50%;
     bottom: 25px;
 }
-
+ 
 .interview-bot-stop-record-button{
     position: relative;
     left: 50%;
     bottom: 25px;
 }
-
+ 
 .interview-bot-stop-record-button img{
     border:2px solid red;
     width: 43px;
@@ -178,14 +182,14 @@
     left: 22%;
     bottom: 25px;
 }
-
+ 
 .interview-bot-audio{
     position: relative;
     left: 36%;
     bottom: 25px;
 }
-
-
+ 
+ 
 .upload-section{
     display: flex;
     align-items: start;

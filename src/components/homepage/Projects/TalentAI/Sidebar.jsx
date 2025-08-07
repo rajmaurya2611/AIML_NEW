@@ -111,7 +111,7 @@ export default function Sidebar() {
           </NavLink>
 
           <NavLink
-            to="/talentai/interview"
+            to="/talentai/HrView"
             style={{
               paddingTop: "10px",
               paddingBottom: "10px",
@@ -131,7 +131,7 @@ export default function Sidebar() {
                   className="sidebarIcons"
                   src={isActive ? white_interviewBot : grey_interviewBot}
                 />
-                <span className="ml-2">Interview Bot</span>
+                <span className="ml-2">HR View</span>
               </>
             )}
           </NavLink>
@@ -208,7 +208,7 @@ export default function Sidebar() {
           </NavLink>
 
           <NavLink
-            to="/talentai/interview"
+            to="/talentai/HrView"
             style={{
               paddingTop: "10px",
               paddingBottom: "10px",

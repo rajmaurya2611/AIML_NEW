@@ -2,7 +2,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/homepage/Projects/SketchSense/protectedRoute';
-
+ 
 import HomePage from './components/homepage/Homepage';
 //import Legal from './components/homepage/Projects/LegalLens/legalMain';   // <— your new page
 //import AnalysisPage from './components/homepage/Projects/LegalLens/analysis';
@@ -26,25 +26,27 @@ import CVRanker from './components/homepage/Projects/TalentAI/CvRanker';
 import JdGenerator from './components/homepage/Projects/TalentAI/JdGenerator';
 import JobFitRanker from './components/homepage/Projects/TalentAI/JobFitRanker/JobFitRanker';
 import CvRankingResultPage from './components/homepage/Projects/TalentAI/JobFitRanker/CVRankingResultPage';
-import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/interviewBot';
-
+import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/interviewBot.jsx';
+// Hr View
+import HrView from './components/homepage/Projects/TalentAI/HR-View/HrView.jsx';
+ 
 function App() {
   return (
     <BrowserRouter>
      <Routes>
         {/* public homepage */}
         <Route path="/" element={<HomePage />} />
-
+ 
         {/* LegalLens */}
        {/* <Route path="/legallens" element={<Legal/>} />
-
+ 
 <Route
   path="legallens/analysis"
   element={
       <AnalysisPage />
   }
-/> 
-
+/>
+ 
 <Route
   path="legallens/comparison"
   element={
@@ -52,14 +54,14 @@ function App() {
   }
 />
 */}
-
+ 
  <Route path="/legallens/*" element={<LegalLensRoot/>} />
-
+ 
 <Route path="/do33/*"        element={<DO33Root/>} />
   <Route path="/knowledgebot/*" element={<KnowledgeRoot/>} />
-
-
-
+ 
+ 
+ 
 {/* <Route
   path="/legallens/risk_analysis"
   element={
@@ -68,7 +70,7 @@ function App() {
     </LegalAuthRoute>
   }
 />
-
+ 
 <Route
   path="/legallens/clause"
   element={
@@ -77,42 +79,43 @@ function App() {
     </LegalAuthRoute>
   }
 /> */}
-
+ 
         {/* SketchSense login */}
         <Route path="/sketchsense" element={<BackgroundBoxesDemo />} />
-
+ 
         {/* SketchSense post-login “home” */}
         <Route path="/sketchsense/home" element={<ProtectedRoute> <Home /> </ProtectedRoute> }/>
         {/* <Route path="/sketchsense/home" element={<Home />} /> */}
-
+ 
         {/* Persona Prime */}
         <Route path="/personaprime" element={<PersonaPrimeMain/>} />
-
-
+ 
+ 
         {/* Persona Prime */}
         <Route path="/gloveguardian" element={<GloveMain/>} />
-
+ 
         {/* Persona Prime */}
         <Route path="/safelift" element={<Safelift_Main/>} />
-
+ 
         <Route path="/budgetbeacon" element={<BudgetBeaconMain/>} />
-
+ 
         <Route path="/kip" element={<RKIPApp/>} />
-
+ 
         <Route path="/talentai" element={<TalentAIMain/>} />
-         <Route path="/talentai/CvRanker" element={<CVRanker/>} />
-         <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
-         <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
-         <Route path="/talentai/cv-ranking-result" element={<CvRankingResultPage/>}/>
-         
-         <Route path="/talentai/interview" element={<InterviewBot/>}/>
-        
-
+        <Route path="/talentai/CvRanker" element={<CVRanker/>} />
+        <Route path="/talentai/jd-generator" element={<JdGenerator/>} />
+        <Route path="/talentai/JobFitRanker" element={<JobFitRanker/>} />
+        <Route path="/talentai/cv-ranking-result" element={<CvRankingResultPage/>}/>
+       
+        {/* <Route path="/talentai/interview" element={<InterviewBot/>}/> */}
+        {/* Changed by Rohan Singh  */}
+        <Route path="/talentai/interview/:uuid" element={<InterviewBot />} />
+        <Route path="/talentai/HrView" element={<HrView/>}/>
       </Routes>
     </BrowserRouter>
   );
 }
-
+ 
 export default App;
-
+ 
 // Developed By Raj Maurya

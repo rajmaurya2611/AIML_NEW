@@ -108,150 +108,79 @@ export default function JobFitRanker() {
  
   // Per-row "Rank CVs" button handler
   const handleAnalyzeMatch = async (job) => {
-    if (!cvFiles || cvFiles.length === 0) {
-      message.warning("Please upload CVs before analyzing matches.");
+  if (!cvFiles || cvFiles.length === 0) {
+    message.warning("Please upload CVs before analyzing matches.");
+    return;
+  }
+ 
+  setAnalyzingJobKeys((prev) => new Set(prev).add(job.key));
+ 
+  try {
+    const analyzeFd = new FormData();
+    analyzeFd.append("pdf_file_JD", job.file);
+ 
+    const matchedCvFiles = cvFiles.filter((cv) => {
+      if (!cv.name) return false;
+      return job.candidates.includes(cv.name);
+    });
+    const finalCvFiles = matchedCvFiles.length > 0 ? matchedCvFiles : cvFiles;
+    finalCvFiles.forEach((f) => analyzeFd.append("pdf_files_CV", f));
+ 
+    // Provide default dummy skills and weightages or infer from somewhere
+    // Here, you can hardcode or infer skills as a fallback
+    const defaultSkills = ["Data Science", "Python", "SQL"]; // example
+    const defaultWeightages = [35, 25, 10]; // example percentages
+ 
+    analyzeFd.append("skills", defaultSkills.join("@"));
+    analyzeFd.append("weightages", defaultWeightages.join(","));
+ 
+    const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/analyze_matches`, {
+      method: "POST",
+      body: analyzeFd,
+    });
+ 
+    if (!res.ok) {
+      const errMsg = await res.text();
+      message.error("Failed to analyze matches: " + errMsg);
       return;
     }
+    const ranking = await res.json();
  
-    // Show spinner on this row
-    setAnalyzingJobKeys((prev) => new Set(prev).add(job.key));
- 
-    try {
-      // Step 1: Fetch skills and weightages robustly
-      function stripMarkdownCodeFence(str) {
-        if (typeof str !== "string") return str;
- 
-        // Remove leading: ```json or ```
-        str = str.replace(/^```[a-zA-Z]*\s*/, '');
- 
-        // Remove trailing: ```
-        str = str.replace(/\s*```$/, '');
- 
-        return str;
-      }
- 
- 
-      // Inside your handleAnalyzeMatch function, replace your Step 1 skill fetching block with this:
- 
-      const skillFd = new FormData();
-      skillFd.append("pdf_file_JD", job.file);
-      let skillArr = [];
- 
-      try {
-        const skillRes = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/cv_analyzer/get_skills_and_weightages`, {
-          method: "POST",
-          body: skillFd,
+    // Process response as before
+    const candidates = ranking.map((row, i) => {
+      const name = row[0];
+      const email = row[row.length - 2];
+      const phone = row[row.length - 1];
+      let pairs = [];
+      if (Array.isArray(row[1]) && Array.isArray(row[2])) {
+        row[1].forEach((skillName, j) => {
+          pairs.push([skillName, row[2][j] ?? "-"]);
         });
- 
-        let skillRaw = await skillRes.json();
- 
-        // Defensive: handle string or double-encoded JSON or markdown code fences
-        skillArr = skillRaw;
-        while (typeof skillArr === "string") {
-          skillArr = stripMarkdownCodeFence(skillArr);
-          skillArr = JSON.parse(skillArr);
-        }
- 
-        // Remove header row if it exists
-        if (
-          Array.isArray(skillArr) &&
-          skillArr.length > 0 &&
-          Array.isArray(skillArr) &&
-          typeof skillArr === "string" &&
-          skillArr.toLowerCase().includes("skill")
-        ) {
-          skillArr = skillArr.slice(1);
-        }
- 
-        // Validate skillArr structure before proceeding
-        if (!Array.isArray(skillArr) || skillArr.length === 0) {
-          message.error("No skills extracted from JD. Please check your JD file.");
-          console.log("Invalid or empty skillArr:", skillArr);
-          return;
-        }
- 
-        // Map skillArr to skill objects with numeric weight (strip % and parse int)
-        const skills = skillArr.map(([skillText, weight]) => ({
-          skill: skillText,
-          weight: parseInt(String(weight).replace("%", ""), 10) || 0,
-        }));
- 
-        // 'skills' is now ready to be used in your next steps
-        // For example, use `skills` to append to your FormData, or open new tab, etc.
- 
-      } catch (e) {
-        message.error("Failed to fetch skills/weightages.");
-        console.error("Error fetching skills/weightages:", e);
-        return;
+      } else if (Array.isArray(row[1]) && Array.isArray(row[1][0])) {
+        pairs = row[1];
       }
+      return { key: String(i), name, pairs, email, phone };
+    });
  
- 
-      // Step 2: Prepare form data and filter CVs for analyze_matches
-      const analyzeFd = new FormData();
-      analyzeFd.append("pdf_file_JD", job.file);
- 
-      // Filter CV files that exactly match candidate names returned earlier
-      const matchedCvFiles = cvFiles.filter((cv) => {
-        if (!cv.name) return false;
-        return job.candidates.includes(cv.name);
-      });
-      const finalCvFiles = matchedCvFiles.length > 0 ? matchedCvFiles : cvFiles;
-      finalCvFiles.forEach((f) => analyzeFd.append("pdf_files_CV", f));
- 
-      analyzeFd.append(
-        "skills",
-        skillArr.map(([skill]) => skill).join("@")
-      );
-      analyzeFd.append(
-        "weightages",
-        skillArr.map(([_, weight]) => weight).join(",")
-      );
- 
-      // Step 3: Fetch results from /analyze_matches
-      const res = await fetch(`${import.meta.env.VITE_TALENTAI_API_BASE_URL}/jd_fitment/analyze_matches`, {
-        method: "POST",
-        body: analyzeFd,
-      });
- 
-      if (!res.ok) {
-        const errMsg = await res.text();
-        message.error("Failed to analyze matches: " + errMsg);
-        return;
-      }
-      const ranking = await res.json();
- 
-      // Step 4: Map response into candidates array for UI
-      const candidates = ranking.map((row, i) => {
-        const name = row[0];
-        const email = row[row.length - 2];
-        const phone = row[row.length - 1];
-        let pairs = [];
-        if (Array.isArray(row[1]) && Array.isArray(row[2])) {
-          row[1].forEach((skillName, j) => {
-            pairs.push([skillName, row[2][j] ?? "-"]);
-          });
-        } else if (Array.isArray(row[1]) && Array.isArray(row[1][0])) {
-          pairs = row[1];
-        }
-        return { key: String(i), name, pairs, email, phone };
-      });
- 
-      // Step 5: Convert skillArr into skill objects for UI
-      const skills = skillArr.map(([skillText, weight]) => ({
+    let skills = [];
+    if (candidates.length > 0) {
+      skills = candidates[0].pairs.map(([skillText]) => ({
         skill: skillText,
-        weight: parseInt(String(weight).replace("%", ""), 10) || 0,
+        weight: 0,
       }));
- 
-      // Step 6: Open new tab with results
-      openCVRankingResultTab({ skills, candidates });
-    } finally {
-      setAnalyzingJobKeys((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(job.key);
-        return newSet;
-      });
     }
-  };
+ 
+    openCVRankingResultTab({ skills, candidates });
+  } finally {
+    setAnalyzingJobKeys((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(job.key);
+      return newSet;
+    });
+  }
+};
+ 
+ 
  
   // Table columns config
   const columns = [

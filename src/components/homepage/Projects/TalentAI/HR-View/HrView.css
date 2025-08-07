@@ -1,0 +1,169 @@
+/* InterviewUploader.css */
+
+.container {
+  width:95%;
+  margin-left: 50px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: #4f4e4e;
+  border-bottom: 3px solid transparent;
+  transition: border-color 0.3s;
+}
+
+.tab:hover {
+  background-color: #eee;
+}
+
+.tab.active {
+  border-bottom: 3px solid #DA2128;
+  color: #DA2128;
+}
+
+.tab-content {
+  padding: 10px;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color:#4f4e4e;
+}
+
+.input-group input[type="file"] {
+  display: block;
+}
+
+.file-name {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #555;
+}
+
+.generate-button {
+  padding: 10px 20px;
+  background-color: #DA2128;
+  color: white;
+  border: none;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.generate-button:hover {
+  background-color: grey;
+}
+
+.link-output {
+  margin-top: 20px;
+  color: #155724;
+}
+
+.link {
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.placeholder {
+  font-style: italic;
+  color: #888;
+}
+.table-title {
+  font-size: 18px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.candidates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.candidates-table th,
+.candidates-table td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+.candidates-table th {
+  background-color: #f0f0f0;
+}
+
+.candidates-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.candidates-table td:last-child {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.custom-file-input {
+  width: 30%;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 0;
+  cursor: pointer;
+  background-color: white;
+  color: #333;
+}
+
+.custom-file-input::placeholder {
+  color: #999;
+}
+
+.link-copy-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  width: 35.5%;
+}
+
+.link-copy-wrapper .link {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  font-family: monospace;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  color: #333;
+  
+}
+
+.copy-button {
+  padding: 8px 12px;
+  background-color: #DA2128;
+  color: white;
+  border: none;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.copy-button:hover {
+  background-color: grey;
+}

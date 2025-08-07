@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import MainHeader from "../MainHeader";
-import Sidebar from "../Sidebar";
+import { useParams } from 'react-router-dom'; // Rohan Singh
+import MainHeader from "../MainHeader.jsx";
+import Sidebar from "../Sidebar.jsx";
 import InterviewInstruction from "./interviewInstruction.jsx";
 import "./interviewBot.css";
 import clock from "../assets_talentAI/clock.svg";
-import aiImage from "../assets_talentAI/cartoon-ai.png";
+// import aiImage from "../assets_talentAI/cartoon-ai.png";
 import sendButton from "../assets_talentAI/send-button.png";
 import avatar from "../assets_talentAI/avatar.svg";
-import CameraRecorder from "./cameraRecorder";
+import CameraRecorder from "./cameraRecorder.jsx";
 import Instructions from "../assets_talentAI/instructions.png";
 import mothersonLogo from "../assets_talentAI/motherson_logo.svg";
 import ThankYouPage from "./thankYouPage.jsx";
@@ -16,27 +17,31 @@ import ThankYouPage from "./thankYouPage.jsx";
 import axios from "axios";
 // after your other imports
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
-import MessageList  from "./MessageList";
-import MessageInput from "./MessageInput";
-
+import MessageList  from "./MessageList.jsx";
+import MessageInput from "./MessageInput.jsx";
+import AvatarPanel from "./AvatarPanel";
+ 
 export default function InterviewBot() {
-
+    // Get the UUID of the User
+    const { uuid } = useParams();
+    //ref for Avatar Panel
+  const avatarRef = useRef(null);
+ 
   const API_BASE = import.meta.env.VITE_TALENTAI_API_INTERVIEW_BASE_URL;
-
-  
+ 
   // holds { role, content } objects
   const [messages, setMessages] = useState([]);
   // disable UI while waiting
   const [loading, setLoading] = useState(false);
-
+ 
   // raw File objects selected by the user
-  const [cvFile, setCvFile] = useState(null);
-  const [jdFile, setJdFile] = useState(null);
-
+//   const [cvFile, setCvFile] = useState(null);
+//   const [jdFile, setJdFile] = useState(null);
+ 
   // plain-text extracted from those PDFs
   const [cvText, setCvText] = useState("");
   const [jdText, setJdText] = useState("");
-
+ 
   // interview state
   const [started, setStarted] = useState(false);
   // added interviewStarted state
@@ -47,201 +52,209 @@ export default function InterviewBot() {
   const [input, setInput] = useState("");
   const [timeLeft, setTimeLeft] = useState(1800);
   const timerRef = useRef(null);
-
+ 
   // STT
   const recognizerRef = useRef(null);
   const bufRef = useRef("");
   const pauseTimer = useRef(null);
   const [speechCreds, setSpeechCreds] = useState(null);
-
+ 
   // TTS synthesizer ref
   const synthesizerRef = useRef(null);
-
+ 
   // useEffect(() => {
   //   fetch("/api/speech/token")
   //     .then(r => r.json())
   //     .then(setSpeechCreds)
   //     .catch(console.error);
   // }, []);
-
+ 
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
-
-  useEffect(() => {
-    if (!started) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => Math.max(t - 1, 0));
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [started]);
-
+ 
+//   useEffect(() => {
+//     if (!started) return;
+//     timerRef.current = setInterval(() => {
+//       setTimeLeft((t) => Math.max(t - 1, 0));
+//     }, 1000);
+//     return () => clearInterval(timerRef.current);
+//   }, [started]);
+ 
   // Lift files & start interview
-  const handleAcceptAndUpload = (cv, jd) => {
-    setCvFile(cv);
-    setJdFile(jd);
-    startInterview(cv, jd);
-  };
-
-  // CV and JD upload buttons related code here 
-  const uploadCvButton = useRef(null);
-  const uploadJdButton = useRef(null);
-  
-  const [cvUploadFileName,setCvUploadFileName] = useState("");
-  const [jdUploadFileName,setJdUploadFileName] = useState("");
-
-  const handleCvUploadInput = ()=>{
-    uploadCvButton.current.click();
-  }
-  const handleJdUploadInput = ()=>{
-     uploadJdButton.current.click();
-
-  }
-  const handleCvFileChange = (e) => {
-    setCvFile(e.target.files?.[0] || null)
-    setCvUploadFileName(e.target.files?.[0]?.name || "");
-
-  };
-  const handleJdFileChange = (e) => {
-    setJdFile(e.target.files?.[0] || null)
-    setJdUploadFileName(e.target.files?.[0]?.name || "");
-  }
+//   const handleAcceptAndUpload = (cv, jd) => {
+//     setCvFile(cv);
+//     setJdFile(jd);
+//     startInterview(cv, jd);
+//   };
+ 
+  // CV and JD upload buttons related code here
+//   const uploadCvButton = useRef(null);
+//   const uploadJdButton = useRef(null);
+ 
+//   const [cvUploadFileName,setCvUploadFileName] = useState("");
+//   const [jdUploadFileName,setJdUploadFileName] = useState("");
+ 
+//   const handleCvUploadInput = ()=>{
+//     uploadCvButton.current.click();
+//   }
+//   const handleJdUploadInput = ()=>{
+//      uploadJdButton.current.click();
+ 
+//   }
+//   const handleCvFileChange = (e) => {
+//     setCvFile(e.target.files?.[0] || null)
+//     setCvUploadFileName(e.target.files?.[0]?.name || "");
+ 
+//   };
+//   const handleJdFileChange = (e) => {
+//     setJdFile(e.target.files?.[0] || null)
+//     setJdUploadFileName(e.target.files?.[0]?.name || "");
+//   }
   // Core interview start logic (extracting text, STT, LLM, etc.)
-  const startInterview = async (cvArg, jdArg) => {
+  const startInterview = async () => {
     setLoading(true);
     try {
-      // 1) extract text
-      const form = new FormData();
-      form.append("cv", cvArg);
-      form.append("jd", jdArg);
-      const {
-        data: { cvText, jdText },
-      } = await axios.post(`${API_BASE}/api/upload`, form);
-      setCvText(cvText);
-      setJdText(jdText);
-
-      // 2) initial chat prompt
-      const { data } = await axios.post(`${API_BASE}/api/chat`, {
-        cv: cvText,
-        jd: jdText,
-        messages: [],
-      });
-      setHistory(data);
-      const first = data.slice(-1)[0].content;
-      setMessages([{ sender: "HR Bot", text: first }]);
-      setBotSpeech(first);
-
-      // speak the first prompt
-      synthesizerRef.current?.speakTextAsync(
-        first,
-        () => console.log("TTS finished"),
-        err => console.error("TTS failed:", err)
-      );
-
-      setStarted(true);
-
-      // 3) Azure STT (assuming SpeechSDK is globally available)
-      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-        import.meta.env.VITE_AZURE_SPEECH_KEY,
-        import.meta.env.VITE_AZURE_SPEECH_REGION
-      );
-      speechConfig.speechRecognitionLanguage = "en-IN";
-      speechConfig.setProperty(
-        SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-        "2000"
-      );
-
-      // -- instantiate the TTS synthesizer once --
-      const synthConfig = SpeechSDK.SpeechConfig.fromSubscription(
-        import.meta.env.VITE_AZURE_SPEECH_KEY,
-        import.meta.env.VITE_AZURE_SPEECH_REGION
-      );
-      synthConfig.speechSynthesisLanguage = "en-IN";
-      const synthAudioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
-      synthesizerRef.current = new SpeechSDK.SpeechSynthesizer(synthConfig, synthAudioConfig);
-
-      // -- recognizer setup --
-      const recognizer = new SpeechSDK.SpeechRecognizer(
-        speechConfig,
-        SpeechSDK.AudioConfig.fromDefaultMicrophoneInput()
-      );
-      recognizerRef.current = recognizer;
-
-      recognizer.recognized = async (_, e) => {
-        if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-          const txt = e.result.text.trim();
-          if (!txt) return;
-          bufRef.current = bufRef.current ? bufRef.current + " " + txt : txt;
-          clearTimeout(pauseTimer.current);
-          pauseTimer.current = setTimeout(async () => {
-            const userText = bufRef.current.trim();
-            bufRef.current = "";
-            // UI update
-            setHistory((h) => [...h, { role: "user", content: userText }]);
-            setMessages((m) => [...m, { sender: "You", text: userText }]);
-            // send to LLM
-            try {
-              const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
-                messages: [...historyRef.current, { role: "user", content: userText }],
-                userText,
-              });
-              setHistory(newHist);
-              const reply = newHist.slice(-1)[0].content;
-              setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
-              setBotSpeech(reply);
-              // ** speak the reply **
-              synthesizerRef.current.speakTextAsync(
-                reply,
-                () => console.log("TTS finished"),
-                err => console.error("TTS failed:", err)
-              );
-            } catch (err) {
-              console.error("LLM error:", err);
+        // 1) extract text
+        //   const form = new FormData();
+        //   form.append("cv", cvArg);
+        //   form.append("jd", jdArg);
+        //   const {
+        //     data: { cvText, jdText },
+        //   } = await axios.post(`${API_BASE}/api/upload`, form);
+ 
+        const response  = await axios.post(`${API_BASE}/api/hr/get-status-active`, {
+            UID:uuid
+        });
+        const { status, active, jdText, cvText } = response.data;
+        console.log(status);
+        console.log(active);
+        console.log(jdText);
+        console.log(cvText);
+ 
+        setCvText(cvText);
+        setJdText(jdText);
+ 
+        // 2) initial chat prompt
+        const { data } = await axios.post(`${API_BASE}/api/chat`, {
+            cv: cvText,
+            jd: jdText,
+            messages: [],
+        });
+        setHistory(data);
+        const first = data.slice(-1)[0].content;
+        setMessages([{ sender: "HR Bot", text: first }]);
+        setBotSpeech(first);
+ 
+        // speak the first prompt
+        synthesizerRef.current?.speakTextAsync(
+            first,
+            () => console.log("TTS finished"),
+            err => console.error("TTS failed:", err)
+        );
+ 
+        setStarted(true);
+        // 🟢 Start avatar session
+        avatarRef.current?.start();
+ 
+        // 3) Azure STT (assuming SpeechSDK is globally available)
+        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
+            import.meta.env.VITE_AZURE_SPEECH_KEY,
+            import.meta.env.VITE_AZURE_SPEECH_REGION
+        );
+        speechConfig.speechRecognitionLanguage = "en-IN";
+        speechConfig.setProperty(
+            SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+            "6000"
+        );
+ 
+        // -- instantiate the TTS synthesizer once --
+        const synthConfig = SpeechSDK.SpeechConfig.fromSubscription(
+            import.meta.env.VITE_AZURE_SPEECH_KEY,
+            import.meta.env.VITE_AZURE_SPEECH_REGION
+        );
+        synthConfig.speechSynthesisLanguage = "en-IN";
+        const synthAudioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
+        synthesizerRef.current = new SpeechSDK.SpeechSynthesizer(synthConfig, synthAudioConfig);
+ 
+        // -- recognizer setup --
+        const recognizer = new SpeechSDK.SpeechRecognizer(
+            speechConfig,
+            SpeechSDK.AudioConfig.fromDefaultMicrophoneInput()
+        );
+        recognizerRef.current = recognizer;
+ 
+        recognizer.recognized = async (_, e) => {
+            if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+            const txt = e.result.text.trim();
+            if (!txt) return;
+            bufRef.current = bufRef.current ? bufRef.current + " " + txt : txt;
+            clearTimeout(pauseTimer.current);
+            pauseTimer.current = setTimeout(async () => {
+                const userText = bufRef.current.trim();
+                bufRef.current = "";
+                // UI update
+                setHistory((h) => [...h, { role: "user", content: userText }]);
+                setMessages((m) => [...m, { sender: "You", text: userText }]);
+                // send to LLM
+                try {
+                const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
+                    messages: [...historyRef.current, { role: "user", content: userText }],
+                    userText,
+                });
+                setHistory(newHist);
+                const reply = newHist.slice(-1)[0].content;
+                setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
+                setBotSpeech(reply);
+                // ** speak the reply **
+                avatarRef.current?.speak(reply);
+                } catch (err) {
+                console.error("LLM error:", err);
+                }
+            }, 1500);
             }
-          }, 800);
+        };
+ 
+        recognizer.startContinuousRecognitionAsync(
+            () => console.log("STT started"),
+            (err) => console.error("STT error", err)
+        );
+        } catch (err) {
+        console.error("Start error:", err);
+        alert("Could not start interview. See console.");
+        } finally {
+        setLoading(false);
         }
-      };
-
-      recognizer.startContinuousRecognitionAsync(
-        () => console.log("STT started"),
-        (err) => console.error("STT error", err)
-      );
-    } catch (err) {
-      console.error("Start error:", err);
-      alert("Could not start interview. See console.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Manual send
-  const sendText = async () => {
-    const txt = input.trim();
-    if (!txt) return;
-    setInput("");
-    setHistory((h) => [...h, { role: "user", content: txt }]);
-    setMessages((m) => [...m, { sender: "You", text: txt }]);
-    try {
-      const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
-        messages: [...historyRef.current, { role: "user", content: txt }],
-        userText: txt,
-      });
-      setHistory(newHist);
-      const reply = newHist.slice(-1)[0].content;
-      setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
-      setBotSpeech(reply);
-      // ** speak the reply from manual send **
-      synthesizerRef.current.speakTextAsync(
-        reply,
-        () => console.log("TTS finished"),
-        err => console.error("TTS failed:", err)
-      );
-    } catch (err) {
-      console.error("Send error:", err);
-      alert("Failed to send. See console.");
-    }
-  };
-
+    };
+ 
+    // Manual send
+    const sendText = async () => {
+        const txt = input.trim();
+        if (!txt) return;
+        setInput("");
+        setHistory((h) => [...h, { role: "user", content: txt }]);
+        setMessages((m) => [...m, { sender: "You", text: txt }]);
+        try {
+        const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
+            messages: [...historyRef.current, { role: "user", content: txt }],
+            userText: txt,
+        });
+        setHistory(newHist);
+        const reply = newHist.slice(-1)[0].content;
+        setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
+        setBotSpeech(reply);
+        // ** speak the reply from manual send **
+        synthesizerRef.current.speakTextAsync(
+            reply,
+            () => console.log("TTS finished"),
+            err => console.error("TTS failed:", err)
+        );
+        } catch (err) {
+        console.error("Send error:", err);
+        alert("Failed to send. See console.");
+        }
+    };
+ 
   // // End interview
   // const endInterview = () => {
   //   recognizerRef.current?.stopContinuousRecognitionAsync(
@@ -250,7 +263,7 @@ export default function InterviewBot() {
   //   );
   //   setStarted(false);
   // };
-
+ 
    // End interview → save transcript & scorecard on server, then show ThankYouPage
   const handleEndInterview = async () => {
    // 1) stop STT and timer
@@ -259,32 +272,33 @@ export default function InterviewBot() {
      err => console.error(err)
    );
    clearInterval(timerRef.current);
-
-   
-
+ 
+    // 🔴 Stop the avatar
+    avatarRef.current?.stop();
+ 
    // 2) ask for candidate name
    const name = window.prompt("Please enter your name to save your transcript:");
    if (!name) {
      alert("Name is required to save your transcript.");
      return;
    }
-
+ 
    // 3) call backend save endpoint
-   try {
-     await axios.post(`${API_BASE}/api/chat/save`, {
-       name,
-       conversation: history,    // your full array of {role,content}
-     });
-     // 4) flip to ThankYouPage
-    //  setInterviewStatus(true);
-   } catch (err) {
-     console.error("Save error", err);
-     alert("Failed to save transcript & scorecard.");
-   }
-
-   stopRecord();
- };
-
+    try {
+        await axios.post(`${API_BASE}/api/chat/save`, {
+        name,
+        conversation: history,    // your full array of {role,content}
+        });
+        // 4) flip to ThankYouPage
+        //  setInterviewStatus(true);
+    } catch (err) {
+        console.error("Save error", err);
+        alert("Failed to save transcript & scorecard.");
+    }
+ 
+    stopRecord();
+    };
+ 
   async function handleStartInterview() {
     setLoading(true);
     try {
@@ -303,13 +317,13 @@ export default function InterviewBot() {
       setLoading(false);
     }
   }
-
+ 
   // For starting the recording
   const [record, setRecord] = useState(false);
-
+ 
   // Check if the interview is completed
   const [interviewStatus, setInterviewStatus] = useState(false);
-
+ 
   // Current Date
   const today = new Date();
   const formattedDate = today.toLocaleDateString("en-US", {
@@ -317,10 +331,10 @@ export default function InterviewBot() {
     month: "long",
     day: "numeric",
   });
-
+ 
   // Logic for pop up modal
   const [showPopup, setShowPopup] = useState(true); // popup visible on first render
-
+ 
   const closePopup = () => {
     setShowPopup(false); // Close the pop up div
     setRecord(true); // Start the recording
@@ -335,12 +349,12 @@ export default function InterviewBot() {
       });
     }, 1000); // every 1 second
   };
-
+ 
   // const stopRecord = () => {
   //   setRecord(false);
   //   setInterviewStatus(true);
   // };
-
+ 
   const stopRecord = ()=>{
     setRecord(false);
     // Remove the content after 5 seconds from the DOM, 5 seconds is needed to save the video and stop the screen record
@@ -348,13 +362,13 @@ export default function InterviewBot() {
       setInterviewStatus(true);
     },5000)
   }
-
+ 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
   };
-
+ 
   const [uploading, setUploading] = useState(false);
   async function handleUpload() {
     if (!cvFile || !jdFile) return;
@@ -369,7 +383,7 @@ export default function InterviewBot() {
       setCvText(resp.data.cvText);
       setJdText(resp.data.jdText);
       alert("CV & JD uploaded successfully!");
-
+ 
       // Immediately start the interview
       const chatResp = await axios.post(`${API_BASE}/api/chat`, {
         cv: resp.data.cvText,
@@ -386,18 +400,18 @@ export default function InterviewBot() {
       setUploading(false);
     }
   }
-
+ 
   const sendMessage = async () => {
     const inputEl = document.getElementById("interview-bot-user-message");
     const userText = inputEl.value.trim();
     if (!userText || loading) return;
-
+ 
     // 1) locally add the new user message
     const userMsg = { role: "user", content: userText };
     const convo = [...messages, userMsg];
     setMessages(convo);
     inputEl.value = "";
-
+ 
     // 2) call the backend at /api/chat
     setLoading(true);
     try {
@@ -414,19 +428,43 @@ export default function InterviewBot() {
       setLoading(false);
     }
   };
-
+ 
   const addHRMessages = () => {
     const input = document.getElementById("interview-bot-user-message");
     const HrText = input.value.trim();
     if (!HrText) return; // don't add empty messages
     input.value = "";
   };
-
+ 
+    // Logic for number of tab switch -- Rohan Singh
+  const [numOfTabSwitches, changeNumOfTabSwitches] = useState(0);
+ 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        window.alert(
+          "🔕 Warning, tab switching is not allowed. A log will be sent for reviewing your interview!"
+        );
+ 
+        changeNumOfTabSwitches((prev) => {
+          // Write logic here for number of tab switch
+          return prev + 1;
+        });
+      }
+    };
+ 
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+ 
   const handlePreventCopyPaste = (e) => {
     e.preventDefault();
     alert(`🔕Warning, "${e.type}" action is disabled!`);
   };
-
+  // Rohan Singh End
+ 
   function startLiveRecognition() {
     if (!speechCreds) return;
     const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(
@@ -434,10 +472,10 @@ export default function InterviewBot() {
       speechCreds.region
     );
     speechConfig.speechRecognitionLanguage = "en-IN";
-
+ 
     const audioConfig     = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
     const recognizer      = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
-
+ 
     recognizer.recognized = (_s, e) => {
       if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
         const text = e.result.text;
@@ -458,15 +496,15 @@ export default function InterviewBot() {
         .catch(console.error);
       }
     };
-
+ 
     recognizer.startContinuousRecognitionAsync(
       () => console.log("STT started"),
       err => console.error("STT error", err)
     );
   }
-
-  return (
-    <main onCopy={handlePreventCopyPaste} onPaste={handlePreventCopyPaste}>
+ 
+  return (// Rohan Singh
+    <main onCopy={handlePreventCopyPaste} onPaste={handlePreventCopyPaste} onCut={handlePreventCopyPaste}>
       <div className="mainHeader">
         <img className="mothersonLogo" src={mothersonLogo} alt="mothersonLogo" />
         <div className="vertical-line"></div>
@@ -503,17 +541,17 @@ export default function InterviewBot() {
             </div>
             <div className="upload-section">
               {/* <label>
-                UPLOAD CV 
+                UPLOAD CV
                 <input
                   type="file"
                   accept="application/pdf"
                   onChange={(e) => setCvFile(e.target.files?.[0] || null)}
                 />
               </label> */}
-              <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                <button 
+              {/* <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
+                <button
                   style={{
-                    margin: "1rem 0", 
+                    margin: "1rem 0",
                     background: "#DA2128",
                     color: "white",
                     width: "150px",
@@ -523,22 +561,22 @@ export default function InterviewBot() {
                     marginTop: "12px",
                     marginBottom: "12px"
                   }}
-                  onClick={handleCvUploadInput}>UPLOAD CV 
+                  onClick={handleCvUploadInput}>UPLOAD CV
                 </button>
                 <p className="CvName" style={{fontSize: "10px"}}>{cvUploadFileName}</p>
                   <input
                     ref={uploadCvButton}
                     id="cvUploadInput"
-                    hidden 
+                    hidden
                     type="file"
                     accept="application/pdf"
                     onChange={handleCvFileChange}
                   />
-                </div>
-              <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                <button 
+                </div> */}
+              {/* <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}> */}
+                {/* <button
                   style={{
-                      marginLeft: "25px", 
+                      marginLeft: "25px",
                       background: "#DA2128",
                       color: "white",
                       width: "150px",
@@ -549,54 +587,40 @@ export default function InterviewBot() {
                       marginBottom: "12px"
                     }}
                   onClick={handleJdUploadInput}>
-                  UPLOAD JD 
+                  UPLOAD JD
                   </button>
-                  <p className="JdName" style={{fontSize: "10px"}}>{jdUploadFileName}</p>
+                  <p className="JdName" style={{fontSize: "10px"}}>{jdUploadFileName}</p> */}
                   {/* JD (PDF): */}
-                  
-                  <input
+                 
+                  {/* <input
                     ref={uploadJdButton}
                     id="jdUploadInput"
                     hidden
                     type="file"
                     accept="application/pdf"
                     onChange={handleJdFileChange}
-                  />
-                </div>
-              
+                  /> */}
+                {/* </div> */}
+             
               <div style={{ marginLeft: 50 }}>
                 {/* optional Header component */}
               </div>
-              <button
-                onClick={() => startInterview(cvFile, jdFile)}
-                disabled={!cvFile || !jdFile}
-                
-                style={{
-                  margin: "1rem 0", 
-                  background: "#DA2128",
-                  color: "white",
-                  width: "150px",
-                  height: "35px",
-                  borderRadius: "10px",
-                  fontSize: "14px",
-                  marginTop: "12px",
-                  marginBottom: "12px"
-                }}
-              >
-                Start Interview
-              </button>
+           
+                {/* onClick={() => startInterview()} */}
+               
             </div>
-            
-
+           
+ 
             <div className="interview-bot-body">
               <div className="interview-bot-avatar-container">
-                <div className="interview-bot-interview-section">
-                  <img src={aiImage} alt="ai" />
+                <div className="interview-bot-interview-section">    
+                  <AvatarPanel ref={avatarRef} />
                   <CameraRecorder
                     setShowPopup={setShowPopup}
                     recordStatus={record}
                     setRecord={setRecord}
                     timerRef={timerRef}
+                    startInterview={startInterview}
                   />
                 </div>
                 <div className="interview-bot-interview-controls-section">
@@ -656,4 +680,5 @@ export default function InterviewBot() {
     </main>
   );
 }
-
+ 
+ 
