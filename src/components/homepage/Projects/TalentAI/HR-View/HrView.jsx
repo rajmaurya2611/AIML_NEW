@@ -13,6 +13,8 @@ function HrView(){
   const [isLinkGenerated, setIsLinkGenerated] = useState(false);
   const [uuid, setUuid] = useState('');
 
+  const API_BASE = import.meta.env.VITE_TALENTAI_API_INTERVIEW_BASE_URL;
+
   const handleJDChange = (e) => {
     const file = e.target.files[0];
     if (file && (file.type === 'application/pdf' || file.name.endsWith('.doc') || file.name.endsWith('.docx'))) {
@@ -58,7 +60,7 @@ function HrView(){
 
     try {
       // Documents needs to be uploaded here
-      const response = await fetch('http://localhost:4000/api/hr/upload-jd-cv', {
+      const response = await fetch(`${API_BASE}/api/hr/upload-jd-cv`, {
         method: 'POST',
         body: formData,
       });
@@ -78,7 +80,10 @@ function HrView(){
 
 
   const handleCopy = (uuid) => {
-    const link = `http://localhost:5173/talentai/interview/${uuid}`;
+    // local
+    // const link = `http://localhost:5173/talentai/interview/${uuid}`;
+    // production
+    const link = `https://genai.motherson.com/talentai/interview/${uuid}`;
     navigator.clipboard.writeText(link).then(() => {
       alert('Link copied to clipboard!');
     }).catch((err) => {
@@ -189,7 +194,10 @@ function HrView(){
                     <input
                       type="text"
                       className="link"
-                      value={`http://localhost:5173/talentai/interview/${uuid}`}
+                      // local
+                      // value={`http://localhost:5173/talentai/interview/${uuid}`}
+                      // production
+                      value={`https://genai.motherson.com/talentai/interview/${uuid}`}
                       readOnly
                     />
                     <button className="copy-button" onClick={() => handleCopy(uuid)}>
