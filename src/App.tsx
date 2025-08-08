@@ -109,7 +109,7 @@ function App() {
        
         {/* <Route path="/talentai/interview" element={<InterviewBot/>}/> */}
         {/* Changed by Rohan Singh  */}
-        <Route path="/talentai/interview/uuid/:uuid" element={<InterviewBot />} />
+        <Route path="/talentai/uuid/interview/:uuid" element={<InterviewBot />} />
         <Route path="/talentai/HrView" element={<HrView/>}/>
       </Routes>
     </BrowserRouter>
