@@ -51,7 +51,7 @@ and conduct insightful interviews effortlessly.`}
     <div className="featuresContainer">
         <h1>Features</h1>
         <div className="carouselWrapper">
-          <button className="arrow left" onClick={scrollLeft}>←</button>
+          {/* <button className="arrow left" onClick={scrollLeft}>←</button> */}
           <div className="cardsContainer" ref={scrollRef}>
               {/* Feature card for JD Generator  */}
               <Link to="/talentai/jd-generator" className="featureCard" >
@@ -75,12 +75,12 @@ and conduct insightful interviews effortlessly.`}
                 <button className="featureCardButton">View Fit Score</button>
               </Link>
               {/* Feature card for AI interview bot  */}
-              <Link to="/talentai/interview" className="featureCard" style={{marginLeft:"20px"}}>
+              {/* <Link to="/talentai/interview" className="featureCard" style={{marginLeft:"20px"}}>
                 <p className="featureCardName">AI Interview Bot</p>
                 <img className="featureCardImage" src={aiInterviewBot} alt="aiInterviewBot" />
                 <p className="featureCardDescription">Conducts adaptive interviews with real-time question generation.</p>
                 <button className="featureCardButton">Start Interview</button>
-              </Link>
+              </Link> */}
               {/* Feature card for HR Page  */}
               <Link to="/talentai/HrView" className="featureCard" style={{marginLeft:"20px"}}>
                 <p className="featureCardName">HR View</p>
@@ -90,7 +90,7 @@ and conduct insightful interviews effortlessly.`}
               </Link>
  
           </div>
-          <button className="arrow right" onClick={scrollRight}>→</button>
+          {/* <button className="arrow right" onClick={scrollRight}>→</button> */}
         </div>
          
     </div>
@@ -99,4 +99,3 @@ and conduct insightful interviews effortlessly.`}
 }
  
 export default TalentAIMain;
- 

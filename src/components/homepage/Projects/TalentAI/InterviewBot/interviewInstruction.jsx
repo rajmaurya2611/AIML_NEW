@@ -114,4 +114,3 @@ export default function InterviewInstruction(props) {
         </div>
     )
 }
- 

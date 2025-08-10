@@ -33,7 +33,7 @@ export default function InterviewBot() {
   const [messages, setMessages] = useState([]);
   // disable UI while waiting
   const [loading, setLoading] = useState(false);
- 
+  const [initialLoading, setInitialLoading] = useState(true);
   // raw File objects selected by the user
 //   const [cvFile, setCvFile] = useState(null);
 //   const [jdFile, setJdFile] = useState(null);
@@ -52,6 +52,8 @@ export default function InterviewBot() {
   const [input, setInput] = useState("");
   const [timeLeft, setTimeLeft] = useState(1800);
   const timerRef = useRef(null);
+  const [showInterviewSection, setShowInterviewSection] = useState(false);
+ 
  
   // STT
   const recognizerRef = useRef(null);
@@ -127,10 +129,10 @@ export default function InterviewBot() {
             UID:uuid
         });
         const { status, active, jdText, cvText } = response.data;
-        console.log(status);
-        console.log(active);
-        console.log(jdText);
-        console.log(cvText);
+        // console.log(status);
+        // console.log(active);
+        // console.log(jdText);
+        // console.log(cvText);
  
         setCvText(cvText);
         setJdText(jdText);
@@ -211,7 +213,7 @@ export default function InterviewBot() {
                 } catch (err) {
                 console.error("LLM error:", err);
                 }
-            }, 1500);
+            }, 2700);
             }
         };
  
@@ -223,7 +225,11 @@ export default function InterviewBot() {
         console.error("Start error:", err);
         alert("Could not start interview. See console.");
         } finally {
-        setLoading(false);
+        // Temporary loader until avatar is laoded
+        setTimeout(()=>{
+          setLoading(false);
+        },6000)
+       
         }
     };
  
@@ -336,19 +342,27 @@ export default function InterviewBot() {
   const [showPopup, setShowPopup] = useState(true); // popup visible on first render
  
   const closePopup = () => {
-    setShowPopup(false); // Close the pop up div
-    setRecord(true); // Start the recording
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prevTime) => {
-        if (prevTime <= 1) {
-          clearInterval(timerRef.current);
-          stopRecord();
-          return 0;
-        }
-        return prevTime - 1;
-      });
-    }, 1000); // every 1 second
-  };
+  setShowPopup(false); // Close popup
+  setRecord(true);     // Start recording
+ 
+  // Start 10 second delay before showing avatar & camera
+  setTimeout(() => {
+    setShowInterviewSection(true);
+  }, 10000); // 10 seconds
+ 
+  // Start countdown timer
+  timerRef.current = setInterval(() => {
+    setTimeLeft((prevTime) => {
+      if (prevTime <= 1) {
+        clearInterval(timerRef.current);
+        stopRecord();
+        return 0;
+      }
+      return prevTime - 1;
+    });
+  }, 1000);
+};
+ 
  
   // const stopRecord = () => {
   //   setRecord(false);
@@ -505,6 +519,11 @@ export default function InterviewBot() {
  
   return (// Rohan Singh
     <main onCopy={handlePreventCopyPaste} onPaste={handlePreventCopyPaste} onCut={handlePreventCopyPaste}>
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+        </div>
+      )}
       <div className="mainHeader">
         <img className="mothersonLogo" src={mothersonLogo} alt="mothersonLogo" />
         <div className="vertical-line"></div>
@@ -521,7 +540,7 @@ export default function InterviewBot() {
             />
           )}
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div className="interview-bot-header">
+            {/* <div className="interview-bot-header">
               <div style={{ paddingLeft: "30px", lineHeight: "12px", marginTop: "21px" }}>
                 <h1 className="interview-bot-heading">AI Interview Bot</h1>
                 <p className="interview-bot-date">{formattedDate}</p>
@@ -538,7 +557,7 @@ export default function InterviewBot() {
               <button style={{ position: "absolute", right: "2%" }} onClick={() => setShowPopup(true)}>
                 <img src={Instructions} alt="instructions" />
               </button>
-            </div>
+            </div> */}
             <div className="upload-section">
               {/* <label>
                 UPLOAD CV
@@ -680,5 +699,4 @@ export default function InterviewBot() {
     </main>
   );
 }
- 
  

@@ -95,7 +95,7 @@ const AvatarPanel = forwardRef((_, ref) => {
   }
  
   return (
-    <div className="p-4 bg-white shadow rounded text-center">
+    <div className="p-4 bg-white shadow rounded text-center" style={{ border: "0.5px solid #da2128", padding: "10px" }}>
       {/* <Title level={4}>Avatar Panel</Title>
       <Space size="middle" className="mb-4">
         <Button type="primary" onClick={startSession} disabled={isConnected}>

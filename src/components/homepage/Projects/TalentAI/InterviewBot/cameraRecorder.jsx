@@ -281,4 +281,3 @@ export default function CameraRecorder(props) {
         </div>
     );
 }
- 

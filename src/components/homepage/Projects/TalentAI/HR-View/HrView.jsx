@@ -81,7 +81,7 @@ function HrView(){
 
   const handleCopy = (uuid) => {
     // local
-    // const link = `http://localhost:5173/talentai/interview/${uuid}`;
+    // const link = `http://localhost:5173/talentai/uuid/interview/${uuid}`;
     // production
     const link = `https://genai.motherson.com/talentai/uuid/interview/${uuid}`;
     navigator.clipboard.writeText(link).then(() => {
@@ -195,7 +195,7 @@ function HrView(){
                       type="text"
                       className="link"
                       // local
-                      // value={`http://localhost:5173/talentai/interview/${uuid}`}
+                      // value={`http://localhost:5173/talentai/uuid/interview/${uuid}`}
                       // production
                       value={`https://genai.motherson.com/talentai/uuid/interview/${uuid}`}
                       readOnly

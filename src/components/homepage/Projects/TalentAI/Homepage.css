@@ -5,8 +5,8 @@
     align-items: center;
     padding-bottom: 10vh;
 }
-
-
+ 
+ 
 .appDescriptionContainer{
     background-color: #C21D23;
     display: flex;
@@ -22,7 +22,7 @@
 p, h1, h2, h3, h4, h5, h6{
       font-family: 'Poppins', sans-serif;
     }
-    
+   
 .appDescription{
     position: relative;
     background: linear-gradient(to right, #C6141B, #DA2128);
@@ -56,7 +56,7 @@ p, h1, h2, h3, h4, h5, h6{
     font-weight: 600;
     margin-left: 2%;
     margin-top: 30px;
-    
+   
 }
 .appDescription strong {
    color: #ffffff;
@@ -72,7 +72,7 @@ p, h1, h2, h3, h4, h5, h6{
     margin-left: 30px;
     margin-top: 15px;
 }
-
+ 
 .appDescription .date{
     position: absolute;
     top: 3px;
@@ -83,12 +83,12 @@ p, h1, h2, h3, h4, h5, h6{
     flex-direction: column;
     width: 98%;
     margin-top: 5vh;
-
+ 
 }
 .featuresContainer h1{
     font-size: 35px;
 }
-
+ 
 .cardsContainer{
     display: flex;
     flex-direction: row;
@@ -96,15 +96,22 @@ p, h1, h2, h3, h4, h5, h6{
     justify-content: space-around;
     align-items: center;
 }
-
-.featureCard{
+ 
+.featureCard {
     position: relative;
     background-color: white;
     height: 300px;
     width: 21%;
     border-radius: 20px;
+    box-shadow: 0px 0px 4px 2px #ddd;
+    transition: 0.3s all linear;
 }
-
+ 
+.featureCard:hover {
+    box-shadow: 0px 0px 4px 2px #da21286e;
+    transform: scale(1.02);
+}
+ 
 .featureCardName {
     color: #19181B;
     position: absolute;
@@ -120,7 +127,7 @@ p, h1, h2, h3, h4, h5, h6{
     top: 23%;
     left: 32%;
 }
-
+ 
 .featureCardDescription{
     position: absolute;
     top: 63%;
@@ -130,7 +137,7 @@ p, h1, h2, h3, h4, h5, h6{
     text-align: center;
     margin-left: 10%;
 }
-
+ 
 .featureCardButton{
     position: absolute;
     border: none;

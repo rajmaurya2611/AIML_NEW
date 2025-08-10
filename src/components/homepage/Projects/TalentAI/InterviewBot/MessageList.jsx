@@ -1,8 +1,14 @@
-// MessageList.jsx
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import avatar from "../assets_talentAI/avatar.svg";
  
 export default function MessageList({ messages }) {
+  const bottomRef = useRef(null);
+ 
+  useEffect(() => {
+    // Scroll to the bottom every time messages update
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+ 
   return (
     <>
       {messages.map((msg, i) => {
@@ -32,6 +38,8 @@ export default function MessageList({ messages }) {
           </div>
         );
       })}
+      {/* This div is used as the scroll target */}
+      <div ref={bottomRef} />
     </>
   );
 }
