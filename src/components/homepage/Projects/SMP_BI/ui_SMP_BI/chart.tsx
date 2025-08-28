@@ -109,6 +109,7 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
+      labelClassName?: string
     }
 >(
   (
@@ -147,7 +148,7 @@ const ChartTooltipContent = React.forwardRef<
       if (labelFormatter) {
         return (
           <div className={cn("font-medium", labelClassName)}>
-            {labelFormatter(value, payload)}
+            {labelFormatter((value ?? "") as string)}
           </div>
         )
       }
@@ -190,15 +191,26 @@ const ChartTooltipContent = React.forwardRef<
 
             return (
               <div
-                key={item.dataKey}
+                key={typeof item.dataKey === "function" ? String(item.name ?? index) : String(item.dataKey ?? item.name ?? index)}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
                 )}
               >
-                {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
-                ) : (
+               {formatter && item?.value !== undefined && item.name ? (
+  (() => {
+    // Normalize value to the exact type formatter wants
+    const valueFixed: string | number | (string | number)[] =
+      Array.isArray(item.value)
+        ? [...(item.value as ReadonlyArray<string | number>)] // make it mutable
+        : (item.value as string | number)
+
+    const nameFixed = String(item.name)
+
+    return formatter(valueFixed, nameFixed, item as any, index)
+  })()
+) : (
+
                   <>
                     {itemConfig?.icon ? (
                       <itemConfig.icon />
@@ -284,7 +296,7 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`
+          const key = `${nameKey || item.value || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (

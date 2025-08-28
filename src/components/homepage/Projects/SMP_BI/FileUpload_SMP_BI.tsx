@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Paperclip } from "lucide-react";
 import { Button } from "./ui_SMP_BI/button";
 import { useToast } from "./hooks_SMP_BI/use-toast";
