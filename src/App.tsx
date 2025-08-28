@@ -29,7 +29,7 @@ import CvRankingResultPage from './components/homepage/Projects/TalentAI/JobFitR
 import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/interviewBot.jsx';
 // Hr View
 import HrView from './components/homepage/Projects/TalentAI/HR-View/HrView.jsx';
-import SMP_BI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
+import SMPBI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
  
 function App() {
   return (
@@ -113,7 +113,7 @@ function App() {
         <Route path="/talentai/uuid/interview/:uuid" element={<InterviewBot />} />
         <Route path="/talentai/HrView" element={<HrView/>}/>
 
-        <Route path="/smp_bi" element={<SMP_BI/>}/>
+        <Route path="/smpbi" element={<SMPBI/>}/>
       </Routes>
     </BrowserRouter>
   );

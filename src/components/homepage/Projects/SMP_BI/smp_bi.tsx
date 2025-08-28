@@ -10,7 +10,7 @@ const SMP_BI = () => {
 
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-        <Button text="Visit SMP_BI" link="/smp_bi" />
+        <Button text="Visit SMP_BI" link="/smpbi" />
       </div>
 
       {/* Title */}

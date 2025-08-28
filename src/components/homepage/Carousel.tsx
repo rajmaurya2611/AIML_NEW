@@ -133,7 +133,7 @@ const data = [
   },
   {
     category: "",
-    title: "SMP_BI",
+    title: "SMPBI",
     src: do33Image, // Direct reference to imported image
     content: <SMP_BI/>
   },

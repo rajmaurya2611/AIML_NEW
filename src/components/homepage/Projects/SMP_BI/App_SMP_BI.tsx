@@ -7,7 +7,7 @@ import './index_SMP_BI.css';
 
 const queryClient = new QueryClient();
 
-const App_SMP_BI = () => (
+const SMPBI = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -17,4 +17,4 @@ const App_SMP_BI = () => (
   </QueryClientProvider>
 );
 
-export default App_SMP_BI;
+export default SMPBI;
