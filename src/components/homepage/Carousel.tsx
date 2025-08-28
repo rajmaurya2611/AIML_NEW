@@ -26,6 +26,7 @@ import PulseHR from "./Projects/TalentAI/PulseHR";
 import PulseHR_small from "../../assets/images/projects/PulseHR/PulseHR_small.png";
 import do33Image from "../../assets/images/projects/DO33/do33_small.jpg";
 import DO33 from "./Projects/DO33/do33";
+import SMP_BI from "./Projects/SMP_BI/smp_bi";
 
 //import Forkliftcard from "./Projects/Forklift"
 // import M_Translate from "../../assets/images/homepage/M translate.jpg"
@@ -129,6 +130,12 @@ const data = [
     title: "DO33",
     src: do33Image, // Direct reference to imported image
     content: <DO33/>
+  },
+  {
+    category: "",
+    title: "SMP_BI",
+    src: do33Image, // Direct reference to imported image
+    content: <SMP_BI/>
   },
   
   
