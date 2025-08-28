@@ -1,0 +1,132 @@
+// Version 1.0
+import React, { useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { Message, ChatOption } from '../types/chat';
+import ChatHeader from '../components/ChatHeader';
+import ChatContainer from '../components/ChatContainer';
+import ChatInput from '../components/ChatInput';
+import { useToast } from '@/hooks/use-toast';
+ 
+const Index = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+ 
+  const sendMessageToBackend = async (content: string, option: ChatOption) => {
+    setIsLoading(true);
+ 
+    try {
+ 
+      // Uncomment below to call real backend API instead of mock
+     
+      const res = await fetch("http://127.0.0.1:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: content }),
+      });
+ 
+      if (!res.ok) throw new Error("API error");
+ 
+      const data = await res.json();
+      const mockData = {
+        answer: data.answer,
+        sources: data.sources || [],
+      };
+     
+ 
+      // Unescape escaped newlines for correct markdown rendering
+      const unescapedAnswer = mockData.answer.replace(/\\n/g, '\n');
+ 
+      const botMessage: Message = {
+        id: uuidv4(),
+        content: unescapedAnswer,
+        sender: "bot",
+        timestamp: new Date(),
+        sources: mockData.sources || [],
+      };
+ 
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get response from server.",
+        variant: "destructive",
+      });
+      console.error("Backend error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+ 
+  const handleSendMessage = (content: string, option: ChatOption) => {
+    const userMessage: Message = {
+      id: uuidv4(),
+      content,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+ 
+    setMessages(prev => [...prev, userMessage]);
+    sendMessageToBackend(content, option);
+  };
+ 
+  const handleLike = (messageId: string) => {
+    setMessages(prev =>
+      prev.map(msg => {
+        if (msg.id === messageId) {
+          if (msg.liked) {
+            return { ...msg, liked: false, disliked: false, feedbackGiven: false };
+          }
+          return { ...msg, liked: true, disliked: false, feedbackGiven: true };
+        }
+        return msg;
+      })
+    );
+ 
+    toast({
+      title: "Thank you!",
+      description: "Your feedback has been recorded.",
+    });
+  };
+ 
+  const handleDislike = (messageId: string) => {
+    setMessages(prev =>
+      prev.map(msg => {
+        if (msg.id === messageId) {
+          if (msg.disliked) {
+            return { ...msg, liked: false, disliked: false, feedbackGiven: false };
+          }
+          return { ...msg, liked: false, disliked: true, feedbackGiven: true };
+        }
+        return msg;
+      })
+    );
+ 
+    toast({
+      title: "Feedback received",
+      description: "We'll use your feedback to improve.",
+    });
+  };
+ 
+  return (
+    <div className="min-h-screen flex flex-col">
+      <ChatHeader />
+ 
+      <main className="flex-1 flex flex-col max-w-5xl w-full mx-auto px-4 sm:px-6 py-4">
+        <div className="chat-wrapper flex-1 flex flex-col rounded-xl overflow-hidden shadow-sm">
+          <ChatContainer
+            messages={messages}
+            isLoading={isLoading}
+            onLike={handleLike}
+            onDislike={handleDislike}
+          />
+          <div className="p-4 input-wrappper">
+            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+ 
+export default Index;

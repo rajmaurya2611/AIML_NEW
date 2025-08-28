@@ -1,0 +1,235 @@
+import React, { useState } from "react";
+import { Message } from "../types/chat";
+import { ThumbsUp, ThumbsDown, Copy, CheckIcon } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+ 
+interface MessageBubbleProps {
+  message: Message;
+  onLike: (messageId: string) => void;
+  onDislike: (messageId: string) => void;
+}
+ 
+/** Heuristic: treat a cell as numeric if it looks like €, digits, commas/periods, or a dash */
+const looksNumeric = (value: any) => {
+  const s =
+    (Array.isArray(value) ? value[0] : value)?.toString?.().trim?.() ?? "";
+  return /^([€]?\s*)?[-\d][\d,]*(\.\d+)?$/.test(s);
+};
+ 
+const MarkdownTableWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+<div className="relative -mx-1 sm:mx-0 my-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+    {/* subtle gradient edge for UX hint */}
+<div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent" />
+<div className="min-w-full">{children}</div>
+</div>
+);
+ 
+const markdownComponents = {
+  table: (props: any) => (
+<MarkdownTableWrapper>
+<table
+        {...props}
+        className="w-full border-collapse text-[13px] sm:text-sm"
+      />
+</MarkdownTableWrapper>
+  ),
+  thead: (props: any) => (
+<thead
+      {...props}
+      className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10"
+    />
+  ),
+  th: (props: any) => (
+<th
+      {...props}
+      className="px-3 py-2 border-b border-gray-200 text-left whitespace-nowrap"
+    />
+  ),
+  tr: (props: any) => (
+<tr
+      {...props}
+      className="even:bg-white odd:bg-gray-50 border-b border-gray-100 hover:bg-gray-100/60 transition-colors"
+    />
+  ),
+  td: (props: any) => {
+    const numeric = looksNumeric(props.children);
+    return (
+<td
+        {...props}
+        className={[
+          "px-3 py-2 border-b border-gray-100 align-top whitespace-nowrap",
+          numeric ? "text-right tabular-nums" : "text-left",
+        ].join(" ")}
+      />
+    );
+  },
+  code: ({ inline, className, children, ...props }: any) => (
+<code
+      className={`${inline
+          ? "bg-gray-100 px-1 rounded text-red-600"
+          : "block bg-gray-900 text-white p-2 rounded-lg"
+        } ${className || ""}`}
+      {...props}
+>
+      {children}
+</code>
+  ),
+};
+ 
+const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  onLike,
+  onDislike,
+}) => {
+  const isUser = message.sender === "user";
+  const [copied, setCopied] = useState(false);
+ 
+  const handleLike = async () => {
+    onLike(message.id);
+    try {
+      await fetch("http://localhost:5001/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ liked: true }),
+      });
+    } catch (error) {
+      console.error("❌ Failed to send like feedback:", error);
+    }
+  };
+ 
+  const handleDislike = async () => {
+    onDislike(message.id);
+    try {
+      await fetch("http://localhost:5001/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disliked: true }),
+      });
+    } catch (error) {
+      console.error("❌ Failed to send dislike feedback:", error);
+    }
+  };
+ 
+  const handleCopy = (messageId: string) => {
+    const messageToCopy = (message as any).text || message.content;
+    if (!messageToCopy) return;
+    navigator.clipboard
+      .writeText(messageToCopy)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      })
+      .catch((err) => console.error("Failed to copy text:", err));
+  };
+ 
+  return (
+<div className={`flex ${isUser ? "ms-prompt justify-end" : "justify-start"} mb-4`}>
+<div
+        className={[
+          "max-w-[95%] md:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4",
+          isUser
+            ? "bg-chat-red text-white rounded-br-none"
+            : "bg-gray-100 text-gray-900 rounded-bl-none ms-response",
+        ].join(" ")}
+>
+        {isUser ? (
+<p className="text-sm leading-relaxed">{message.content}</p>
+        ) : (
+<div>
+<div className="chat-markdown mayank prose prose-sm sm:prose-base max-w-none prose-headings:mt-0 prose-p:my-2 prose-th:font-semibold prose-code:before:hidden prose-code:after:hidden">
+<ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents as any}
+>
+                {message.content}
+</ReactMarkdown>
+</div>
+ 
+            {/* Sources */}
+            {message.sources && message.sources.length > 0 && (
+<div className="mt-4">
+<p className="text-sm font-semibold mb-2 text-gray-800">
+                  📂 Source files used (click to view):
+</p>
+<div className="flex flex-wrap gap-2">
+                  {message.sources.map((source: any) => (
+<a
+                      key={source.url}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-gray-800 bg-gray-200/60 hover:bg-gray-300 px-3 py-1 rounded-md text-xs sm:text-sm transition-colors"
+>
+                      📄 {source.file}
+</a>
+                  ))}
+</div>
+</div>
+            )}
+ 
+            {/* Feedback */}
+<div className="flex justify-end mt-2 pt-2 border-t border-gray-200/60">
+<div className="flex gap-1.5">
+<button
+                  onClick={handleLike}
+                  className={`rounded-full p-1.5 transition-colors ${
+                    message.liked
+                      ? "bg-green-100 text-green-600"
+                      : "text-gray-400 hover:text-green-600"
+                  }`}
+                  aria-label="Like"
+                  title="Like"
+>
+<ThumbsUp className="w-4 h-4" />
+</button>
+<button
+                  onClick={handleDislike}
+                  className={`rounded-full p-1.5 transition-colors ${
+                    message.disliked
+                      ? "bg-red-100 text-chat-red"
+                      : "text-gray-400 hover:text-chat-red"
+                  }`}
+                  aria-label="Dislike"
+                  title="Dislike"
+>
+<ThumbsDown className="w-4 h-4" />
+</button>
+<button
+                  onClick={() => handleCopy(message.id)}
+                  className={`rounded-full p-1.5 transition-colors ${
+                    copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  aria-label="Copy message"
+                  title="Copy to clipboard"
+>
+                  {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+</button>
+</div>
+</div>
+</div>
+        )}
+</div>
+</div>
+  );
+};
+ 
+export default MessageBubble;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

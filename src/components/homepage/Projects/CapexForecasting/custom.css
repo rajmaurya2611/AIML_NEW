@@ -1,0 +1,74 @@
+header {
+    position: relative;
+}
+.product-logo {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--primary-accent);
+}
+.text-chat-icon {
+    color: #ababab;
+}
+.welcome-wrapper .welcome-heading {
+    color: #5e5e5e;
+}
+.welcome-wrapper .welcome-text {
+    color: #ababab;
+}
+.welcome-wrapper .welcome-heading {
+    font-size: 35px;
+    font-weight: 500;
+}
+
+.welcome-heading-gradient {
+  background: linear-gradient(231deg, #838383 5%, #DA2128 92%, #F16B7C 93%);
+  background-size: 200% 200%; /* make background larger for smooth animation */
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-block;
+
+  animation: gradientShift 5s ease infinite;
+}
+.product-logo-text {
+    color: #5e5e5e;
+}
+.chat-textarea {
+    color: #585858;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.sm-textarea-btn svg {
+    height: 18px;
+    width: 18px;
+    color: #DA2128;
+}
+.ms-prompt .text-white.rounded-br-none {
+    background-color: #F8C8C8;
+    color: #161616;
+}
+/* .chat-wrapper {
+    background-color: #FCFBFB;
+    padding: 20px 10px 5px 10px;
+    box-shadow: 0px 0px 8px 0px #ddd;
+} */
+.chat-textarea {
+    color: #585858;
+    background-color: #FCFBFB;
+}
+.inner-text-body {
+    background-color: #fcfbfb;
+}
