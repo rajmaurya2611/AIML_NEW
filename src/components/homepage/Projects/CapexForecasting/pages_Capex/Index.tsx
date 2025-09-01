@@ -1,43 +1,139 @@
-// Version 1.2 — static markdown response instead of API
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Message, ChatOption } from "../types_Capex/chat";
+import { Message } from "../types_Capex/chat";
 import ChatHeader from "../components_Capex/ChatHeader";
 import ChatContainer from "../components_Capex/ChatContainer";
 import ChatInput from "../components_Capex/ChatInput";
 import { useToast } from "../hooks_Capex/use-toast";
+import { motion } from "framer-motion";
+
+const frequentPrompts = [
+  "Total Investment for FY 25/26",
+  "Total Investment for next 3 years?",
+  "Quarterly Investment for FY 25-26",
+];
+
+const AnimatedPrompts = ({
+  onPromptClick,
+}: {
+  onPromptClick: (query: string) => void;
+}) => (
+  <div className="frequent-prompts flex justify-start gap-4 mb-2">
+    {frequentPrompts.map((prompt, index) => (
+      <motion.button
+        key={prompt}
+        className="cursor-pointer select-none hover:bg-chat-red hover:text-white text-gray-800 px-3 py-1 rounded transition"
+        onClick={() => onPromptClick(prompt)}
+        initial={{ y: 0 }}
+        animate={{ y: [0, -10, 0] }}
+        transition={{
+          delay: index * 0.3,
+          repeat: 0,
+          duration: 0.6,
+          ease: "easeInOut",
+        }}
+      >
+        {prompt}
+      </motion.button>
+    ))}
+  </div>
+);
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const sendMessageToBackend = async (content: string, option: ChatOption) => {
-    // Mark as intentionally unused (keeps signature compatible with callers)
-    void option;
+  // These maintain session context with the backend
+  const sessionIdRef = useRef<string | null>(null);
+  const [selection, setSelection] = useState<string | null>(null);
 
+  // Send message to backend and handle different response types
+  const sendMessageToBackend = async (content: string | null, extraOption?: string | null) => {
     setIsLoading(true);
     try {
+      let payload: any = { user_id: 123 };
+      if (content !== null) payload.message = content;
+      if (sessionIdRef.current) payload.session_id = sessionIdRef.current;
+      if (selection) payload.selection = selection;
+      if (extraOption) payload.selection = extraOption;
+
       const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: content }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
 
-      // ✅ backend returns markdown
-      const markdown = await res.text();
+      // Update sessionId if present
+      if (data.session_id) sessionIdRef.current = data.session_id;
 
-      const botMessage: Message = {
-        id: uuidv4(),
-        content: markdown,
-        sender: "bot",
-        timestamp: new Date(),
-        sources: [],
-      };
+      // Handle menu type
+      if (data.type === "menu" && Array.isArray(data.options)) {
+        const menuMessage: Message = {
+          id: uuidv4(),
+          content:
+            "Please select any one of the options to help me get responses from:",
+          sender: "bot",
+          timestamp: new Date(),
+          options: data.options.map((opt: any) => ({
+            id: opt.id,
+            text: opt.text,
+          })),
+        };
+        setMessages((prev) => [...prev, menuMessage]);
+        setSelection(null);
+        return;
+      }
 
-      setMessages((prev) => [...prev, botMessage]);
+      // Handle clarification type
+      if (data.type === "clarification") {
+        setSelection(data.selection ?? null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            content: data.message || "",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
+
+      // Handle result type
+      if (data.type === "result") {
+        const resultContent = data.bp_table_md || data.message || "";
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uuidv4(),
+            content: resultContent,
+            sender: "bot",
+            timestamp: new Date(),
+            sources: [],
+          },
+        ]);
+        setSelection(null);
+        return;
+      }
+
+      // Fallback for other types
+      const text =
+        data?.response?.message ?? data?.message ?? JSON.stringify(data);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uuidv4(),
+          content: text,
+          sender: "bot",
+          timestamp: new Date(),
+          sources: [],
+        },
+      ]);
     } catch (error) {
       console.error("Backend error:", error);
       toast({
@@ -50,7 +146,8 @@ const Index = () => {
     }
   };
 
-  const handleSendMessage = (content: string, option: ChatOption) => {
+  // Standard text input submit (or clarification)
+  const handleSendMessage = (content: string) => {
     const userMessage: Message = {
       id: uuidv4(),
       content,
@@ -58,7 +155,46 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    sendMessageToBackend(content, option);
+    sendMessageToBackend(content, null);
+  };
+
+  // Frequent prompt quick send
+  const handlePromptClick = async (query: string) => {
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: query,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    await sendMessageToBackend(query, null);
+  };
+
+  // Handle user selecting a menu CTA
+  const handleMenuOptionClick = async (messageId: string, option: { id: string; text: string }) => {
+    // Add user selection message
+    const userSelectionMsg: Message = {
+      id: uuidv4(),
+      content: option.text,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userSelectionMsg]);
+    setSelection(option.text);
+    await sendMessageToBackend(null, option.text);
+
+    // Optionally mark options as selected (or remove them) in original bot message
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId
+          ? {
+              ...msg,
+              options: [],
+              content: `${msg.content} (Selected: ${option.text})`,
+            }
+          : msg
+      )
+    );
   };
 
   const handleLike = (messageId: string) => {
@@ -74,7 +210,10 @@ const Index = () => {
           : msg
       )
     );
-    toast({ title: "Thank you!", description: "Your feedback has been recorded." });
+    toast({
+      title: "Thank you!",
+      description: "Your feedback has been recorded.",
+    });
   };
 
   const handleDislike = (messageId: string) => {
@@ -106,8 +245,10 @@ const Index = () => {
             isLoading={isLoading}
             onLike={handleLike}
             onDislike={handleDislike}
+            onMenuOptionClick={handleMenuOptionClick}
           />
           <div className="p-4 input-wrappper">
+            <AnimatedPrompts onPromptClick={handlePromptClick} />
             <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
           </div>
         </div>

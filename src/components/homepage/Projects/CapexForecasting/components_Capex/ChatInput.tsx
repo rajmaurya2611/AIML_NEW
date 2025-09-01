@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { SendIcon, RefreshCw, Paperclip } from 'lucide-react';
+import { SendIcon, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { ChatOption } from '../types_Capex/chat';
@@ -89,7 +89,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
             aria-label="Attach files"
             title="Attach files"
           >
-            <Paperclip className="w-4 h-4" />
+            {/* <Paperclip className="w-4 h-4 text-chat-red" /> */}
           </Button>
           <input
             type="file"

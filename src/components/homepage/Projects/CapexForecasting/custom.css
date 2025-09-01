@@ -10,27 +10,28 @@ header {
 .text-chat-icon {
     color: #ababab;
 }
-.welcome-wrapper .welcome-heading {
+.welcome-wrapper .welcome-heading-capex {
     color: #5e5e5e;
 }
-.welcome-wrapper .welcome-text {
-    color: #ababab;
+.welcome-wrapper .welcome-text-capex {
+    color: #1F1F1F;
+    font-weight: 600;
+    font-family: sans-serif;
+    font-size: 1.4rem;
 }
-.welcome-wrapper .welcome-heading {
+.welcome-wrapper .welcome-heading-capex {
     font-size: 35px;
-    font-weight: 500;
 }
 
-.welcome-heading-gradient {
-  background: linear-gradient(231deg, #838383 5%, #DA2128 92%, #F16B7C 93%);
-  background-size: 200% 200%; /* make background larger for smooth animation */
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  display: inline-block;
-
-  animation: gradientShift 5s ease infinite;
+.welcome-heading-gradient-capex {
+    background: linear-gradient(90deg, #EE2626 0%, #B41818 100%);
+    background-size: 200% 200%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: inline-block;
+    animation: gradientShift 5s ease infinite;
 }
 .product-logo-text {
     color: #5e5e5e;
@@ -71,4 +72,45 @@ header {
 }
 .inner-text-body {
     background-color: #fcfbfb;
+}
+.capex-logo-text {
+    background: linear-gradient(90deg, #EE2626, #B41818, #EE2626);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientMove 3s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.reset-file-btn p {
+    background-color: #da2128;
+    display: inline-block;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 15px;
+    cursor: pointer;
+}
+.frequent-prompts {
+    display: none !important;
+}
+.frequent-prompts button {
+    font-size: 13px;
+    border: 1px solid #ddd;
+    padding: 5px 12px;
+    border-radius: 15px;
+    color: #cf7376;
+    cursor: pointer;
 }

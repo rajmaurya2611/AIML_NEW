@@ -35,9 +35,9 @@ export interface Message {
   liked?: boolean;
   disliked?: boolean;
   feedbackGiven?: boolean;
-  sources?: { file: string; url: string }[];  // 👈 Add this
+  sources?: { file: string; url: string }[];
+  options?: { id: string; text: string }[]; // 👈 Add this line for menu support
 }
-
 
 export interface ChatSession {
   id: string;

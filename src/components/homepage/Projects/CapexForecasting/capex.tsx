@@ -1,4 +1,5 @@
 import Button from "../../Button"; // Update path to your Lottie JSON file
+import "./custom.css";
 
 const CAPEX = () => {
   return (
