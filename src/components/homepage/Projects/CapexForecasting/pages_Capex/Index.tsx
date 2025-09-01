@@ -105,7 +105,7 @@ const Index = () => {
 
       // Handle result type
       if (data.type === "result") {
-        const resultContent = data.bp_table_md || data.message || "";
+        const resultContent = data.bp_table_md || data.bet_table_md ||data.total_table_md || data.message || "";
         setMessages((prev) => [
           ...prev,
           {
