@@ -46,17 +46,15 @@ const Index = () => {
 
   // These maintain session context with the backend
   const sessionIdRef = useRef<string | null>(null);
-  const [selection, setSelection] = useState<string | null>(null);
+ // const [selection, setSelection] = useState<string | null>(null);
 
   // Send message to backend and handle different response types
-  const sendMessageToBackend = async (content: string | null, extraOption?: string | null) => {
+  const sendMessageToBackend = async (content: string | null) => {
     setIsLoading(true);
     try {
       let payload: any = { user_id: 123 };
       if (content !== null) payload.message = content;
       if (sessionIdRef.current) payload.session_id = sessionIdRef.current;
-      if (selection) payload.selection = selection;
-      if (extraOption) payload.selection = extraOption;
 
       const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/ask`, {
         method: "POST",
@@ -84,13 +82,13 @@ const Index = () => {
           })),
         };
         setMessages((prev) => [...prev, menuMessage]);
-        setSelection(null);
+        //setSelection(null);
         return;
       }
 
       // Handle clarification type
       if (data.type === "clarification") {
-        setSelection(data.selection ?? null);
+        //setSelection(data.selection ?? null);
         setMessages((prev) => [
           ...prev,
           {
@@ -105,7 +103,22 @@ const Index = () => {
 
       // Handle result type
       if (data.type === "result") {
-        const resultContent = data.bp_table_md || data.bet_table_md ||data.total_table_md || data.message || "";
+        const parts = [];
+
+  if (data.bp_table_md) {
+    parts.push(`### 📊 My Investment (BP)\n\n${data.bp_table_md}`);
+  }
+  if (data.bet_table_md) {
+    parts.push(`### 👥 Customer Investment (BET)\n\n${data.bet_table_md}`);
+  }
+  if (data.total_table_md) {
+    parts.push(`### 💰 Total Investment\n\n${data.total_table_md}`);
+  }
+  if (data.message) {
+    parts.push(`### ℹ️ Note\n\n${data.message}`);
+  }
+
+  const resultContent = parts.join("\n\n"); // join with spacing// join with spacing
         setMessages((prev) => [
           ...prev,
           {
@@ -116,7 +129,7 @@ const Index = () => {
             sources: [],
           },
         ]);
-        setSelection(null);
+       // setSelection(null);
         return;
       }
 
@@ -155,7 +168,7 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    sendMessageToBackend(content, null);
+    sendMessageToBackend(content);
   };
 
   // Frequent prompt quick send
@@ -167,7 +180,7 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-    await sendMessageToBackend(query, null);
+    await sendMessageToBackend(query);
   };
 
   // Handle user selecting a menu CTA
@@ -180,8 +193,9 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userSelectionMsg]);
-    setSelection(option.text);
-    await sendMessageToBackend(null, option.text);
+    
+
+    await sendMessageToBackend(option.id);
 
     // Optionally mark options as selected (or remove them) in original bot message
     setMessages((prev) =>
