@@ -6,13 +6,13 @@ import ChatContainer from "../components_Capex/ChatContainer";
 import ChatInput from "../components_Capex/ChatInput";
 import { useToast } from "../hooks_Capex/use-toast";
 import { motion } from "framer-motion";
-
+ 
 const frequentPrompts = [
   "Total Investment for FY 25/26",
   "Total Investment for next 3 years?",
   "Quarterly Investment for FY 25-26",
 ];
-
+ 
 const AnimatedPrompts = ({
   onPromptClick,
 }: {
@@ -38,16 +38,16 @@ const AnimatedPrompts = ({
     ))}
   </div>
 );
-
+ 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
+ 
   // These maintain session context with the backend
   const sessionIdRef = useRef<string | null>(null);
  // const [selection, setSelection] = useState<string | null>(null);
-
+ 
   // Send message to backend and handle different response types
   const sendMessageToBackend = async (content: string | null) => {
     setIsLoading(true);
@@ -55,19 +55,19 @@ const Index = () => {
       let payload: any = { user_id: 123 };
       if (content !== null) payload.message = content;
       if (sessionIdRef.current) payload.session_id = sessionIdRef.current;
-
+ 
       const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
+ 
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
-
+ 
       // Update sessionId if present
       if (data.session_id) sessionIdRef.current = data.session_id;
-
+ 
       // Handle menu type
       if (data.type === "menu" && Array.isArray(data.options)) {
         const menuMessage: Message = {
@@ -85,7 +85,7 @@ const Index = () => {
         //setSelection(null);
         return;
       }
-
+ 
       // Handle clarification type
       if (data.type === "clarification") {
         //setSelection(data.selection ?? null);
@@ -100,11 +100,11 @@ const Index = () => {
         ]);
         return;
       }
-
+ 
       // Handle result type
       if (data.type === "result") {
         const parts = [];
-
+ 
   if (data.bp_table_md) {
     parts.push(`### 📊 My Investment (BP)\n\n${data.bp_table_md}`);
   }
@@ -117,7 +117,7 @@ const Index = () => {
   if (data.message) {
     parts.push(`### ℹ️ Note\n\n${data.message}`);
   }
-
+ 
   const resultContent = parts.join("\n\n"); // join with spacing// join with spacing
         setMessages((prev) => [
           ...prev,
@@ -132,11 +132,11 @@ const Index = () => {
        // setSelection(null);
         return;
       }
-
+ 
       // Fallback for other types
       const text =
         data?.response?.message ?? data?.message ?? JSON.stringify(data);
-
+ 
       setMessages((prev) => [
         ...prev,
         {
@@ -158,7 +158,7 @@ const Index = () => {
       setIsLoading(false);
     }
   };
-
+ 
   // Standard text input submit (or clarification)
   const handleSendMessage = (content: string) => {
     const userMessage: Message = {
@@ -170,7 +170,7 @@ const Index = () => {
     setMessages((prev) => [...prev, userMessage]);
     sendMessageToBackend(content);
   };
-
+ 
   // Frequent prompt quick send
   const handlePromptClick = async (query: string) => {
     const userMessage: Message = {
@@ -182,7 +182,7 @@ const Index = () => {
     setMessages((prev) => [...prev, userMessage]);
     await sendMessageToBackend(query);
   };
-
+ 
   // Handle user selecting a menu CTA
   const handleMenuOptionClick = async (messageId: string, option: { id: string; text: string }) => {
     // Add user selection message
@@ -193,10 +193,10 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userSelectionMsg]);
-    
-
+   
+ 
     await sendMessageToBackend(option.id);
-
+ 
     // Optionally mark options as selected (or remove them) in original bot message
     setMessages((prev) =>
       prev.map((msg) =>
@@ -210,7 +210,7 @@ const Index = () => {
       )
     );
   };
-
+ 
   const handleLike = (messageId: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
@@ -229,7 +229,7 @@ const Index = () => {
       description: "Your feedback has been recorded.",
     });
   };
-
+ 
   const handleDislike = (messageId: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
@@ -248,7 +248,7 @@ const Index = () => {
       description: "We'll use your feedback to improve.",
     });
   };
-
+ 
   return (
     <div className="min-h-screen flex flex-col">
       <ChatHeader />
@@ -270,5 +270,7 @@ const Index = () => {
     </div>
   );
 };
-
+ 
 export default Index;
+ 
+ 

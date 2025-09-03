@@ -11,7 +11,7 @@ const CAPEX = () => {
 
       {/* Button */}
       <div className="flex justify-center items-center mb-6">
-        <Button text="Visit SMP_BI" link="/capex-forecasting" />
+        <Button text="Visit Capex" link="/capex-forecasting" />
       </div>
 
       {/* Title */}

@@ -439,7 +439,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Message } from "../types_Capex/chat";
-import { ThumbsUp, ThumbsDown, Copy, CheckIcon } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Copy, CheckIcon, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
@@ -489,7 +489,7 @@ const looksNumeric = (value: any) => {
 
 const MarkdownTableWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="relative -mx-1 sm:mx-0 my-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-    <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent" />
+    <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent invisible" />
     <div className="min-w-full">{children}</div>
   </div>
 );
@@ -507,10 +507,7 @@ const markdownComponents = {
     <th {...props} className="px-3 py-2 border-b border-gray-200 text-left whitespace-nowrap" />
   ),
   tr: (props: any) => (
-    <tr
-      {...props}
-      className="even:bg-white odd:bg-gray-50 border-b border-gray-100 hover:bg-gray-100/60 transition-colors"
-    />
+    <tr {...props} className="even:bg-white odd:bg-gray-50 border-b border-gray-100 hover:bg-gray-100/60 transition-colors" />
   ),
   td: (props: any) => {
     const numeric = looksNumeric(props.children);
@@ -608,8 +605,7 @@ const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
 };
 
 const pivotTable = (pt: ParsedTable): PivotResult => {
-  // headers[0] is label (e.g., "Project"), the rest are months
-  const months = pt.headers.slice(1); // <- avoid unused 'first'
+  const months = pt.headers.slice(1);
 
   const nameCount: Record<string, number> = {};
   let totalsRowIndex = -1;
@@ -667,8 +663,6 @@ const formatCurrency = (n: number) =>
 
 const colorForIndex = (i: number) => `hsl(${(i * 67) % 360} 70% 45%)`;
 
-// /* ------------------------------ Component ------------------------------ */
-
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   onLike,
@@ -677,6 +671,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const isUser = message.sender === "user";
   const [copied, setCopied] = useState(false);
+  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
 
   const { text: displayText, status } = React.useMemo(
     () => normalizeContent(message.content ?? ""),
@@ -698,7 +694,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ liked: true }),
+        body: JSON.stringify({ message_id: message.id, feedback: "like", content: displayText }),
       });
     } catch (error) {
       console.error("❌ Failed to send like feedback:", error);
@@ -711,10 +707,34 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ disliked: true }),
+        body: JSON.stringify({ message_id: message.id, feedback: "dislike", content: displayText }),
       });
     } catch (error) {
       console.error("❌ Failed to send dislike feedback:", error);
+    }
+  };
+
+  const submitFeedbackText = async () => {
+    if (!feedbackText.trim()) {
+      alert("Please enter feedback text");
+      return;
+    }
+    try {
+      await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: message.id,
+          feedback: "text",
+          content: feedbackText.trim(),
+        }),
+      });
+      setShowFeedbackPopup(false);
+      setFeedbackText("");
+      alert("Thank you for your feedback!");
+    } catch (error) {
+      console.error("❌ Failed to send text feedback:", error);
+      alert("Failed to send feedback, please try again.");
     }
   };
 
@@ -730,43 +750,67 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       .catch((err) => console.error("Failed to copy text:", err));
   };
 
-  // Menu options block
   const hasMenuOptions = message.options && message.options.length > 0;
 
-  const downloadExcel = () => {
-    if (pivoted.length === 0) {
-      alert("No tables to download.");
-      return;
+  const downloadOneMarkdownTableAsExcel = (tableMarkdown: string, tableHeading: string) => {
+  // Extract a single table from markdown string
+  const lines = tableMarkdown.split('\n');
+  let tableStart = -1, tableEnd = -1;
+  for (let i = 0; i < lines.length; ++i) {
+    if (lines[i].startsWith("|")) {
+      if (tableStart === -1) tableStart = i;
+      tableEnd = i;
     }
+  }
+  if (tableStart === -1 || tableEnd === -1) {
+    alert("Table not found.");
+    return;
+  }
 
-    const wb = XLSX.utils.book_new();
+  // Optionally extract the headers from the heading above table, or use `tableHeading`
+  let title = tableHeading;
+  for (let i = tableStart - 1; i >= 0; --i) {
+    if (lines[i].startsWith("###")) {
+      title = lines[i].replace(/^#{2,}\s*/, "");
+      break;
+    }
+  }
 
-    pivoted.forEach((table) => {
-      // Compose a sheet data array: headers + rows
-      const sheetData = [
-        [table.tableTitle], // Optional title as first row
-        [""], // Empty row as spacer
-        [table.months.length > 0 ? "Month" : "", ...table.seriesKeys],
-      ];
+  const body = lines.slice(tableStart, tableEnd+1).join('\n');
+  // Parse using your existing markdown parser
+  const [parsed] = parseAllMarkdownTables(body);
 
-      table.dataByMonth.forEach((row: Record<string, string | number>) => {
-        const rowData = [row.month || ""];
-        table.seriesKeys.forEach((key: string) => {
-          rowData.push(row[key] ?? "");
-        });
-        sheetData.push(rowData);
-      });
+  if (!parsed) {
+    alert("Could not parse table.");
+    return;
+  }
 
-      // Create worksheet and append to workbook
-      const ws = XLSX.utils.aoa_to_sheet(sheetData);
-      XLSX.utils.book_append_sheet(wb, ws, table.tableTitle.substring(0, 31)); // Excel sheet names max 31 chars
-    });
+  // Prepare padded rows
+  const colCount = parsed.headers.length;
+  const sheetData: any[] = [];
+  // Add table title as first row (optional)
+  sheetData.push([title]);
+  // Empty row for spacing
+  sheetData.push([]);
+  // Headers
+  sheetData.push(parsed.headers);
+  // Rows (pad or trim as needed)
+  parsed.rows.forEach(row =>
+    sheetData.push([
+      ...row.slice(0, colCount),
+      ...Array(Math.max(colCount - row.length, 0)).fill("")
+    ])
+  );
 
-    // Generate excel file and trigger download
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
-    saveAs(blob, `CapexData_${new Date().toISOString()}.xlsx`);
-  };
+  // Export as Excel
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31) || "Sheet");
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], { type: "application/octet-stream" });
+  saveAs(blob, `${title.replace(/\s+/g, '_')}_${new Date().toISOString()}.xlsx`);
+};
+
 
 
   return (
@@ -783,25 +827,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           <p className="text-sm leading-relaxed">{displayText}</p>
         ) : (
           <div>
-            {/* Menu options rendering */}
             {hasMenuOptions && onMenuOptionClick && (
               <div>
                 <p className="mb-3 text-base text-gray-800">{message.content}</p>
                 <div className="flex gap-4 flex-wrap">
-                  {Array.isArray(message.options) && message.options.map((opt) => (
-                    <button
-                      key={opt.id}
-                      className="text-[#da2128] px-3 py-1 border border-[#ddd] rounded-xl text-sm hover:text-[#fff] hover:bg-[#da2128] transition"
-                      onClick={() => onMenuOptionClick(message.id, opt)}
-                    >
-                      {opt.text}
-                    </button>
-                  ))}
+                  {Array.isArray(message.options) &&
+                    message.options.map((opt) => (
+                      <button
+                        key={opt.id}
+                        className="text-[#da2128] px-3 py-1 border border-[#ddd] rounded-xl text-sm hover:text-[#fff] hover:bg-[#da2128] transition"
+                        onClick={() => onMenuOptionClick(message.id, opt)}
+                      >
+                        {opt.text}
+                      </button>
+                    ))}
                 </div>
               </div>
             )}
 
-            {/* Standard (non-menu) content */}
             {!hasMenuOptions && (
               <>
                 {status === "clarification" && (
@@ -820,7 +863,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <div className="mt-6 space-y-10">
                     <div className="mb-4 text-right">
                       <button
-                        onClick={downloadExcel}
+                        onClick={() => downloadOneMarkdownTableAsExcel(displayText, "Total Investment")}
                         className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
                         title="Download all tables as Excel"
                       >
@@ -828,44 +871,103 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       </button>
                     </div>
                     {pivoted.map((piv, tIdx) => (
-                      <div key={tIdx} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                      <div
+                        key={tIdx}
+                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6"
+                      >
                         <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
                           {piv.tableTitle} — Visualization
                         </h4>
                         <div className="mb-6">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2">Monthly trend by project</h5>
-                          <ResponsiveContainer width="100%" height={320}>
-                            <LineChart data={piv.dataByMonth}>
-                              <CartesianGrid strokeDasharray="4 4" />
-                              <XAxis dataKey="month" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                              <YAxis tickFormatter={(v) => formatCurrency(v as number)} tick={{ fontSize: 12 }} width={90} />
-                              <Tooltip formatter={(value: any, name: string) => [formatCurrency(Number(value)), name]} labelFormatter={(label) => label} />
-                              <Legend wrapperStyle={{ fontSize: 12 }} />
-                              {piv.seriesKeys.map((key: string, i: number) => (
-                                <Line
-                                  key={key}
-                                  type="monotone"
-                                  dataKey={key}
-                                  stroke={colorForIndex(i)}
-                                  dot={false}
-                                  strokeWidth={2}
-                                  isAnimationActive={true}
-                                />
-                              ))}
-                            </LineChart>
-                          </ResponsiveContainer>
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">
+                            Monthly trend by project
+                          </h5>
+                         <ResponsiveContainer width="100%" height={350}>
+  <LineChart
+    data={piv.dataByMonth}
+    margin={{ top: 20, right: 20, left: 40, bottom: 60 }} // <-- increase bottom!
+  >
+    <CartesianGrid strokeDasharray="4 4" />
+    <XAxis
+      dataKey="month"
+      tick={{ fontSize: 12 }}
+      interval={0}
+      angle={-20}
+      textAnchor="end"
+      height={50}
+    />
+    <YAxis
+      tickFormatter={(v) => formatCurrency(v as number)}
+      tick={{ fontSize: 12 }}
+      width={90}
+    />
+    <Tooltip
+      formatter={(value: any, name: string) => [
+        formatCurrency(Number(value)),
+        name,
+      ]}
+      labelFormatter={(label) => label}
+    />
+    <Legend
+      verticalAlign="bottom"
+      align="center"
+      wrapperStyle={{
+        paddingTop: 12,
+        marginTop: 40,
+        fontSize: 13,
+        lineHeight: '21px',
+        width: '100%',
+        whiteSpace: 'normal',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'center'
+      }}
+    />
+    {piv.seriesKeys.map((key: string, i: number) => (
+      <Line
+        key={key}
+        type="monotone"
+        dataKey={key}
+        stroke={colorForIndex(i)}
+        dot={false}
+        strokeWidth={2}
+        isAnimationActive={true}
+      />
+    ))}
+  </LineChart>
+</ResponsiveContainer>
                         </div>
                         {piv.monthlyTotals && (
                           <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">Monthly totals</h5>
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">
+                              Monthly totals
+                            </h5>
                             <ResponsiveContainer width="100%" height={300}>
                               <BarChart data={piv.dataByMonth}>
                                 <CartesianGrid strokeDasharray="4 4" />
-                                <XAxis dataKey="month" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                                <YAxis tickFormatter={(v) => formatCurrency(v as number)} tick={{ fontSize: 12 }} width={90} />
-                                <Tooltip formatter={(value: any) => formatCurrency(Number(value))} labelFormatter={(label) => label} />
+                                <XAxis
+                                  dataKey="month"
+                                  tick={{ fontSize: 12 }}
+                                  interval={0}
+                                  angle={-20}
+                                  textAnchor="end"
+                                  height={50}
+                                />
+                                <YAxis
+                                  tickFormatter={(v) => formatCurrency(v as number)}
+                                  tick={{ fontSize: 12 }}
+                                  width={90}
+                                />
+                                <Tooltip
+                                  formatter={(value: any) => formatCurrency(Number(value))}
+                                  labelFormatter={(label) => label}
+                                />
                                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                                <Bar dataKey="Monthly total" fill={colorForIndex(9)} isAnimationActive={true} />
+                                <Bar
+                                  dataKey="Monthly total"
+                                  fill={colorForIndex(9)}
+                                  isAnimationActive={true}
+                                />
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
@@ -896,36 +998,80 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </div>
                 )}
 
-                <div className="flex justify-end mt-2 pt-2 border-t border-gray-200/60">
-                  <div className="flex gap-1.5">
+                {/* Feedback / actions */}
+                <div className="flex justify-end mt-2 pt-2 border-t border-gray-200/60 items-center gap-1.5">
+                  <button
+                    onClick={handleLike}
+                    className={`rounded-full p-1.5 transition-colors ${
+                      message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"
+                    }`}
+                    aria-label="Like"
+                    title="Like"
+                  >
+                    <ThumbsUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleDislike}
+                    className={`rounded-full p-1.5 transition-colors ${
+                      message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"
+                    }`}
+                    aria-label="Dislike"
+                    title="Dislike"
+                  >
+                    <ThumbsDown className="w-4 h-4" />
+                  </button>
+
+                  {/* Feedback popup */}
+                  <div className="relative">
                     <button
-                      onClick={handleLike}
-                      className={`rounded-full p-1.5 transition-colors ${message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"
-                        }`}
-                      aria-label="Like"
-                      title="Like"
+                      onClick={() => setShowFeedbackPopup(!showFeedbackPopup)}
+                      className="rounded-full p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+                      aria-label="Provide textual feedback"
+                      title="Provide textual feedback"
                     >
-                      <ThumbsUp className="w-4 h-4" />
+                      <MessageSquare className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={handleDislike}
-                      className={`rounded-full p-1.5 transition-colors ${message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"
-                        }`}
-                      aria-label="Dislike"
-                      title="Dislike"
-                    >
-                      <ThumbsDown className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleCopy}
-                      className={`rounded-full p-1.5 transition-colors ${copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
-                        }`}
-                      aria-label="Copy message"
-                      title="Copy to clipboard"
-                    >
-                      {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
+
+                    {showFeedbackPopup && (
+                      <div className="absolute right-0 mt-2 w-64 bg-white rounded shadow-lg p-3 z-20">
+                        <textarea
+                          className="w-full p-2 border border-gray-300 rounded resize-none text-sm"
+                          rows={3}
+                          placeholder="Enter your feedback..."
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button
+                            onClick={() => {
+                              setShowFeedbackPopup(false);
+                              setFeedbackText("");
+                            }}
+                            className="px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={submitFeedbackText}
+                            className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition"
+                          >
+                            Submit
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  <button
+                    onClick={handleCopy}
+                    className={`rounded-full p-1.5 transition-colors ${
+                      copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
+                    }`}
+                    aria-label="Copy message"
+                    title="Copy to clipboard"
+                  >
+                    {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
                 </div>
               </>
             )}
@@ -937,3 +1083,4 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 };
 
 export default MessageBubble;
+
