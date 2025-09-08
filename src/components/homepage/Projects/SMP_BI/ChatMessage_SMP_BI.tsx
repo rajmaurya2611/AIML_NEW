@@ -20,56 +20,15 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
   const handleLike = () => {
     const wasLiked = likeStatus === "liked";
     setLikeStatus(wasLiked ? null : "liked");
-
     toast({
       title: wasLiked ? "Like removed" : "Thanks for your feedback!",
       description: wasLiked ? "Feedback cleared" : "We're glad this response was helpful",
     });
   };
 
-  // const handleLike = async () => {
-  //   const wasLiked = likeStatus === "liked";
-  //   const newStatus = wasLiked ? null : "liked";
-
-  //   setLikeStatus(newStatus);
-
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append("like", String(newStatus));
-      
-  //     const response = await fetch(`${import.meta.env.VITE_SMP_BI_BASE_URL}/like-dislike`, {
-  //       method: "POST",
-  //       body: formData,
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to update like status");
-  //     }
-
-  //     toast({
-  //       title: wasLiked ? "Like removed" : "Thanks for your feedback!",
-  //       description: wasLiked
-  //         ? "Feedback cleared"
-  //         : "We're glad this response was helpful",
-  //     });
-  //   } catch (error) {
-  //     console.error("Error updating like status:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: "Something went wrong while updating like status",
-  //       variant: "destructive",
-  //     });
-
-  //     // Rollback state on error
-  //     setLikeStatus(wasLiked ? "liked" : null);
-  //   }
-  // };
-
-
   const handleDislike = () => {
     const wasDisliked = likeStatus === "disliked";
     setLikeStatus(wasDisliked ? null : "disliked");
-
     toast({
       title: wasDisliked ? "Dislike removed" : "Feedback received",
       description: wasDisliked ? "Feedback cleared" : "We'll work on improving our responses",
@@ -77,55 +36,14 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
     });
   };
 
-  // const handleDislike = async () => {
-  //   const wasDisliked = likeStatus === "disliked";
-  //   const newStatus = wasDisliked ? null : "disliked";
-
-  //   setLikeStatus(newStatus);
-
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append("dislike", String(newStatus));
-      
-  //     const response = await fetch(`${import.meta.env.VITE_SMP_BI_BASE_URL}/like-dislike`, {
-  //       method: "POST",
-  //       body: formData,
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to update dislike status");
-  //     }
-
-  //     toast({
-  //       title: wasDisliked ? "Dislike removed" : "Feedback received",
-  //       description: wasDisliked
-  //         ? "Feedback cleared"
-  //         : "We'll work on improving our responses",
-  //       variant: wasDisliked ? "default" : "destructive",
-  //     });
-  //   } catch (error) {
-  //     console.error("Error updating dislike status:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: "Something went wrong while updating dislike status",
-  //       variant: "destructive",
-  //     });
-
-  //     // Rollback state on error
-  //     setLikeStatus(wasDisliked ? "disliked" : null);
-  //   }
-  // };
-
   const downloadCSV = () => {
     if (!tableData) return;
-
     const csvContent = [
-      tableData.headers.join(","), // headers
+      tableData.headers.join(","),
       ...tableData.rows.map((row) =>
         row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
       )
     ].join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -135,7 +53,6 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
     link.click();
     document.body.removeChild(link);
   };
-
 
   const downloadExcel = () => {
     if (!tableData) return;
@@ -160,12 +77,20 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
 
       <div className={`max-w-[70%] ${isBot ? "order-2" : "order-1"}`}>
         <div
-          className={`rounded-lg px-4 py-3 ${isBot
-            ? "bg-card text-card-foreground border border-border"
-            : "bg-primary text-primary-foreground"
-            }`}
+          className={`rounded-lg px-4 py-3 ${
+            isBot ? "bg-card text-card-foreground border border-border"
+                  : "bg-primary text-primary-foreground"
+          }`}
         >
-          {isTable && tableData ? (
+          {/* ✅ Always render description/message if provided */}
+          {message && (
+            <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap break-words">
+              {message}
+            </p>
+          )}
+
+          {/* ✅ Then render table if present */}
+          {isTable && tableData && (
             <div>
               <div className="max-h-64 max-w-full overflow-auto rounded-md border border-border bg-background">
                 <table className="w-full text-sm">
@@ -202,8 +127,6 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
                 </Button>
               </div>
             </div>
-          ) : (
-            <p className="text-sm leading-relaxed">{message}</p>
           )}
         </div>
 
@@ -214,10 +137,11 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
               variant="ghost"
               size="sm"
               onClick={handleLike}
-              className={`action-button h-8 w-8 p-0 ${likeStatus === "liked"
-                ? "text-success hover:text-success"
-                : "text-muted-foreground hover:text-success"
-                }`}
+              className={`action-button h-8 w-8 p-0 ${
+                likeStatus === "liked"
+                  ? "text-success hover:text-success"
+                  : "text-muted-foreground hover:text-success"
+              }`}
             >
               <ThumbsUp className="h-4 w-4" />
             </Button>
@@ -226,10 +150,11 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
               variant="ghost"
               size="sm"
               onClick={handleDislike}
-              className={`action-button h-8 w-8 p-0 ${likeStatus === "disliked"
-                ? "text-destructive hover:text-destructive"
-                : "text-muted-foreground hover:text-destructive"
-                }`}
+              className={`action-button h-8 w-8 p-0 ${
+                likeStatus === "disliked"
+                  ? "text-destructive hover:text-destructive"
+                  : "text-muted-foreground hover:text-destructive"
+              }`}
             >
               <ThumbsDown className="h-4 w-4" />
             </Button>
