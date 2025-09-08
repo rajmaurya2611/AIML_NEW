@@ -106,16 +106,16 @@ const Index = () => {
         const parts = [];
  
   if (data.bp_table_md) {
-    parts.push(`### 📊 My Investment (BP)\n\n${data.bp_table_md}`);
+    parts.push(`### My Investment (BP)\n\n${data.bp_table_md}`);
   }
   if (data.bet_table_md) {
-    parts.push(`### 👥 Customer Investment (BET)\n\n${data.bet_table_md}`);
+    parts.push(`### Customer Investment (BET)\n\n${data.bet_table_md}`);
   }
   if (data.total_table_md) {
-    parts.push(`### 💰 Total Investment\n\n${data.total_table_md}`);
+    parts.push(`### Total Investment\n\n${data.total_table_md}`);
   }
   if (data.message) {
-    parts.push(`### ℹ️ Note\n\n${data.message}`);
+    parts.push(`### Note\n\n${data.message}`);
   }
  
   const resultContent = parts.join("\n\n"); // join with spacing// join with spacing

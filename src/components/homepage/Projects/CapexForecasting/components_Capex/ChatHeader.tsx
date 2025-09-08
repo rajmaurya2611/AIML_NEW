@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Logo from '../assets_Capex/logo.png';
-import { Upload, MoreVertical } from "lucide-react";
+import { Upload, MoreVertical, Files, Download } from "lucide-react";
 import { useToast } from '../hooks_Capex/use-toast';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,6 +15,13 @@ const ChatHeader: React.FC = () => {
   // State to show/hide filename tooltip or panel for BET and BP
   const [showBetFileName, setShowBetFileName] = useState(false);
   const [showBpFileName, setShowBpFileName] = useState(false);
+
+  const [ellipsisOpen, setEllipsisOpen] = useState(false);
+  const ellipsisRef = useRef<HTMLDivElement>(null);
+
+  const [showFilesPopup, setShowFilesPopup] = useState(false);
+  const [filesData, setFilesData] = useState<string[]>([]);
+
 
   // Handle upload button clicks and hit respective APIs
   const handleUpload = async (fileType: "BET" | "BP") => {
@@ -132,6 +139,81 @@ const ChatHeader: React.FC = () => {
     );
   };
 
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        ellipsisRef.current &&
+        !ellipsisRef.current.contains(event.target as Node)
+      ) {
+        setEllipsisOpen(false);
+      }
+    }
+    if (ellipsisOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [ellipsisOpen]);
+
+  // Dropdown menu component
+  const ellipsisMenu = (
+    <AnimatePresence>
+      {ellipsisOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute right-[15px] top-[40px] mt-2 w-56 bg-white rounded-lg shadow-lg border z-50"
+        >
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            onClick={async () => {
+              // Uncomment this when ready for real API call
+              try {
+                const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/list_data_files`, { method: "GET" });
+                const data = await res.json();
+                setFilesData(data.files);
+              } catch (err) {
+                setFilesData(["Error fetching files"]);
+              }
+
+              // Dummy data for development preview
+              // setFilesData([
+              //   "BET_Q3.csv",
+              //   "BP_schedule_July.xlsx",
+              //   "MPP_Commodities_2025.csv",
+              //   "historic_analysis.xls"
+              // ]);
+              setShowFilesPopup(true);
+              setEllipsisOpen(false); // optionally close menu
+            }}
+          >
+            <Files className="w-3 h-3 text-red-600" />
+            Show all files
+          </button>
+
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          // onClick={() => { ... }}
+          >
+            <Upload className="w-3 h-3 text-red-600" />
+            Upload MPP commodity data
+          </button>
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          // onClick={() => { ... }}
+          >
+            {/* Download icon, or use a suitable Lucide icon */}
+            <Download className="w-3 h-3 text-red-600" />
+            Download MPP commodity data
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   return (
     <header className="w-full pt-4 pb-3 px-4 sm:px-6">
       <div className="flex items-center justify-between">
@@ -166,8 +248,48 @@ const ChatHeader: React.FC = () => {
             </button>
             {filenameDisplay(uploadedBPFile, showBpFileName, () => setShowBpFileName(!showBpFileName))}
           </div>
+          <div ref={ellipsisRef} className="relative flex items-center">
+            <button
+              onClick={() => setEllipsisOpen((v) => !v)}
+              className="p-2 rounded-full hover:bg-gray-100"
+              aria-label="Show actions"
+            >
+              <MoreVertical className="w-6 h-6 text-gray-700" />
+            </button>
+            {ellipsisMenu}
+          </div>
         </div>
       </div>
+      <AnimatePresence>
+        {showFilesPopup && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          >
+            <div className="bg-white rounded-lg shadow-xl p-6 min-w-[600px] max-w-[95vw] max-h-[650px] overflow-auto">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-base font-semibold text-[#da2128]">Uploaded Files</h2>
+                <button
+                  onClick={() => setShowFilesPopup(false)}
+                  className="text-gray-400 hover:text-gray-700"
+                  aria-label="Close"
+                >
+                  &#x2715;
+                </button>
+              </div>
+              <ul className="list-disc pl-4">
+                {filesData.map((fname, idx) => (
+                  <li key={idx} className="py-1">{fname}</li>
+                ))}
+              </ul>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </header>
   );
 };

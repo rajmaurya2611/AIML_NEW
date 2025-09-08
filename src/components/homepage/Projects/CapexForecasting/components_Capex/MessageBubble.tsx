@@ -444,6 +444,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import {
   LineChart,
   Line,
@@ -753,63 +755,88 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const hasMenuOptions = message.options && message.options.length > 0;
 
   const downloadOneMarkdownTableAsExcel = (tableMarkdown: string, tableHeading: string) => {
-  // Extract a single table from markdown string
-  const lines = tableMarkdown.split('\n');
-  let tableStart = -1, tableEnd = -1;
-  for (let i = 0; i < lines.length; ++i) {
-    if (lines[i].startsWith("|")) {
-      if (tableStart === -1) tableStart = i;
-      tableEnd = i;
+    // Extract a single table from markdown string
+    const lines = tableMarkdown.split('\n');
+    let tableStart = -1, tableEnd = -1;
+    for (let i = 0; i < lines.length; ++i) {
+      if (lines[i].startsWith("|")) {
+        if (tableStart === -1) tableStart = i;
+        tableEnd = i;
+      }
     }
-  }
-  if (tableStart === -1 || tableEnd === -1) {
-    alert("Table not found.");
-    return;
-  }
-
-  // Optionally extract the headers from the heading above table, or use `tableHeading`
-  let title = tableHeading;
-  for (let i = tableStart - 1; i >= 0; --i) {
-    if (lines[i].startsWith("###")) {
-      title = lines[i].replace(/^#{2,}\s*/, "");
-      break;
+    if (tableStart === -1 || tableEnd === -1) {
+      alert("Table not found.");
+      return;
     }
-  }
 
-  const body = lines.slice(tableStart, tableEnd+1).join('\n');
-  // Parse using your existing markdown parser
-  const [parsed] = parseAllMarkdownTables(body);
+    // Optionally extract the headers from the heading above table, or use `tableHeading`
+    let title = tableHeading;
+    for (let i = tableStart - 1; i >= 0; --i) {
+      if (lines[i].startsWith("###")) {
+        title = lines[i].replace(/^#{2,}\s*/, "");
+        break;
+      }
+    }
 
-  if (!parsed) {
-    alert("Could not parse table.");
-    return;
-  }
+    const body = lines.slice(tableStart, tableEnd + 1).join('\n');
+    // Parse using your existing markdown parser
+    const [parsed] = parseAllMarkdownTables(body);
 
-  // Prepare padded rows
-  const colCount = parsed.headers.length;
-  const sheetData: any[] = [];
-  // Add table title as first row (optional)
-  sheetData.push([title]);
-  // Empty row for spacing
-  sheetData.push([]);
-  // Headers
-  sheetData.push(parsed.headers);
-  // Rows (pad or trim as needed)
-  parsed.rows.forEach(row =>
-    sheetData.push([
-      ...row.slice(0, colCount),
-      ...Array(Math.max(colCount - row.length, 0)).fill("")
-    ])
-  );
+    if (!parsed) {
+      alert("Could not parse table.");
+      return;
+    }
 
-  // Export as Excel
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(sheetData);
-  XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31) || "Sheet");
-  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([wbout], { type: "application/octet-stream" });
-  saveAs(blob, `${title.replace(/\s+/g, '_')}_${new Date().toISOString()}.xlsx`);
-};
+    // Prepare padded rows
+    const colCount = parsed.headers.length;
+    const sheetData: any[] = [];
+    // Add table title as first row (optional)
+    sheetData.push([title]);
+    // Empty row for spacing
+    sheetData.push([]);
+    // Headers
+    sheetData.push(parsed.headers);
+    // Rows (pad or trim as needed)
+    parsed.rows.forEach(row =>
+      sheetData.push([
+        ...row.slice(0, colCount),
+        ...Array(Math.max(colCount - row.length, 0)).fill("")
+      ])
+    );
+
+    // Export as Excel
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31) || "Sheet");
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    saveAs(blob, `${title.replace(/\s+/g, '_')}_${new Date().toISOString()}.xlsx`);
+  };
+
+  // Export a chart div to PDF
+  const exportChartToPdf = async (chartId: string, title = "chart") => {
+    const input = document.getElementById(chartId);
+    if (!input) {
+      alert("Chart not found for PDF export!");
+      return;
+    }
+
+    // Use html2canvas to render chart DOM as image
+    const canvas = await html2canvas(input, { scale: 2, backgroundColor: "#fff" });
+    const imgData = canvas.toDataURL("image/png");
+
+    // Create jsPDF instance
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: [canvas.width, canvas.height]
+    });
+
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+    pdf.setFontSize(14);
+    pdf.text(title, 32, 32);
+    pdf.save(`${title.replace(/\s+/g, "_")}_${new Date().toISOString()}.pdf`);
+  };
 
 
 
@@ -870,110 +897,135 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                         Download as Excel
                       </button>
                     </div>
-                    {pivoted.map((piv, tIdx) => (
-                      <div
-                        key={tIdx}
-                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6"
-                      >
-                        <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
-                          {piv.tableTitle} — Visualization
-                        </h4>
-                        <div className="mb-6">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2">
-                            Monthly trend by project
-                          </h5>
-                         <ResponsiveContainer width="100%" height={350}>
-  <LineChart
-    data={piv.dataByMonth}
-    margin={{ top: 20, right: 20, left: 40, bottom: 60 }} // <-- increase bottom!
-  >
-    <CartesianGrid strokeDasharray="4 4" />
-    <XAxis
-      dataKey="month"
-      tick={{ fontSize: 12 }}
-      interval={0}
-      angle={-20}
-      textAnchor="end"
-      height={50}
-    />
-    <YAxis
-      tickFormatter={(v) => formatCurrency(v as number)}
-      tick={{ fontSize: 12 }}
-      width={90}
-    />
-    <Tooltip
-      formatter={(value: any, name: string) => [
-        formatCurrency(Number(value)),
-        name,
-      ]}
-      labelFormatter={(label) => label}
-    />
-    <Legend
-      verticalAlign="bottom"
-      align="center"
-      wrapperStyle={{
-        paddingTop: 12,
-        marginTop: 40,
-        fontSize: 13,
-        lineHeight: '21px',
-        width: '100%',
-        whiteSpace: 'normal',
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center'
-      }}
-    />
-    {piv.seriesKeys.map((key: string, i: number) => (
-      <Line
-        key={key}
-        type="monotone"
-        dataKey={key}
-        stroke={colorForIndex(i)}
-        dot={false}
-        strokeWidth={2}
-        isAnimationActive={true}
-      />
-    ))}
-  </LineChart>
-</ResponsiveContainer>
-                        </div>
-                        {piv.monthlyTotals && (
-                          <div>
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">
-                              Monthly totals
-                            </h5>
-                            <ResponsiveContainer width="100%" height={300}>
-                              <BarChart data={piv.dataByMonth}>
-                                <CartesianGrid strokeDasharray="4 4" />
-                                <XAxis
-                                  dataKey="month"
-                                  tick={{ fontSize: 12 }}
-                                  interval={0}
-                                  angle={-20}
-                                  textAnchor="end"
-                                  height={50}
-                                />
-                                <YAxis
-                                  tickFormatter={(v) => formatCurrency(v as number)}
-                                  tick={{ fontSize: 12 }}
-                                  width={90}
-                                />
-                                <Tooltip
-                                  formatter={(value: any) => formatCurrency(Number(value))}
-                                  labelFormatter={(label) => label}
-                                />
-                                <Legend wrapperStyle={{ fontSize: 12 }} />
-                                <Bar
-                                  dataKey="Monthly total"
-                                  fill={colorForIndex(9)}
-                                  isAnimationActive={true}
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
+                    {pivoted.map((piv, tIdx) => {
+                      const chartId = `chart-container-${message.id}-${tIdx}`;
+                      return (
+                        <div
+                          key={tIdx}
+                          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
+                            {piv.tableTitle} — Visualization
+                          </h4>
+                          <div className="text-right">
+                            <button
+                              onClick={() => exportChartToPdf(chartId, piv.tableTitle)}
+                              className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
+                            >
+                              Download chart as PDF
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          </div>
+                          <div className="mb-6">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">
+                              Monthly trend by project
+                            </h5>
+                            <div id={chartId}>
+                              <ResponsiveContainer width="100%" height={350}>
+                                <LineChart
+                                  data={piv.dataByMonth}
+                                  margin={{ top: 20, right: 20, left: 40, bottom: 60 }} // <-- increase bottom!
+                                >
+                                  <CartesianGrid strokeDasharray="4 4" />
+                                  <XAxis
+                                    dataKey="month"
+                                    tick={{ fontSize: 12 }}
+                                    interval={0}
+                                    angle={-20}
+                                    textAnchor="end"
+                                    height={50}
+                                  />
+                                  <YAxis
+                                    tickFormatter={(v) => formatCurrency(v as number)}
+                                    tick={{ fontSize: 12 }}
+                                    width={90}
+                                  />
+                                  <Tooltip
+                                    formatter={(value: any, name: string) => [
+                                      formatCurrency(Number(value)),
+                                      name,
+                                    ]}
+                                    labelFormatter={(label) => label}
+                                  />
+                                  <Legend
+                                    verticalAlign="bottom"
+                                    align="center"
+                                    wrapperStyle={{
+                                      paddingTop: 12,
+                                      marginTop: 40,
+                                      fontSize: 13,
+                                      lineHeight: '21px',
+                                      width: '100%',
+                                      whiteSpace: 'normal',
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      justifyContent: 'center'
+                                    }}
+                                  />
+                                  {piv.seriesKeys.map((key: string, i: number) => (
+                                    <Line
+                                      key={key}
+                                      type="monotone"
+                                      dataKey={key}
+                                      stroke={colorForIndex(i)}
+                                      dot={false}
+                                      strokeWidth={2}
+                                      isAnimationActive={true}
+                                    />
+                                  ))}
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
+                          {piv.monthlyTotals && (
+                            <div id={`${chartId}-totals`} className="mt-6">
+                              <div className="mb-6 text-right">
+                                <button
+                                  onClick={() => exportChartToPdf(`${chartId}-totals`, `${piv.tableTitle} Totals`)}
+                                  className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
+                                >
+                                  Download totals chart as PDF
+                                </button>
+                              </div>
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                Monthly totals
+                              </h5>
+                              <div id={`${chartId}-totals`}>
+                                <ResponsiveContainer width="100%" height={300}>
+                                  <BarChart data={piv.dataByMonth}>
+                                    <CartesianGrid strokeDasharray="4 4" />
+                                    <XAxis
+                                      dataKey="month"
+                                      tick={{ fontSize: 12 }}
+                                      interval={0}
+                                      angle={-20}
+                                      textAnchor="end"
+                                      height={50}
+                                    />
+                                    <YAxis
+                                      tickFormatter={(v) => formatCurrency(v as number)}
+                                      tick={{ fontSize: 12 }}
+                                      width={90}
+                                    />
+                                    <Tooltip
+                                      formatter={(value: any) => formatCurrency(Number(value))}
+                                      labelFormatter={(label) => label}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                                    <Bar
+                                      dataKey="Monthly total"
+                                      fill={colorForIndex(9)}
+                                      isAnimationActive={true}
+                                    />
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
@@ -1002,9 +1054,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex justify-end mt-2 pt-2 border-t border-gray-200/60 items-center gap-1.5">
                   <button
                     onClick={handleLike}
-                    className={`rounded-full p-1.5 transition-colors ${
-                      message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"
-                    }`}
+                    className={`rounded-full p-1.5 transition-colors ${message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"
+                      }`}
                     aria-label="Like"
                     title="Like"
                   >
@@ -1012,9 +1063,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </button>
                   <button
                     onClick={handleDislike}
-                    className={`rounded-full p-1.5 transition-colors ${
-                      message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"
-                    }`}
+                    className={`rounded-full p-1.5 transition-colors ${message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"
+                      }`}
                     aria-label="Dislike"
                     title="Dislike"
                   >
@@ -1064,9 +1114,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
                   <button
                     onClick={handleCopy}
-                    className={`rounded-full p-1.5 transition-colors ${
-                      copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
-                    }`}
+                    className={`rounded-full p-1.5 transition-colors ${copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
+                      }`}
                     aria-label="Copy message"
                     title="Copy to clipboard"
                   >
