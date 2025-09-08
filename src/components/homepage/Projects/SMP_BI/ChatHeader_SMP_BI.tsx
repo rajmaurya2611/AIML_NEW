@@ -18,7 +18,7 @@ const ChatHeader = () => {
         <div className="flex items-center gap-3">
           <MessageCircle className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">
-            <span className="text-primary">Motherson</span> Assistant
+            <span className="text-primary">MPP Spend </span>Analytics Assistant
           </h1>
         </div>
 

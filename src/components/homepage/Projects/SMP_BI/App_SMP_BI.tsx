@@ -4,6 +4,7 @@ import { TooltipProvider } from "./ui_SMP_BI//tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Index from "./pages_SMP_BI/Index";
 import './index_SMP_BI.css'; 
+import './smp_custom.css'; 
 
 const queryClient = new QueryClient();
 

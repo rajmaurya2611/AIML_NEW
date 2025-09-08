@@ -44,7 +44,7 @@ const ChatInterface = () => {
       if (data.response?.type === "table") {
         botMessage = {
           id: (Date.now() + 1).toString(),
-          text: "", // no plain text
+          text: data.response.description || "",   // ✅ show description
           isBot: true,
           isTable: true,
           tableData: {
@@ -59,6 +59,7 @@ const ChatInterface = () => {
           isBot: true,
         };
       }
+
 
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {

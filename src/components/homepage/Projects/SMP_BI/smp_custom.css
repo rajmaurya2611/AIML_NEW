@@ -1,0 +1,7 @@
+.fixed svg.smp-dialog {
+    display: block !important;
+}
+
+button svg{
+    display: block !important;
+}

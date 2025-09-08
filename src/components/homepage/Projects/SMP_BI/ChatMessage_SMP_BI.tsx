@@ -27,6 +27,45 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
     });
   };
 
+  // const handleLike = async () => {
+  //   const wasLiked = likeStatus === "liked";
+  //   const newStatus = wasLiked ? null : "liked";
+
+  //   setLikeStatus(newStatus);
+
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("like", String(newStatus));
+      
+  //     const response = await fetch(`${import.meta.env.VITE_SMP_BI_BASE_URL}/like-dislike`, {
+  //       method: "POST",
+  //       body: formData,
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to update like status");
+  //     }
+
+  //     toast({
+  //       title: wasLiked ? "Like removed" : "Thanks for your feedback!",
+  //       description: wasLiked
+  //         ? "Feedback cleared"
+  //         : "We're glad this response was helpful",
+  //     });
+  //   } catch (error) {
+  //     console.error("Error updating like status:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: "Something went wrong while updating like status",
+  //       variant: "destructive",
+  //     });
+
+  //     // Rollback state on error
+  //     setLikeStatus(wasLiked ? "liked" : null);
+  //   }
+  // };
+
+
   const handleDislike = () => {
     const wasDisliked = likeStatus === "disliked";
     setLikeStatus(wasDisliked ? null : "disliked");
@@ -37,6 +76,45 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
       variant: wasDisliked ? "default" : "destructive",
     });
   };
+
+  // const handleDislike = async () => {
+  //   const wasDisliked = likeStatus === "disliked";
+  //   const newStatus = wasDisliked ? null : "disliked";
+
+  //   setLikeStatus(newStatus);
+
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("dislike", String(newStatus));
+      
+  //     const response = await fetch(`${import.meta.env.VITE_SMP_BI_BASE_URL}/like-dislike`, {
+  //       method: "POST",
+  //       body: formData,
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to update dislike status");
+  //     }
+
+  //     toast({
+  //       title: wasDisliked ? "Dislike removed" : "Feedback received",
+  //       description: wasDisliked
+  //         ? "Feedback cleared"
+  //         : "We'll work on improving our responses",
+  //       variant: wasDisliked ? "default" : "destructive",
+  //     });
+  //   } catch (error) {
+  //     console.error("Error updating dislike status:", error);
+  //     toast({
+  //       title: "Error",
+  //       description: "Something went wrong while updating dislike status",
+  //       variant: "destructive",
+  //     });
+
+  //     // Rollback state on error
+  //     setLikeStatus(wasDisliked ? "disliked" : null);
+  //   }
+  // };
 
   const downloadCSV = () => {
     if (!tableData) return;
