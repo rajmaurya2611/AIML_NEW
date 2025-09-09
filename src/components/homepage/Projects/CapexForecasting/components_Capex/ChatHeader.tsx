@@ -22,6 +22,11 @@ const ChatHeader: React.FC = () => {
   const [showFilesPopup, setShowFilesPopup] = useState(false);
   const [filesData, setFilesData] = useState<string[]>([]);
 
+  const [showMppUploadPopup, setShowMppUploadPopup] = useState(false);
+  const [mppFile, setMppFile] = useState<File | null>(null);
+  const [mppUploading, setMppUploading] = useState(false);
+
+
 
   // Handle upload button clicks and hit respective APIs
   const handleUpload = async (fileType: "BET" | "BP") => {
@@ -156,6 +161,11 @@ const ChatHeader: React.FC = () => {
     }
   }, [ellipsisOpen]);
 
+  const handleDownload = () => {
+    // open backend endpoint in new tab -> browser will handle download
+    window.open(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, "_blank");
+  };
+
   // Dropdown menu component
   const ellipsisMenu = (
     <AnimatePresence>
@@ -196,18 +206,76 @@ const ChatHeader: React.FC = () => {
 
           <button
             className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          // onClick={() => { ... }}
+            // onClick={async () => {
+            //   try {
+            //     // Call the backend route that serves MPP_Mapping.xlsx as an attachment
+            //     const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, {
+            //       method: "GET"
+            //     });
+
+            //     // If not 2xx, parse error message from backend
+            //     if (!res.ok) {
+            //       let errMsg = "Failed to download MPP commodity data.";
+            //       try {
+            //         const data = await res.json();
+            //         if (data && data.message) errMsg = data.message;
+            //       } catch { /* If not JSON */ }
+            //       toast({
+            //         title: "Error",
+            //         description: errMsg,
+            //         variant: "destructive"
+            //       });
+            //       return;
+            //     }
+
+            //     // Extract filename from content-disposition header, fallback to default
+            //     let filename = "MPP_Mapping.xlsx";
+            //     const disposition = res.headers.get("content-disposition");
+            //     if (disposition && disposition.includes("filename=")) {
+            //       filename = disposition.split("filename=")[1]
+            //         .split(";")[0].replace(/['"]/g, "").trim();
+            //     }
+
+            //     // Download the file
+            //     const blob = await res.blob();
+            //     const url = window.URL.createObjectURL(blob);
+            //     const a = document.createElement("a");
+            //     a.href = url;
+            //     a.download = filename;
+            //     document.body.appendChild(a);
+            //     a.click();
+            //     a.remove();
+            //     window.URL.revokeObjectURL(url);
+
+            //     toast({
+            //       title: "Download Complete",
+            //       description: `File "${filename}" downloaded.`,
+            //       variant: "default"
+            //     });
+            //   } catch (err) {
+            //     toast({
+            //       title: "Error",
+            //       description: "Failed to download MPP commodity data.",
+            //       variant: "destructive"
+            //     });
+            //   }
+            // }}
+            onClick={handleDownload}
+
+          >
+            <Download className="w-3 h-3 text-red-600" />
+            Download MPP commodity data
+          </button>
+
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            onClick={() => {
+              setShowMppUploadPopup(true);
+              setEllipsisOpen(false);
+            }}
           >
             <Upload className="w-3 h-3 text-red-600" />
             Upload MPP commodity data
-          </button>
-          <button
-            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          // onClick={() => { ... }}
-          >
-            {/* Download icon, or use a suitable Lucide icon */}
-            <Download className="w-3 h-3 text-red-600" />
-            Download MPP commodity data
           </button>
         </motion.div>
       )}
@@ -289,6 +357,100 @@ const ChatHeader: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* MPP files upload popup */}
+      <AnimatePresence>
+        {showMppUploadPopup && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          >
+            <div className="bg-white rounded-lg shadow-xl p-6 min-w-[340px] max-w-[95vw]">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-base font-semibold text-[#da2128]">Upload MPP Commodity Data</h2>
+                <button
+                  onClick={() => {
+                    setShowMppUploadPopup(false);
+                    setMppFile(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-700"
+                  aria-label="Close"
+                >
+                  &#x2715;
+                </button>
+              </div>
+              <div className="mb-3">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={e => setMppFile(e.target.files?.[0] ?? null)}
+                  disabled={mppUploading}
+                  className="cursor-pointer block w-full text-sm text-gray-600 rounded border border-dashed border-[#da2128] px-3 py-2"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowMppUploadPopup(false);
+                    setMppFile(null);
+                  }}
+                  className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                  disabled={mppUploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!mppFile) {
+                      toast({
+                        title: "File Required",
+                        description: "Please select a file to upload.",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    setMppUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', mppFile);
+                      // Uncomment & update URL as needed
+                      const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/upload-mpp`, {
+                        method: "POST",
+                        body: formData
+                      });
+                      if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
+                      toast({
+                        title: "Success",
+                        description: "MPP commodity data uploaded successfully.",
+                        variant: "default"
+                      });
+                      setShowMppUploadPopup(false);
+                      setMppFile(null);
+                    } catch (err) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to upload MPP commodity data.",
+                        variant: "destructive"
+                      });
+                    } finally {
+                      setMppUploading(false);
+                    }
+                  }}
+                  className={`px-3 py-1 text-sm bg-[#da2128] text-white rounded hover:bg-[#ae1b22] transition ${mppUploading ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  disabled={mppUploading}
+                >
+                  {mppUploading ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
     </header>
   );
