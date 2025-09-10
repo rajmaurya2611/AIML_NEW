@@ -578,6 +578,7 @@ export default function ComparisonPage() {
       >
         <Upload.Dragger
           name="file"
+          multiple={true}
           customRequest={customUpload}
           accept=".pdf,.docx"
           fileList={fileList}
