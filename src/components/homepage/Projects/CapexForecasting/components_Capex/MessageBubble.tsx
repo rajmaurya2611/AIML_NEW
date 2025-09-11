@@ -917,7 +917,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                             </button>
                           </div>
                           </div>
-                          <div className="mb-6">
+                          <div className="capex-charts">
                             <h5 className="text-sm font-medium text-gray-700 mb-2">
                               Monthly trend by project
                             </h5>
@@ -960,7 +960,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                                       whiteSpace: 'normal',
                                       display: 'flex',
                                       flexWrap: 'wrap',
-                                      justifyContent: 'center'
+                                      justifyContent: 'center',
+                                      bottom: 10,
+                                      left: 15
                                     }}
                                   />
                                   {piv.seriesKeys.map((key: string, i: number) => (
