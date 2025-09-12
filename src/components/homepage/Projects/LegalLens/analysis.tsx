@@ -13,6 +13,7 @@ import {
 } from "antd";
 import {
   UploadOutlined,
+  SendOutlined,
   MessageOutlined,
   SaveOutlined,
   StopOutlined,
@@ -29,6 +30,8 @@ import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import logo from "./assets_legal/logo.png";
 import { Link } from 'react-router-dom';
+
+import { getUserEmail } from "./getUsersEmail";
  
 const { Header, Sider, Content } = Layout;
 const { TextArea } = Input;
@@ -62,15 +65,47 @@ export default function AnalysisPage() {
   // Speech Recognition states and refs
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // Speech Synthesis states and refs
   const [isSpeaking, setIsSpeaking] = useState(false);
   const isSpeakingRef = useRef<boolean>(false);
   const activeSpeechMessageId = useRef<string | null>(null);
+
+
+useEffect(() => {
+    const resetSession = async () => {
+      try {
+        const email = await getUserEmail();
+
+        await fetch(`${import.meta.env.VITE_LEGALLENS_BASE}/reset_session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: email }), // ⬅️ send email
+          credentials: "include",
+        });
+
+        //setMessages([]);
+      } catch (error) {
+        console.error("Failed to reset session:", error);
+      }
+    };
+
+    resetSession();
+  }, []);
+
+
+
  
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/documents`);
+      const email = await getUserEmail();
+     // const res = await axios.get(`${API_BASE}/documents`);
+       const res = await axios.get(`${API_BASE}/documents`, {
+  params: { email }
+  });
       setUploadedDocs(res.data.documents);
     } catch {
       message.error("Failed to fetch documents.");
@@ -129,6 +164,10 @@ export default function AnalysisPage() {
   const customUpload = async ({ file, onSuccess, onError }: any) => {
     const formData = new FormData();
     formData.append("file", file);
+
+     const email = await getUserEmail();
+         formData.append("email", email);
+
     try {
       const res = await axios.post(`${API_BASE}/upload-document`, formData);
       const result = res.data;
@@ -200,10 +239,15 @@ export default function AnalysisPage() {
   };
  
   const handleAsk = async () => {
+
+    const email = await getUserEmail();
+
     if (!selectedDoc || !question) return;
     const userMsg = { id: uuidv4(), role: "user", content: question };
     setChatHistory(prev => [...prev, userMsg]);
     setQuestion("");
+
+    setIsAnalyzing(true);
  
     const typingPlaceholder = { id: uuidv4(), role: "bot", content: "" };
     setChatHistory(prev => [...prev, typingPlaceholder]);
@@ -213,10 +257,12 @@ export default function AnalysisPage() {
         mode: "single",
         selected_doc: selectedDoc,
         query: userMsg.content,
+        email: email,                  
       });
  
       simulateTyping(res.data.response, () => {});
     } catch {
+      setIsAnalyzing(false);
       message.error("Failed to get response.");
       setChatHistory(prev => prev.slice(0, -1));
     }
@@ -228,6 +274,8 @@ export default function AnalysisPage() {
   };
  
   const submitFeedback = async () => {
+
+    const email = await getUserEmail();
     if (!feedbackRating || !activeMessageId) return;
     const msg = chatHistory.find(m => m.id === activeMessageId);
     if (!msg || msg.role !== "bot") return;
@@ -239,6 +287,7 @@ export default function AnalysisPage() {
         response: msg.content,
         feedback: feedbackText,
         rating: feedbackRating,
+        email: email,
       });
       message.success("Feedback submitted");
       setFeedbackRating(null);
@@ -449,6 +498,17 @@ export default function AnalysisPage() {
                 >
                   {msg.content}
                 </ReactMarkdown>
+
+
+               {/* If bot is still typing → show Analyzing */}
+                    {msg.role === "bot" && isAnalyzing && !botTyping && (
+                <div className="text-gray-400 italic mt-2 animate-pulse">
+                  Analyzing...
+                </div>
+              )}
+
+
+
  
                   {msg.role === "bot" && !botTyping && (
                     <div className="text-right mt-1">
@@ -506,7 +566,7 @@ export default function AnalysisPage() {
                 className={isRecording ? "bg-red-500" : ""}
               />
             </Tooltip>
-            {/* <Button
+            <Button
               type="primary"
               icon={<SendOutlined />}
               onClick={handleAsk}
@@ -514,7 +574,7 @@ export default function AnalysisPage() {
               className="bg-[#FF4D4F]"
             >
               Send
-            </Button> */}
+            </Button>
             <div className="custom-btns">
               <button disabled>Reasoning</button>
               <button disabled>Web Search</button>

@@ -8,6 +8,10 @@ export const oktaAuthLegal = new OktaAuth({
   scopes: ["openid", "profile", "email"],
   pkce: false,  // Enable PKCE for enhanced security
   tokenManager: { storage: "sessionStorage" },  // or "localStorage"
+
+
+  
+
 });
 
 

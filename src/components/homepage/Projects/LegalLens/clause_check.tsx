@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Layout,
+  Upload,
   Select,
   Typography,
   Input,
@@ -11,6 +12,7 @@ import {
 } from "antd";
 import {
   SendOutlined,
+  UploadOutlined,
   ReloadOutlined,
   MessageOutlined,
 } from "@ant-design/icons";
@@ -18,14 +20,16 @@ import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
-import logo from "../assets/logo.png";
+import logo from "./assets_legal/logo.png";
 import { Link } from "react-router-dom";
+
+import { getUserEmail } from "./getUsersEmail";
  
 const { Header, Sider, Content } = Layout;
 const { TextArea } = Input;
 const { Option } = Select;
  
-const API_BASE = import.meta.env.VITE_API_BASE;
+const API_BASE = import.meta.env.VITE_LEGALLENS_BASE;
  
 const predefinedClauses = [
   "Force Majeure",
@@ -38,6 +42,7 @@ const predefinedClauses = [
 ];
  
 export default function ClauseCheckPage() {
+  const [fileList, setFileList] = useState<any[]>([]);
   const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [clauseQuery, setClauseQuery] = useState<string>("");
@@ -47,10 +52,48 @@ export default function ClauseCheckPage() {
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
  
+  
+
+  useEffect(() => {
+      const resetSession = async () => {
+        try {
+          const email = await getUserEmail();
+  
+          await fetch(`${import.meta.env.VITE_LEGALLENS_BASE}/reset_session`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email: email }), // ⬅️ send email
+            credentials: "include",
+          });
+  
+          //setMessages([]);
+        } catch (error) {
+          console.error("Failed to reset session:", error);
+        }
+      };
+  
+      resetSession();
+    }, []);
+  
+
+
+   useEffect(() => {
+    fetchDocuments();
+  }, []);
+  
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/documents`);
+      //const res = await axios.get(`${API_BASE}/documents`);
+         const email = await getUserEmail();
+        const res = await axios.get(`${API_BASE}/documents`, {
+  params: { email }
+  });
+
       setUploadedDocs(res.data.documents);
       setSelectedDoc(null);
       setClauseQuery("");
@@ -61,12 +104,62 @@ export default function ClauseCheckPage() {
       message.error("Failed to fetch documents.");
     }
   };
+  
+
+
+  const customUpload = async ({ file, onSuccess, onError }: any) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+     const email = await getUserEmail();
+         formData.append("email", email);
+
+    try {
+      const res = await axios.post(`${API_BASE}/upload-document`, formData);
+      const result = res.data;
  
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
+      message.success("Uploaded successfully");
+      fetchDocuments();
+      setIsUploadModalOpen(false);
+      setFileList([]);
+      onSuccess({}, file);
+ 
+      // Show clause check result
+      if (result.missing_clauses) {
+        const missing = Array.isArray(result.missing_clauses) && result.missing_clauses.length > 0;
+ 
+        Modal.info({
+          title: "Clause Check Result",
+          content: (
+            <div>
+              {missing ? (
+                <>
+                  <p><strong>Missing Clauses:</strong></p>
+                  <ul className="list-disc list-inside text-red-600">
+                    {result.missing_clauses.map((clause: string, idx: number) => (
+                      <li key={idx}>{clause}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-green-600 font-medium">All key clauses are present in the document.</p>
+              )}
+            </div>
+          ),
+          width: 500
+        });
+      }
+    } catch (err) {
+      message.error("Upload failed");
+      onError(new Error("Upload failed"));
+    }
+  };
+ 
  
   const analyzeClause = async () => {
+
+    const email = await getUserEmail();
+
     if (!selectedDoc || !clauseQuery.trim()) return;
     setLoading(true);
     setResult("");
@@ -74,6 +167,7 @@ export default function ClauseCheckPage() {
       const res = await axios.post(`${API_BASE}/clause-check`, {
         selected_doc: selectedDoc,
         clause_request: clauseQuery,
+        email: email,  
       });
       setResult(res.data.clause_analysis);
     } catch {
@@ -84,6 +178,9 @@ export default function ClauseCheckPage() {
   };
  
   const submitFeedback = async () => {
+
+    const email = await getUserEmail();
+
     if (!feedbackRating || !result) return;
     setSubmittingFeedback(true);
     try {
@@ -92,6 +189,7 @@ export default function ClauseCheckPage() {
         response: result,
         feedback: feedbackText,
         rating: feedbackRating,
+        email: email,  
       });
       message.success("Feedback submitted");
       setIsFeedbackModalOpen(false);
@@ -113,8 +211,38 @@ export default function ClauseCheckPage() {
               <img src={logo} alt="Logo" className="w-40" />
             </Link>
           </div>
+
+
+           <div className="my-14">
+            <p className="text-sm text-white text-center mt-2 mb-4">
+              Upload PDF/DOCX File • Limit 200MB per file • PDF, DOCX
+            </p>
+            <Button
+              type="primary"
+              block
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-[#FF4D4F] border-none"
+            >
+              Upload Document
+            </Button>
+          </div>
+
+
+           <p className="text-sm text-white text-center mt-2 mb-4">
+            Must select a document to ask questions
+          </p>
+          <Select
+            placeholder="Select Document"
+            className="w-full mb-4"
+            onChange={setSelectedDoc}
+            value={selectedDoc || undefined}
+          >
+            {uploadedDocs.map(doc => (
+              <Option key={doc} value={doc}>{doc}</Option>
+            ))}
+          </Select>
  
-          <p className="text-sm text-white text-center mt-2 mb-1">
+          {/* <p className="text-sm text-white text-center mt-2 mb-1">
             Select Document
           </p>
           <Select
@@ -128,7 +256,7 @@ export default function ClauseCheckPage() {
                 {doc}
               </Option>
             ))}
-          </Select>
+          </Select> */}
  
           <Select
             placeholder="Choose Predefined Clause (Optional)"
@@ -219,6 +347,24 @@ export default function ClauseCheckPage() {
           </div>
         </Content>
       </Layout>
+
+
+      <Modal open={isUploadModalOpen} title="Upload Contract Document" onCancel={() => setIsUploadModalOpen(false)} footer={null}>
+        <Upload.Dragger
+          name="file"
+          customRequest={customUpload}
+          accept=".pdf,.docx"
+          fileList={fileList}
+          onChange={({ fileList }) => setFileList(fileList)}
+          showUploadList={false}
+        >
+          <p className="ant-upload-drag-icon">
+            <UploadOutlined style={{ fontSize: 32, color: "#FF4D4F" }} />
+          </p>
+          <p>Drag and drop or click to upload PDF/DOCX</p>
+        </Upload.Dragger>
+      </Modal>
+
  
       <Modal
         open={isFeedbackModalOpen}

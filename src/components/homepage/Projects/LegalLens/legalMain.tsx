@@ -6,6 +6,8 @@ import ComparisonImage from "./assets_legal/comparison_image.jpg";
 import HeroImage from "./assets_legal/Hero Image.svg";
 import Navbar from "./Navbar";
 import "./LegalLens_custom.css";
+import RiskAnalysisImage from "./assets_legal/risk_analysis_image.jpg";
+import ClauseCheckImage from "./assets_legal/clause_check_image.jpg";
  
 export default function HomePage() {
   const navigate = useNavigate();
@@ -23,6 +25,21 @@ export default function HomePage() {
       description: "Compare across multiple contracts and versions.",
       route: "/legallens/comparison",
     },
+
+       {
+      title: "Risk Analysis",
+      image: RiskAnalysisImage,
+      description: "Comprehensive analysis of potential risks associated with the document.",
+      route: "/legallens/risk_analysis",
+    },
+    {
+      title: "Clause Check",
+      image: ClauseCheckImage,
+      description: "Check for missing and incomplete clauses.",
+      route: "/legallens/clause_check",
+    },
+
+
   ];
  
   return (
