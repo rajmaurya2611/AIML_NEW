@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router-dom";
 type ApiRow = Record<string, any>;
 const API_BASE = import.meta.env.VITE_CAPEX_BASE_URL || "";
 
+// ----- helpers -----
 function isMonthCol(name: string) {
   return /^(January|February|March|April|May|June|July|August|September|October|November|December)\s20\d{2}$/i.test(name);
 }
@@ -60,6 +61,48 @@ export default function DataViewerPage() {
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(1);
 
+  // ------- HEADER FILTER STATE (frontend) -------
+  const FILTER_COLS = [
+    "Purchasing Commodity L1",
+    "Purchasing Commodity L2",
+    "Purchasing Commodity L3",
+    "Purchasing Commodity L4",
+    "Purchasing Commodity L5",
+    "Purchasing Commodity L6",
+    "MPP L1",
+    "MPP L2",
+  ] as const;
+  type FilterKey = (typeof FILTER_COLS)[number];
+
+  const [filters, setFilters] = useState<Record<FilterKey, string>>({
+    "Purchasing Commodity L1": "",
+    "Purchasing Commodity L2": "",
+    "Purchasing Commodity L3": "",
+    "Purchasing Commodity L4": "",
+    "Purchasing Commodity L5": "",
+    "Purchasing Commodity L6": "",
+    "MPP L1": "",
+    "MPP L2": "",
+  });
+
+  const handleFilterChange = (key: FilterKey, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      "Purchasing Commodity L1": "",
+      "Purchasing Commodity L2": "",
+      "Purchasing Commodity L3": "",
+      "Purchasing Commodity L4": "",
+      "Purchasing Commodity L5": "",
+      "Purchasing Commodity L6": "",
+      "MPP L1": "",
+      "MPP L2": "",
+    });
+  };
+  // ---------------------------------------------
+
   useEffect(() => {
     if (!tableName) {
       message.warning("Missing ?table=... in URL");
@@ -77,7 +120,7 @@ export default function DataViewerPage() {
         const params = new URLSearchParams();
         params.set("limit", String(pageSz));
         params.set("offset", String((pageNum - 1) * pageSz));
-        // NO order_by / order_dir — show data “as is”
+        // No order_by / order_dir — show data as-is
 
         const url = `${API_BASE}/db/${encodeURIComponent(tableName)}/all?` + params.toString();
         const res = await fetch(url);
@@ -106,19 +149,41 @@ export default function DataViewerPage() {
     [tableName]
   );
 
-  const setCell = (rowIndex: number, col: "MPP L1" | "MPP L2", value: string) => {
+  // Stable row key
+  const rowKey = (r: ApiRow) =>
+    r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`;
+
+  // Apply client-side filters to the current page’s dataset
+  const filteredRows = useMemo(() => {
+    const active = Object.entries(filters).filter(([, v]) => (v ?? "").trim().length > 0) as [FilterKey, string][];
+    if (active.length === 0) return rows;
+    return rows.filter((row) => {
+      for (const [col, q] of active) {
+        const cell = row[col];
+        const s = cell == null ? "" : String(cell);
+        if (!s.toLowerCase().includes(q.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }, [rows, filters]);
+
+  // Editing by row key (safe under filtering)
+  const setCell = (recordKey: string, col: "MPP L1" | "MPP L2", value: string) => {
     setRows((prev) => {
+      const idx = prev.findIndex((r) => rowKey(r) === recordKey);
+      if (idx === -1) return prev;
       const next = [...prev];
-      next[rowIndex] = { ...next[rowIndex], [col]: value };
+      next[idx] = { ...next[idx], [col]: value };
       return next;
     });
   };
 
+  // Track changed rows vs original (by index)
   const changedRows = useMemo(() => {
     const out: ApiRow[] = [];
     for (let i = 0; i < rows.length; i++) {
-      const before = originalRows[i] || {};
-      const after = rows[i] || {};
+      const before = originalRows[i] ?? {};
+      const after = rows[i] ?? {};
       const delta: ApiRow = {};
       let changed = false;
       (["MPP L1", "MPP L2"] as const).forEach((col) => {
@@ -174,7 +239,7 @@ export default function DataViewerPage() {
     message.success("Reverted unsaved edits.");
   };
 
-  // Only react to pagination — ignore sorter completely
+  // Pagination only (sorting disabled)
   const onTableChange = (pagination: TablePaginationConfig) => {
     const current = pagination.current || 1;
     const size = pagination.pageSize || pageSize;
@@ -187,28 +252,67 @@ export default function DataViewerPage() {
     [columnsOrder]
   );
 
+  // Build columns; inject header filter inputs for target columns
   const columns: ColumnsType<ApiRow> = useMemo(() => {
     const order = columnsOrder.filter(Boolean);
 
+    const headerWithFilter = (label: FilterKey) => (
+      <div className="flex flex-col gap-1">
+        <span>{label}</span>
+        <Input
+          allowClear
+          size="small"
+          placeholder="Search…"
+          value={filters[label]}
+          onChange={(e) => handleFilterChange(label, e.target.value)}
+        />
+      </div>
+    );
+
     const buildEditable = (dataIndex: "MPP L1" | "MPP L2") => ({
-      title: dataIndex,
+      title: headerWithFilter(dataIndex),
       dataIndex,
       key: dataIndex,
       align: "left" as const,
       width: widthFor(dataIndex),
-      // sorter removed
-      render: (_: any, __: ApiRow, idx: number) => (
-        <Input
-          size="small"
-          value={rows[idx]?.[dataIndex] ?? ""}
-          onChange={(e) => setCell(idx, dataIndex, e.target.value)}
-          className="font-mono"
-        />
-      ),
+      render: (_: any, record: ApiRow) => {
+        const k = rowKey(record);
+        return (
+          <Input
+            size="small"
+            value={record?.[dataIndex] ?? ""}
+            onChange={(e) => setCell(k, dataIndex, e.target.value)}
+            className="font-mono"
+          />
+        );
+      },
     });
 
     return order.map((name) => {
+      // Editable with header filter for MPP L1/L2
       if (name === "MPP L1" || name === "MPP L2") return buildEditable(name);
+
+      // Header filter for commodity L1-L6
+      if (
+        name === "Purchasing Commodity L1" ||
+        name === "Purchasing Commodity L2" ||
+        name === "Purchasing Commodity L3" ||
+        name === "Purchasing Commodity L4" ||
+        name === "Purchasing Commodity L5" ||
+        name === "Purchasing Commodity L6"
+      ) {
+        return {
+          title: headerWithFilter(name as FilterKey),
+          dataIndex: name,
+          key: name,
+          width: widthFor(name),
+          align: numericAlign(name),
+          ellipsis: true,
+          render: (val: any) => (val == null ? "" : String(val)),
+        } as any;
+      }
+
+      // Default column (no header filter)
       return {
         title: name,
         dataIndex: name,
@@ -216,7 +320,6 @@ export default function DataViewerPage() {
         width: widthFor(name),
         align: numericAlign(name),
         ellipsis: true,
-        // sorter removed everywhere
         render: (val: any) => {
           if (val === null || val === undefined) return "";
           if (isFlagCol(name)) {
@@ -242,10 +345,7 @@ export default function DataViewerPage() {
         },
       } as any;
     });
-  }, [columnsOrder, rows]);
-
-  const rowKey = (r: ApiRow) =>
-    r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`;
+  }, [columnsOrder, filters]); // re-render headers when filters change
 
   const downloadCsv = () => {
     const url = `${API_BASE}/db/${encodeURIComponent(tableName)}/all?csv=true`;
@@ -264,13 +364,14 @@ export default function DataViewerPage() {
             />
           </Tooltip>
           <span className="text-sm text-gray-600">
-            Table: <b>{tableName}</b> &middot; Rows: {rows.length}/{total}
+            Table: <b>{tableName}</b> · Rows: {filteredRows.length}/{total}
           </span>
         </div>
         <Space>
           <Button icon={<Download size={16} />} onClick={downloadCsv}>
             Export CSV
           </Button>
+          <Button onClick={clearAllFilters}>Clear column filters</Button>
           <Button icon={<RotateCcw size={16} />} onClick={resetChanges}>
             Reset
           </Button>
@@ -286,14 +387,14 @@ export default function DataViewerPage() {
       </div>
 
       <Table<ApiRow>
-        dataSource={rows}
+        dataSource={filteredRows}
         columns={columns}
         loading={loading}
         rowKey={rowKey}
         pagination={{
           current: page,
           pageSize,
-          total,
+          total: filteredRows.length, // paginate filtered set
           showSizeChanger: true,
           pageSizeOptions: [25, 50, 100, 200],
         }}
