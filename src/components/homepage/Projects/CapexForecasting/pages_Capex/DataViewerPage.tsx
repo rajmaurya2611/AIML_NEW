@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, Input, Button, Space, message, Tooltip } from "antd";
+import { Table, Input, Button, Space, message, Tooltip, Modal } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { Save, RotateCcw, Download, RefreshCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
- 
+
 type ApiRow = Record<string, any>;
 const API_BASE = import.meta.env.VITE_CAPEX_BASE_URL || "";
- 
+
 function isMonthCol(name: string) {
   return /^(January|February|March|April|May|June|July|August|September|October|November|December)\s20\d{2}$/i.test(name);
 }
@@ -29,69 +29,68 @@ function widthFor(name: string): number {
   if (name === "Plant") return 260;
   if (name === "Organisation Cost Center") return 220;
   if (name === "MPP L1" || name === "MPP L2") return 220;
- 
+
   if (isCommodityLevel(name)) {
     const lvl = parseInt(name.replace(/\D/g, ""), 10);
     if (lvl === 1 || lvl === 2) return 220;
     if (lvl === 3 || lvl === 4) return 200;
     return 180;
   }
- 
+
   if (isMonthCol(name)) return 130;
   if (isFYCol(name)) return 140;
   if (isFlagCol(name)) return 180;
   if (/^Purchasing/i.test(name)) return 200;
- 
+
   return 160;
 }
- 
+
 export default function DataViewerPage() {
   const [searchParams] = useSearchParams();
   const tableParam = searchParams.get("table") || "";
   const [tableName] = useState(tableParam);
- 
+
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<ApiRow[]>([]);
   const [originalRows, setOriginalRows] = useState<ApiRow[]>([]);
   const [columnsOrder, setColumnsOrder] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
- 
+
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(1);
-  const [orderBy, setOrderBy] = useState<string | undefined>(undefined);
-  const [orderDir, setOrderDir] = useState<"asc" | "desc">("asc");
- 
+
   useEffect(() => {
     if (!tableName) {
       message.warning("Missing ?table=... in URL");
       return;
     }
-    fetchData(page, pageSize, orderBy, orderDir);
+    fetchData(page, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableName, page, pageSize, orderBy, orderDir]);
- 
+  }, [tableName, page, pageSize]);
+
   const fetchData = useCallback(
-    async (pageNum: number, pageSz: number, order?: string, dir?: "asc" | "desc") => {
+    async (pageNum: number, pageSz: number) => {
       setLoading(true);
       setError(null);
       try {
         const params = new URLSearchParams();
         params.set("limit", String(pageSz));
         params.set("offset", String((pageNum - 1) * pageSz));
-        if (order) params.set("order_by", order);
-        if (dir) params.set("order_dir", dir);
- 
+        // NO order_by / order_dir — show data “as is”
+
         const url = `${API_BASE}/db/${encodeURIComponent(tableName)}/all?` + params.toString();
         const res = await fetch(url);
-        const data = await res.json().catch(() => { throw new Error("Invalid JSON from server"); });
- 
+        const data = await res.json().catch(() => {
+          throw new Error("Invalid JSON from server");
+        });
+
         if (data.status !== "success") throw new Error(data.message || "Failed to load data");
- 
+
         setRows(data.rows || []);
         setOriginalRows(data.rows || []);
         setTotal(data.total || 0);
-        setColumnsOrder(Array.isArray(data.columns) ? data.columns : Object.keys((data.rows?.[0] || {})));
+        setColumnsOrder(Array.isArray(data.columns) ? data.columns : Object.keys(data.rows?.[0] || {}));
       } catch (e: any) {
         const msg = e?.message || "Failed to load data";
         setError(msg);
@@ -106,15 +105,15 @@ export default function DataViewerPage() {
     },
     [tableName]
   );
- 
+
   const setCell = (rowIndex: number, col: "MPP L1" | "MPP L2", value: string) => {
-    setRows(prev => {
+    setRows((prev) => {
       const next = [...prev];
       next[rowIndex] = { ...next[rowIndex], [col]: value };
       return next;
     });
   };
- 
+
   const changedRows = useMemo(() => {
     const out: ApiRow[] = [];
     for (let i = 0; i < rows.length; i++) {
@@ -122,7 +121,7 @@ export default function DataViewerPage() {
       const after = rows[i] || {};
       const delta: ApiRow = {};
       let changed = false;
-      (["MPP L1", "MPP L2"] as const).forEach(col => {
+      (["MPP L1", "MPP L2"] as const).forEach((col) => {
         if (before[col] !== after[col]) {
           delta[col] = after[col];
           changed = true;
@@ -136,65 +135,68 @@ export default function DataViewerPage() {
     }
     return out;
   }, [rows, originalRows]);
- 
+
   const saveChanges = async () => {
     if (changedRows.length === 0) {
       message.info("No changes to save.");
       return;
     }
-    try {
-      const res = await fetch(`${API_BASE}/db/${encodeURIComponent(tableName)}/update-mpp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: changedRows })
-      });
-      const data = await res.json();
-      if (data.status === "success" || data.status === "partial_success") {
-        message.success(`Updated ${data.updated} row(s).`);
-        fetchData(page, pageSize, orderBy, orderDir);
-      } else {
-        throw new Error(data.message || "Update failed");
-      }
-    } catch (e: any) {
-      message.error(e?.message || "Update failed");
-    }
+
+    Modal.confirm({
+      title: "Are you sure you want to save changes?",
+      content: "Doing this will update the Database and cannot be undone.",
+      okText: "Yes, Save",
+      cancelText: "Cancel",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/db/${encodeURIComponent(tableName)}/update-mpp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rows: changedRows }),
+          });
+          const data = await res.json();
+          if (data.status === "success" || data.status === "partial_success") {
+            message.success(`Updated ${data.updated} row(s).`);
+            fetchData(page, pageSize);
+          } else {
+            throw new Error(data.message || "Update failed");
+          }
+        } catch (e: any) {
+          message.error(e?.message || "Update failed");
+        }
+      },
+    });
   };
- 
+
   const resetChanges = () => {
     setRows(originalRows);
     message.success("Reverted unsaved edits.");
   };
- 
-  const onTableChange = (pagination: TablePaginationConfig, _filters: any, sorter: any) => {
+
+  // Only react to pagination — ignore sorter completely
+  const onTableChange = (pagination: TablePaginationConfig) => {
     const current = pagination.current || 1;
     const size = pagination.pageSize || pageSize;
     setPage(current);
     setPageSize(size);
- 
-    if (Array.isArray(sorter)) sorter = sorter[0];
-    if (sorter && sorter.field) {
-      setOrderBy(String(sorter.field));
-      setOrderDir(sorter.order === "descend" ? "desc" : "asc");
-    } else {
-      setOrderBy(undefined);
-      setOrderDir("asc");
-    }
   };
- 
+
   const totalScrollX = useMemo(
     () => columnsOrder.reduce((sum, name) => sum + widthFor(name), 0) + 200,
     [columnsOrder]
   );
- 
+
   const columns: ColumnsType<ApiRow> = useMemo(() => {
     const order = columnsOrder.filter(Boolean);
+
     const buildEditable = (dataIndex: "MPP L1" | "MPP L2") => ({
       title: dataIndex,
       dataIndex,
       key: dataIndex,
       align: "left" as const,
       width: widthFor(dataIndex),
-      sorter: true,
+      // sorter removed
       render: (_: any, __: ApiRow, idx: number) => (
         <Input
           size="small"
@@ -204,7 +206,7 @@ export default function DataViewerPage() {
         />
       ),
     });
- 
+
     return order.map((name) => {
       if (name === "MPP L1" || name === "MPP L2") return buildEditable(name);
       return {
@@ -214,14 +216,18 @@ export default function DataViewerPage() {
         width: widthFor(name),
         align: numericAlign(name),
         ellipsis: true,
-        sorter: true,
+        // sorter removed everywhere
         render: (val: any) => {
           if (val === null || val === undefined) return "";
           if (isFlagCol(name)) {
             const v = String(val).trim();
             const yes = v === "1" || /^(true|yes)$/i.test(v);
             return (
-              <span className={`px-2 py-0.5 rounded text-xs ${yes ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-600"}`}>
+              <span
+                className={`px-2 py-0.5 rounded text-xs ${
+                  yes ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-600"
+                }`}
+              >
                 {yes ? "Yes" : "No"}
               </span>
             );
@@ -233,18 +239,19 @@ export default function DataViewerPage() {
             }
           }
           return String(val);
-        }
+        },
       } as any;
     });
   }, [columnsOrder, rows]);
- 
-  const rowKey = (r: ApiRow) => (r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`);
- 
+
+  const rowKey = (r: ApiRow) =>
+    r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`;
+
   const downloadCsv = () => {
     const url = `${API_BASE}/db/${encodeURIComponent(tableName)}/all?csv=true`;
     window.open(url, "_blank");
   };
- 
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center py-3">
@@ -253,7 +260,7 @@ export default function DataViewerPage() {
             <Button
               type="default"
               icon={<RefreshCcw size={16} />}
-              onClick={() => fetchData(page, pageSize, orderBy, orderDir)}
+              onClick={() => fetchData(page, pageSize)}
             />
           </Tooltip>
           <span className="text-sm text-gray-600">
@@ -261,12 +268,23 @@ export default function DataViewerPage() {
           </span>
         </div>
         <Space>
-          <Button icon={<Download size={16} />} onClick={downloadCsv}>Export CSV</Button>
-          <Button icon={<RotateCcw size={16} />} onClick={resetChanges}>Reset</Button>
-          <Button type="primary" icon={<Save size={16} />} onClick={saveChanges}>Save MPP L1/L2</Button>
+          <Button icon={<Download size={16} />} onClick={downloadCsv}>
+            Export CSV
+          </Button>
+          <Button icon={<RotateCcw size={16} />} onClick={resetChanges}>
+            Reset
+          </Button>
+          <Button
+            type="primary"
+            icon={<Save size={16} />}
+            onClick={saveChanges}
+            disabled={changedRows.length === 0}
+          >
+            Save MPP L1/L2
+          </Button>
         </Space>
       </div>
- 
+
       <Table<ApiRow>
         dataSource={rows}
         columns={columns}
@@ -284,7 +302,7 @@ export default function DataViewerPage() {
         bordered
         size="small"
       />
- 
+
       {error && <div className="mt-3 text-red-600 text-sm font-mono">{error}</div>}
     </div>
   );
