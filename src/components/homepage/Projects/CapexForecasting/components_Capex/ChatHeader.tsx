@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Logo from '../assets_Capex/logo.png';
-import { Upload, MoreVertical, Files, Download } from "lucide-react";
+import { Upload, MoreVertical, Files, Eye } from "lucide-react";
 import { useToast } from '../hooks_Capex/use-toast';
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +26,17 @@ const ChatHeader: React.FC = () => {
   const [mppFile, setMppFile] = useState<File | null>(null);
   const [mppUploading, setMppUploading] = useState(false);
 
+
+
+  const handleOpenMppViewer = () => {
+  // set your default MPP table name here or via env
+  const table = (import.meta as any).env?.VITE_MPP_TABLE ?? "invesment_simple";
+  const base = (import.meta as any).env?.BASE_URL ?? "/";
+  const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+  const url = `${normalized}/capex-forecasting/data-viewer?table=${encodeURIComponent(table)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+  setEllipsisOpen(false);
+};
 
 
   // Handle upload button clicks and hit respective APIs
@@ -161,10 +172,10 @@ const ChatHeader: React.FC = () => {
     }
   }, [ellipsisOpen]);
 
-  const handleDownload = () => {
-    // open backend endpoint in new tab -> browser will handle download
-    window.open(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, "_blank");
-  };
+  // const handleDownload = () => {
+  //   // open backend endpoint in new tab -> browser will handle download
+  //   window.open(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, "_blank");
+  // };
 
   // Dropdown menu component
   const ellipsisMenu = (
@@ -205,69 +216,14 @@ const ChatHeader: React.FC = () => {
           </button>
 
           <button
-            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            // onClick={async () => {
-            //   try {
-            //     // Call the backend route that serves MPP_Mapping.xlsx as an attachment
-            //     const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, {
-            //       method: "GET"
-            //     });
+  className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+  onClick={handleOpenMppViewer}
+>
+  <Eye className="w-3 h-3 text-red-600" />
+  View / Edit MPP data
+</button>
 
-            //     // If not 2xx, parse error message from backend
-            //     if (!res.ok) {
-            //       let errMsg = "Failed to download MPP commodity data.";
-            //       try {
-            //         const data = await res.json();
-            //         if (data && data.message) errMsg = data.message;
-            //       } catch { /* If not JSON */ }
-            //       toast({
-            //         title: "Error",
-            //         description: errMsg,
-            //         variant: "destructive"
-            //       });
-            //       return;
-            //     }
-
-            //     // Extract filename from content-disposition header, fallback to default
-            //     let filename = "MPP_Mapping.xlsx";
-            //     const disposition = res.headers.get("content-disposition");
-            //     if (disposition && disposition.includes("filename=")) {
-            //       filename = disposition.split("filename=")[1]
-            //         .split(";")[0].replace(/['"]/g, "").trim();
-            //     }
-
-            //     // Download the file
-            //     const blob = await res.blob();
-            //     const url = window.URL.createObjectURL(blob);
-            //     const a = document.createElement("a");
-            //     a.href = url;
-            //     a.download = filename;
-            //     document.body.appendChild(a);
-            //     a.click();
-            //     a.remove();
-            //     window.URL.revokeObjectURL(url);
-
-            //     toast({
-            //       title: "Download Complete",
-            //       description: `File "${filename}" downloaded.`,
-            //       variant: "default"
-            //     });
-            //   } catch (err) {
-            //     toast({
-            //       title: "Error",
-            //       description: "Failed to download MPP commodity data.",
-            //       variant: "destructive"
-            //     });
-            //   }
-            // }}
-            onClick={handleDownload}
-
-          >
-            <Download className="w-3 h-3 text-red-600" />
-            Download MPP commodity data
-          </button>
-
-          <button
+          {/* <button
             className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             onClick={() => {
               setShowMppUploadPopup(true);
@@ -276,7 +232,7 @@ const ChatHeader: React.FC = () => {
           >
             <Upload className="w-3 h-3 text-red-600" />
             Upload MPP commodity data
-          </button>
+          </button> */}
         </motion.div>
       )}
     </AnimatePresence>
