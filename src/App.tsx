@@ -31,6 +31,7 @@ import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/i
 import HrView from './components/homepage/Projects/TalentAI/HR-View/HrView.jsx';
 import SMPBI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
 import CapexApp from './components/homepage/Projects/CapexForecasting/CapexApp.tsx';
+//import DataViewerPage from './components/homepage/Projects/CapexForecasting/pages_Capex/DataViewerPage.tsx';
  
 function App() {
   return (
@@ -116,6 +117,7 @@ function App() {
 
         <Route path="/smpbi" element={<SMPBI/>}/>
         <Route path="/capex-forecasting/*" element={<CapexApp/>}/>
+        {/* <Route path="/capex-forecasting/data-viewer" element={<DataViewerPage />} /> */}
       </Routes>
     </BrowserRouter>
   );
