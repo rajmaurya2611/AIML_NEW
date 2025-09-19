@@ -15,9 +15,9 @@ import Dwg from "../../assets/images/projects/DrawingComparison/Dwg_sm.png"
 import Glove from "../../assets/images/projects/Glove Detection/Glove_sm.png"
 import Raw from "../../assets/images/projects/Raw Material/Raw_sm.png"
 import Mbimg from "../../assets/images/projects/MothersonBot/Motherson Bot.png"
-import Pbimg from "../../assets/images/projects/PersonaBot/Persona small.png"
-import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
-import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
+//import Pbimg from "../../assets/images/projects/PersonaBot/Persona small.png"
+//import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
+//import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
 import KIPimage from "../../assets/images/projects/KIPBot/KIPBot.png"
 import KIPBot from "./Projects/RKIP/KIPBot";
 import Forklift from "./Projects/Safelift/Forklift";
@@ -28,6 +28,7 @@ import do33Image from "../../assets/images/projects/DO33/do33_small.jpg";
 import DO33 from "./Projects/DO33/do33";
 import SMP_BI from "./Projects/SMP_BI/smp_bi";
 import CAPEX from "./Projects/CapexForecasting/capex";
+import Marcom from "./Projects/Marcom/Marcom";
 
 //import Forkliftcard from "./Projects/Forklift"
 // import M_Translate from "../../assets/images/homepage/M translate.jpg"
@@ -106,7 +107,7 @@ const data = [
     category: "",
     title: "Knowledge Bot",
     src: Mbimg, // Direct reference to imported image
-    content: <MothersonBot/>
+    content: <Marcom/>
   },
   {
     category: "",
@@ -120,12 +121,12 @@ const data = [
     src: KIPimage, // Direct reference to imported image
     content: <KIPBot/>
   },
-  {
-    category: "",
-    title: "PersonaPrime",
-    src: Pbimg, // Direct reference to imported image
-    content: <PersonaBot/>
-  },
+  // {
+  //   category: "",
+  //   title: "PersonaPrime",
+  //   src: Pbimg, // Direct reference to imported image
+  //   content: <PersonaBot/>
+  // },
   {
     category: "",
     title: "DO33",

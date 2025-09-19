@@ -1,0 +1,172 @@
+.sidebar p, span{
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #555555;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 50px;
+  background-color: #F3F3F3;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: width 0.4s ease-in-out;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.sidebar.open {
+  width: 160px;
+}
+
+/* Logo */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  position: relative;
+  margin-top: 25px;
+}
+
+.logo {
+  height: 32px;
+  object-fit: contain;
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+}
+
+.logo.visible {
+  opacity: 1;
+}
+
+/* Menu Section */
+.sidebar-menu {
+  margin-top: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-left: 12px;
+  position: relative;
+  height: 100%;
+}
+
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Icon-only (collapsed) */
+.menu-icon.collapsed {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+}
+
+.menu-icon.collapsed.visible {
+  opacity: 1;
+}
+
+/* Expanded (icon + text) */
+.menu-expanded {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+}
+
+.menu-expanded.visible {
+  opacity: 1;
+}
+
+.menu-icon {
+  height: 24px;
+  width: 24px;
+}
+
+.menu-text {
+  white-space: nowrap;
+}
+
+/* Slider Container */
+.slider-container {
+  position: relative;
+  z-index: 999; /* stays above sidebar */
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-left: 40px; /* indent under text */
+  margin-top: 8px;
+}
+
+
+/* Arrow */
+.arrow-icon {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* Floating slider */
+.slider-floating {
+  position: absolute;
+  left: 80px;  /* 👈 pushes slider out beyond collapsed sidebar */
+  top: 220px;  /* adjust so it sits just below the creativity item */
+  z-index: 1000;
+  background: white;
+  padding: 14px 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+  min-width: 280px;  /* 👈 fixed width no matter sidebar state */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Slider Styling */
+.creativity-slider {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 6px;
+  background: red;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.creativity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid red;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+
+.creativity-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid red;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+
+/* Value text */
+.slider-value {
+  font-size: 14px;
+  color: #333;
+  min-width: 40px;
+  text-align: right;
+}

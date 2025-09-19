@@ -1,0 +1,176 @@
+/* Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(20, 20, 20, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  font-family: "Helvetica Light", "Helvetica", sans-serif;
+}
+
+
+/* Modal Box */
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 14px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.3s ease, scaleIn 0.25s ease;
+}
+
+/* Header */
+.modal-header {
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Body */
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Rating */
+.rating-section label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.stars {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.star {
+  font-size: 28px;
+  color: #bbb;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.star:hover {
+  transform: scale(1.2);
+  color: #ffa726;
+}
+
+.star.active {
+  color: #ff9800;
+  text-shadow: 0 0 4px rgba(255, 152, 0, 0.5);
+}
+
+/* Comment box */
+.comment-section{
+    display: flex;
+    flex-direction: column;
+    width: 95%;
+    gap: 10px;
+}
+
+.comment-section label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.comment-section textarea {
+  width: 100%;
+  min-height: 90px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  transition: border 0.2s, transform 0.2s;
+}
+
+.comment-section textarea:focus {
+  border-color: hsl(0 73% 51%);
+  transform: scale(1.02);
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
+}
+
+/* Actions */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal-actions button {
+  width: 100%;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.cancel-btn {
+    background: white;
+    color: #333;
+    border: none;
+    font-size: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: #e0e0e0;
+  transform: scale(1.01);
+}
+
+.submit-btn {
+  background: hsl(0 73% 51%);
+  color: #fff;
+}
+
+.submit-btn:hover {
+  background: hsl(0 73% 51%);
+  transform: scale(1.02);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); }
+  to { transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.25s ease;
+}

@@ -11,7 +11,7 @@ import HomePage from './components/homepage/Homepage';
 //import ClauseCheckPage from './components/homepage/Projects/LegalLens/clause_check';
 import { BackgroundBoxesDemo } from './components/homepage/Projects/SketchSense/backgroundBoxesDemo';
 import Home from './components/homepage/Projects/SketchSense/Home';
-import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
+//import PersonaPrimeMain from './components/homepage/Projects/PersonaPrime/personaprime_main';
 import GloveMain from './components/homepage/Projects/GloveDetection/Glove_main';
 //import KnowledgeKingdomMain from './components/homepage/Projects/KnowledgeKingdom/KnowledgeKingdom_main';
 import Safelift_Main from './components/homepage/Projects/Safelift/Safelift_main';
@@ -20,7 +20,7 @@ import RKIPApp from './components/homepage/Projects/RKIP/RKIPApp';
 //import DO33Main from './components/homepage/Projects/DO33/do33_main';
 import LegalLensRoot from './components/homepage/Projects/LegalLens/root';
 import DO33Root from './components/homepage/Projects/DO33/root';
-import KnowledgeRoot from './components/homepage/Projects/KnowledgeKingdom/root';
+//import KnowledgeRoot from './components/homepage/Projects/KnowledgeKingdom/root';
 import TalentAIMain from './components/homepage/Projects/TalentAI/TalentAIMain'
 import CVRanker from './components/homepage/Projects/TalentAI/CvRanker';
 import JdGenerator from './components/homepage/Projects/TalentAI/JdGenerator';
@@ -30,8 +30,11 @@ import InterviewBot from './components/homepage/Projects/TalentAI/InterviewBot/i
 // Hr View
 import HrView from './components/homepage/Projects/TalentAI/HR-View/HrView.jsx';
 import SMPBI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
-import CapexApp from './components/homepage/Projects/CapexForecasting/CapexApp.tsx';
-import DataViewerPage from './components/homepage/Projects/CapexForecasting/pages_Capex/DataViewerPage.tsx';
+//import CapexApp from './components/homepage/Projects/CapexForecasting/CapexApp.tsx';
+//import DataViewerPage from './components/homepage/Projects/CapexForecasting/pages_Capex/DataViewerPage.tsx';
+//import App_marcom from './components/homepage/Projects/Marcom/App_marcom.jsx';
+import KnowledgeRoot from './components/homepage/Projects/Marcom/okta/root.jsx';
+import CapexRoot from './components/homepage/Projects/CapexForecasting/okta/root.tsx';
  
 function App() {
   return (
@@ -91,7 +94,7 @@ function App() {
         {/* <Route path="/sketchsense/home" element={<Home />} /> */}
  
         {/* Persona Prime */}
-        <Route path="/personaprime" element={<PersonaPrimeMain/>} />
+        {/* <Route path="/personaprime" element={<PersonaPrimeMain/>} /> */}
  
  
         {/* Persona Prime */}
@@ -116,8 +119,9 @@ function App() {
         <Route path="/talentai/HrView" element={<HrView/>}/>
 
         <Route path="/smpbi" element={<SMPBI/>}/>
-        <Route path="/capex-forecasting/*" element={<CapexApp/>}/>
-        <Route path="/capex-forecasting/data-viewer" element={<DataViewerPage />} />
+        <Route path="/capex-forecasting/*" element={<CapexRoot/>} />
+        {/* <Route path="/capex-forecasting/*" element={<CapexApp/>}/> */}
+        {/* <Route path="/capex-forecasting/data-viewer" element={<DataViewerPage />} /> */}
       </Routes>
     </BrowserRouter>
   );
