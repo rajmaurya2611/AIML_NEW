@@ -46,44 +46,44 @@ function App_marcom() {
   }, []);
 
   // --- History loaders (use sessionEmail) ---
-  const loadKnowledgeHistory = async (sessionId) => {
-    if (!sessionId) return;
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_MARCOM_BASE_URL_KNOWLEDGE}/history`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to fetch knowledge history");
-      const data = await res.json();
-      setKnowledgeHistoryMessages(data.items || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+ const loadKnowledgeHistory = async (sessionEmail) => {
+  if (!sessionEmail) return;
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_MARCOM_BASE_URL_KNOWLEDGE}/history`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionEmail }), // send email as session_id
+      }
+    );
 
-  const loadPersonaHistory = async (sessionId) => {
-    if (!sessionId) return;
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_MARCOM_BASE_URL_PERSONA}/chat_history`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to fetch persona history");
-      const data = await res.json();
-      // backend returns an array; normalize if needed
-      setPersonaHistoryMessages(Array.isArray(data) ? data : data.items || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    if (!res.ok) throw new Error("Failed to fetch knowledge history");
+
+    const data = await res.json();
+    setKnowledgeHistoryMessages(data.items || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+
+  const loadPersonaHistory = async (sessionEmail) => {
+  if (!sessionEmail) return;
+  try {
+    const res = await fetch(`${import.meta.env.VITE_MARCOM_BASE_URL_PERSONA}/chat_history`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionEmail }), // <-- send the email
+    });
+    if (!res.ok) throw new Error("Failed to fetch persona history");
+    const data = await res.json();
+    setPersonaHistoryMessages(Array.isArray(data) ? data : (data.items || []));
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   // Auto-load both histories as soon as sessionEmail is known
   useEffect(() => {
@@ -108,7 +108,7 @@ function App_marcom() {
         setPersonaHistoryMessages={setPersonaHistoryMessages}
         loadKnowledgeHistory={loadKnowledgeHistory}
         loadPersonaHistory={loadPersonaHistory}
-        sessionEmail={sessionEmail} // ⬅️ in case Sidebar needs to refresh by user action
+        //sessionEmail={sessionEmail} // ⬅️ in case Sidebar needs to refresh by user action
       />
 
       {/* Main Content */}

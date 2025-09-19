@@ -69,7 +69,7 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
 
 
         {/* Chat History */}
-        <div className="menu-item" onClick={() => {activeBot === "knowledge" ? loadKnowledgeHistory("rohan.singh@motherson.com"): loadPersonaHistory("rohan.singh@motherson.com");}}>
+        <div className="menu-item" onClick={() => {activeBot === "knowledge" ? loadKnowledgeHistory(sessionEmail): loadPersonaHistory(sessionEmail);}}>
           <img
             src={chat_history_icon}
             alt="Chat History Icon"
