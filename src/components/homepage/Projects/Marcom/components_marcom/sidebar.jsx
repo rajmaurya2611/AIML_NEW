@@ -7,7 +7,7 @@ import chat_history_icon from "../assets_marcom/chat_history_icon.svg";
 import information_icon from "../assets_marcom/Document_icon.svg";
 import help_icon from "../assets_marcom/sidebar_help_icon.svg";
 import creativity_icon from "../assets_marcom/creativity_icon.svg";
-import "./Sidebar.css";
+import "./sidebar.css";
 import { useState } from "react";
 import down_arrow from "../assets_marcom/persona_down_arrow.svg";
 
