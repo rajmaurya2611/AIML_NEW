@@ -659,12 +659,12 @@ const pivotTable = (pt: ParsedTable): PivotResult => {
   };
 };
 
-const formatCurrency = (n: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(n);
+// const formatCurrency = (n: number) =>
+//   new Intl.NumberFormat("en-US", {
+//     style: "currency",
+//     currency: "EUR",
+//     maximumFractionDigits: 2,
+//   }).format(n);
 
 const colorForIndex = (i: number) => `hsl(${(i * 67) % 360} 70% 45%)`;
 
