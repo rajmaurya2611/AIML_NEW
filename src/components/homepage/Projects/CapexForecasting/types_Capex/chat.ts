@@ -27,6 +27,12 @@
 
 
 
+export interface ChartMessage {
+  type: "bar";
+  data: any[];       // recharts data
+  keys: string[];    // dynamic data keys
+}
+
 export interface Message {
   id: string;
   content: string;
@@ -36,7 +42,8 @@ export interface Message {
   disliked?: boolean;
   feedbackGiven?: boolean;
   sources?: { file: string; url: string }[];
-  options?: { id: string; text: string }[]; // 👈 Add this line for menu support
+  options?: { id: string; text: string }[];
+  chart?: ChartMessage;   // 👈 optional chart data
 }
 
 export interface ChatSession {

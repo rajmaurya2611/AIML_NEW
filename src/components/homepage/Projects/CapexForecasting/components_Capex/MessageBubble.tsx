@@ -588,15 +588,17 @@ const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
       const headers = headerLine
         .split("|")
         .map((h) => h.trim())
-        .filter(Boolean);
+        .filter((h, idx, arr) => !(idx === 0 && h === "") && !(idx === arr.length - 1 && h === "")); 
+      // ✅ only strip leading/trailing blanks, not in-between
 
       const rowLines = t.slice(2);
-      const rows = rowLines.map((rl) =>
-        rl
-          .split("|")
-          .map((c) => stripMd(c.trim()))
-          .filter(Boolean)
-      );
+      const rows = rowLines.map((rl) => {
+        let cells = rl.split("|").map((c) => stripMd(c.trim()));
+        // Remove only the first/last empty if row starts/ends with a pipe
+        if (cells.length && cells[0] === "") cells.shift();
+        if (cells.length && cells[cells.length - 1] === "") cells.pop();
+        return cells; // ✅ do NOT filter(Boolean) → keep blanks
+      });
 
       tables.push({ title, headers, rows });
       i = j - 1;
@@ -605,6 +607,7 @@ const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
 
   return tables;
 };
+
 
 const pivotTable = (pt: ParsedTable): PivotResult => {
   const months = pt.headers.slice(1);
@@ -756,10 +759,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const downloadOneMarkdownTableAsExcel = (tableMarkdown: string, tableHeading: string) => {
     // Extract a single table from markdown string
-    const lines = tableMarkdown.split('\n');
-    let tableStart = -1, tableEnd = -1;
+    const lines = tableMarkdown.split("\n");
+    let tableStart = -1,
+      tableEnd = -1;
     for (let i = 0; i < lines.length; ++i) {
-      if (lines[i].startsWith("|")) {
+      if (lines[i].trim().startsWith("|")) {
         if (tableStart === -1) tableStart = i;
         tableEnd = i;
       }
@@ -778,40 +782,57 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       }
     }
 
-    const body = lines.slice(tableStart, tableEnd + 1).join('\n');
+    const body = lines.slice(tableStart, tableEnd + 1).join("\n");
     // Parse using your existing markdown parser
     const [parsed] = parseAllMarkdownTables(body);
 
-    if (!parsed) {
-      alert("Could not parse table.");
-      return;
-    }
+      if (!parsed) {
+        alert("Could not parse table.");
+        return;
+      }
 
-    // Prepare padded rows
-    const colCount = parsed.headers.length;
-    const sheetData: any[] = [];
-    // Add table title as first row (optional)
-    sheetData.push([title]);
-    // Empty row for spacing
-    sheetData.push([]);
-    // Headers
-    sheetData.push(parsed.headers);
-    // Rows (pad or trim as needed)
-    parsed.rows.forEach(row =>
-      sheetData.push([
-        ...row.slice(0, colCount),
-        ...Array(Math.max(colCount - row.length, 0)).fill("")
-      ])
-    );
+      const colCount = parsed.headers.length;
+      const sheetData: any[] = [];
 
-    // Export as Excel
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    XLSX.utils.book_append_sheet(wb, ws, title.substring(0, 31) || "Sheet");
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
-    saveAs(blob, `${title.replace(/\s+/g, '_')}_${new Date().toISOString()}.xlsx`);
-  };
+      // Add table title as first row (optional)
+      sheetData.push([title]);
+      sheetData.push([]); // empty row
+      sheetData.push(parsed.headers.map(h => (h == null ? "" : String(h).trim()))); // headers
+
+      // --- FIXED ROW NORMALIZATION ---
+      const normalizeRow = (row: any): string[] => {
+        let cells: string[];
+        if (Array.isArray(row)) {
+          cells = row.map(c => (c == null ? "" : String(c).trim()));
+        } else {
+          // Fallback: split raw markdown line
+          cells = String(row).split("|");
+          if (cells.length && cells[0].trim() === "") cells.shift();
+          if (cells.length && cells[cells.length - 1].trim() === "") cells.pop();
+          cells = cells.map(c => c.trim());
+        }
+
+        // Pad or trim to match header length
+        if (cells.length < colCount) {
+          cells = cells.concat(Array(colCount - cells.length).fill(""));
+        } else if (cells.length > colCount) {
+          cells = cells.slice(0, colCount);
+        }
+        return cells;
+      };
+
+      parsed.rows.forEach(row => sheetData.push(normalizeRow(row)));
+
+      // Export as Excel
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      const safeSheetName =
+        (title || "Sheet").replace(/[:\\/?*\[\]]/g, "_").substring(0, 31) || "Sheet";
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      saveAs(blob, `${(title || "table").replace(/\s+/g, "_")}_${new Date().toISOString()}.xlsx`);
+    };
 
   // Export a chart div to PDF
   const exportChartToPdf = async (chartId: string, title = "chart") => {
@@ -869,6 +890,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       </button>
                     ))}
                 </div>
+                <p className="mb-3 text-base text-gray-800 mt-3">Enter <span style={{fontWeight:"bold"}}>Exit</span> when done.</p>
               </div>
             )}
 
@@ -885,7 +907,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     {displayText}
                   </ReactMarkdown>
                 </div>
-
+                
                 {pivoted.length > 0 && (
                   <div className="mt-6 space-y-10">
                     <div className="mb-4 text-right">
@@ -897,7 +919,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                         Download as Excel
                       </button>
                     </div>
-                    {pivoted.map((piv, tIdx) => {
+                    {/* {pivoted.map((piv, tIdx) => {
                       const chartId = `chart-container-${message.id}-${tIdx}`;
                       return (
                         <div
@@ -917,120 +939,67 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                             </button>
                           </div>
                           </div>
-                          <div className="capex-charts">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">
-                              Monthly trend by project
-                            </h5>
-                            <div id={chartId}>
-                              <ResponsiveContainer width="100%" height={350}>
-                                <LineChart
-                                  data={piv.dataByMonth}
-                                  margin={{ top: 20, right: 20, left: 40, bottom: 60 }} // <-- increase bottom!
-                                >
-                                  <CartesianGrid strokeDasharray="4 4" />
-                                  <XAxis
-                                    dataKey="month"
-                                    tick={{ fontSize: 12 }}
-                                    interval={0}
-                                    angle={-20}
-                                    textAnchor="end"
-                                    height={50}
-                                  />
-                                  <YAxis
-                                    tickFormatter={(v) => formatCurrency(v as number)}
-                                    tick={{ fontSize: 12 }}
-                                    width={90}
-                                  />
-                                  <Tooltip
-                                    formatter={(value: any, name: string) => [
-                                      formatCurrency(Number(value)),
-                                      name,
-                                    ]}
-                                    labelFormatter={(label) => label}
-                                  />
-                                  <Legend
-                                    verticalAlign="bottom"
-                                    align="center"
-                                    wrapperStyle={{
-                                      paddingTop: 12,
-                                      marginTop: 40,
-                                      fontSize: 13,
-                                      lineHeight: '21px',
-                                      width: '100%',
-                                      whiteSpace: 'normal',
-                                      display: 'flex',
-                                      flexWrap: 'wrap',
-                                      justifyContent: 'center',
-                                      bottom: 10,
-                                      left: 15
-                                    }}
-                                  />
-                                  {piv.seriesKeys.map((key: string, i: number) => (
-                                    <Line
-                                      key={key}
-                                      type="monotone"
-                                      dataKey={key}
-                                      stroke={colorForIndex(i)}
-                                      dot={false}
-                                      strokeWidth={2}
-                                      isAnimationActive={true}
-                                    />
-                                  ))}
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          </div>
-                          {piv.monthlyTotals && (
-                            <div id={`${chartId}-totals`} className="mt-6">
-                              <div className="mb-6 text-right">
-                                <button
-                                  onClick={() => exportChartToPdf(`${chartId}-totals`, `${piv.tableTitle} Totals`)}
-                                  className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
-                                >
-                                  Download totals chart as PDF
-                                </button>
-                              </div>
-                              <h5 className="text-sm font-medium text-gray-700 mb-2">
-                                Monthly totals
-                              </h5>
-                              <div id={`${chartId}-totals`}>
-                                <ResponsiveContainer width="100%" height={300}>
-                                  <BarChart data={piv.dataByMonth}>
-                                    <CartesianGrid strokeDasharray="4 4" />
-                                    <XAxis
-                                      dataKey="month"
-                                      tick={{ fontSize: 12 }}
-                                      interval={0}
-                                      angle={-20}
-                                      textAnchor="end"
-                                      height={50}
-                                    />
-                                    <YAxis
-                                      tickFormatter={(v) => formatCurrency(v as number)}
-                                      tick={{ fontSize: 12 }}
-                                      width={90}
-                                    />
-                                    <Tooltip
-                                      formatter={(value: any) => formatCurrency(Number(value))}
-                                      labelFormatter={(label) => label}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                                    <Bar
-                                      dataKey="Monthly total"
-                                      fill={colorForIndex(9)}
-                                      isAnimationActive={true}
-                                    />
-                                  </BarChart>
-                                </ResponsiveContainer>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )
-                    })}
+                    })} */}
                   </div>
                 )}
-
+                {message.chart && (
+                  <div className="mt-6">
+                    <div className="mb-4 text-right">
+                      <button
+                        onClick={() =>
+                          exportChartToPdf(`chart-${message.id}`, message.content || "Chart")
+                        }
+                        className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
+                      >
+                        Download chart as PDF
+                      </button>
+                    </div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">
+                      {message.content}
+                    </h5>
+                    <div id={`chart-${message.id}`}>
+                      <ResponsiveContainer width="100%" height={350}>
+                        {message.chart.type === "bar" ? (
+                          <BarChart data={message.chart.data}>
+                            <CartesianGrid strokeDasharray="4 4" />
+                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            {message.chart.keys.map((key: string, i: number) => (
+                              <Bar
+                                key={key}
+                                dataKey={key}
+                                fill={colorForIndex(i)}
+                                isAnimationActive={true}
+                              />
+                            ))}
+                          </BarChart>
+                        ) : (
+                          <LineChart data={message.chart.data}>
+                            <CartesianGrid strokeDasharray="4 4" />
+                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            {message.chart.keys.map((key: string, i: number) => (
+                              <Line
+                                key={key}
+                                type="monotone"
+                                dataKey={key}
+                                stroke={colorForIndex(i)}
+                                strokeWidth={2}
+                                dot={false}
+                              />
+                            ))}
+                          </LineChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-semibold mb-2 text-gray-800">
@@ -1131,6 +1100,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
     </div>
   );
+
+
 };
 
 export default MessageBubble;
