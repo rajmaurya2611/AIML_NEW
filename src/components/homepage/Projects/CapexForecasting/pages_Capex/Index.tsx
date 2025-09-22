@@ -110,41 +110,7 @@ const Index = () => {
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
 
-      // 1️⃣ Handle charts (no early return)
-      if (data.bp_chart) {
-        const bpChartMsg: Message = {
-          id: uuidv4(),
-          content: data.bp_chart.title || "Here’s the BP chart:",
-          sender: "bot",
-          timestamp: new Date(),
-          chart: {
-            type: data.bp_chart.chartType || "bar",
-            data: data.bp_chart.data,
-            keys: Object.keys(data.bp_chart.data[0]).filter(
-              (k) => k !== "name" && k !== "formattedValue"
-            ),
-          },
-        };
-        setMessages((prev) => [...prev, bpChartMsg]);
-      }
-
-      if (data.bet_chart) {
-        const betChartMsg: Message = {
-          id: uuidv4(),
-          content: data.bet_chart.title || "Here’s the BET chart:",
-          sender: "bot",
-          timestamp: new Date(),
-          chart: {
-            type: data.bet_chart.chartType || "bar",
-            data: data.bet_chart.data,
-            keys: Object.keys(data.bet_chart.data[0]).filter(
-              (k) => k !== "name" && k !== "formattedValue"
-            ),
-          },
-        };
-        setMessages((prev) => [...prev, betChartMsg]);
-      }
-
+      
       // 2️⃣ Menu
       if (data.type === "menu" && Array.isArray(data.options)) {
         const menuMessage: Message = {
@@ -174,16 +140,21 @@ const Index = () => {
         ]);
         return;
       }
+     
 
+   
       // 4️⃣ Result
       if (data.type === "result") {
         const parts: string[] = [];
         if (data.bp_table_md) {
           parts.push(`### My Investment (BP)\n\n${data.bp_table_md}`);
         }
+  
         if (data.bet_table_md) {
           parts.push(`### Customer Investment (BET)\n\n${data.bet_table_md}`);
         }
+       
+
         if (data.total_table_md) {
           parts.push(`### Total Investment\n\n${data.total_table_md}`);
         }
@@ -202,6 +173,39 @@ const Index = () => {
             sources: [],
           },
         ]);
+                       // Chart details
+      if (data.bp_chart) {
+        const bpChartMsg: Message = {
+          id: uuidv4(),
+          content: data.bp_chart.title || "Here’s the BP chart:",
+          sender: "bot",
+          timestamp: new Date(),
+          chart: {
+            type: data.bp_chart.chartType || "bar",
+            data: data.bp_chart.data,
+            keys: Object.keys(data.bp_chart.data[0]).filter(
+              (k) => k !== "name" && k !== "formattedValue"
+            ),
+          },
+        };
+        setMessages((prev) => [...prev, bpChartMsg]);
+      }
+          if (data.bet_chart) {
+        const betChartMsg: Message = {
+          id: uuidv4(),
+          content: data.bet_chart.title || "Here’s the BET chart:",
+          sender: "bot",
+          timestamp: new Date(),
+          chart: {
+            type: data.bet_chart.chartType || "bar",
+            data: data.bet_chart.data,
+            keys: Object.keys(data.bet_chart.data[0]).filter(
+              (k) => k !== "name" && k !== "formattedValue"
+            ),
+          },
+        };
+        setMessages((prev) => [...prev, betChartMsg]);
+      }
         return;
       }
 
@@ -218,6 +222,7 @@ const Index = () => {
           sources: [],
         },
       ]);
+
     } catch (error) {
       console.error("Backend error:", error);
       toast({

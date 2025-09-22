@@ -944,6 +944,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     })} */}
                   </div>
                 )}
+                
                 {message.chart && (
                   <div className="mt-6">
                     <div className="mb-4 text-right">
@@ -1000,6 +1001,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </div>
                   </div>
                 )}
+
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-semibold mb-2 text-gray-800">

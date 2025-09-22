@@ -33,7 +33,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({
               {/* Optional SVG */}
             </div>
             <h3 className="welcome-heading-capex mb-1">
-              <span className='welcome-heading-gradient-capex gradient-animation'>CAPEX Forecasting</span>
+              <span className='welcome-heading-gradient-capex gradient-animation' style={{fontSize:"32px"}}>CAPEX Forecasting</span>
             </h3>
             <p className="welcome-text-capex">
               Smarter Conversations. Measurable Outcomes.
