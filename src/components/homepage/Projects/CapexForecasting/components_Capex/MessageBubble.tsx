@@ -1017,13 +1017,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <YAxis tick={{ fontSize: 10 }} />
         <Tooltip />
         <Legend />
-        {message.chart.keys.map((key: string, seriesIndex: number) => (
+        {message.chart.keys.map((key: string) => (
           <Bar
             key={key}
             dataKey={key}
             isAnimationActive={true}
           >
-            {message.chart.data.map((entry, barIndex) => (
+            {message.chart?.data.map((_, barIndex) => (
               <Cell
                 key={`cell-${barIndex}`}
                 fill={colorForIndex(barIndex)}

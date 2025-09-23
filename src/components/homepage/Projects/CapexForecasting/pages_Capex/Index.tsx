@@ -46,7 +46,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [queryType,setQueryType] = useState(0);
+  const [queryType] = useState(0);
 
   // 🔐 Okta email is the ONLY session identifier
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -140,18 +140,17 @@ const Index = () => {
         ]);
         return;
       }
-     
+
       // 4️⃣ Result
       if (data.type === "result") {
         const parts: string[] = [];
         if (data.bp_table_md) {
           parts.push(`### My Investment (BP)\n\n${data.bp_table_md}`);
         }
-  
+
         if (data.bet_table_md) {
           parts.push(`### Customer Investment (BET)\n\n${data.bet_table_md}`);
         }
-       
 
         if (data.total_table_md) {
           parts.push(`### Total Investment\n\n${data.total_table_md}`);
@@ -172,39 +171,39 @@ const Index = () => {
           },
         ]);
 
-      // Chart details
-      if (data.bp_chart) {
-        const bpChartMsg: Message = {
-          id: uuidv4(),
-          content: data.bp_chart.title || "Here’s the BP chart:",
-          sender: "bot",
-          timestamp: new Date(),
-          chart: {
-            type: data.bp_chart.chartType || "bar",
-            data: data.bp_chart.data,
-            keys: Object.keys(data.bp_chart.data[0]).filter(
-              (k) => k !== "name" && k !== "formattedValue"
-            ),
-          },
-        };
-        setMessages((prev) => [...prev, bpChartMsg]);
-      }
-          if (data.bet_chart) {
-        const betChartMsg: Message = {
-          id: uuidv4(),
-          content: data.bet_chart.title || "Here’s the BET chart:",
-          sender: "bot",
-          timestamp: new Date(),
-          chart: {
-            type: data.bet_chart.chartType || "bar",
-            data: data.bet_chart.data,
-            keys: Object.keys(data.bet_chart.data[0]).filter(
-              (k) => k !== "name" && k !== "formattedValue"
-            ),
-          },
-        };
-        setMessages((prev) => [...prev, betChartMsg]);
-      }
+        // Chart details
+        if (data.bp_chart) {
+          const bpChartMsg: Message = {
+            id: uuidv4(),
+            content: data.bp_chart.title || "Here’s the BP chart:",
+            sender: "bot",
+            timestamp: new Date(),
+            chart: {
+              type: data.bp_chart.chartType || "bar",
+              data: data.bp_chart.data,
+              keys: Object.keys(data.bp_chart.data[0]).filter(
+                (k) => k !== "name" && k !== "formattedValue"
+              ),
+            },
+          };
+          setMessages((prev) => [...prev, bpChartMsg]);
+        }
+        if (data.bet_chart) {
+          const betChartMsg: Message = {
+            id: uuidv4(),
+            content: data.bet_chart.title || "Here’s the BET chart:",
+            sender: "bot",
+            timestamp: new Date(),
+            chart: {
+              type: data.bet_chart.chartType || "bar",
+              data: data.bet_chart.data,
+              keys: Object.keys(data.bet_chart.data[0]).filter(
+                (k) => k !== "name" && k !== "formattedValue"
+              ),
+            },
+          };
+          setMessages((prev) => [...prev, betChartMsg]);
+        }
         return;
       }
 
@@ -221,7 +220,6 @@ const Index = () => {
           sources: [],
         },
       ]);
-
     } catch (error) {
       console.error("Backend error:", error);
       toast({
@@ -235,7 +233,9 @@ const Index = () => {
   };
 
   // User message
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (
+    content: string
+  ) => {
     if (!sessionEmail) {
       pushMissingEmailMessage();
       return;
@@ -247,6 +247,7 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
+    // keep existing behaviour: send content only to backend
     sendMessageToBackend(content);
   };
 
@@ -350,7 +351,11 @@ const Index = () => {
           />
           <div className="p-4 input-wrappper">
             <AnimatedPrompts onPromptClick={handlePromptClick} />
-            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} queryType={queryType}/>
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              queryType={queryType}
+            />
           </div>
         </div>
       </main>

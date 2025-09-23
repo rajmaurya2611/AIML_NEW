@@ -6,11 +6,22 @@ import { ChatOption } from "../types_Capex/chat";
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, option: ChatOption, files?: File[]) => void;
+  // allow option to be nullable/optional and forward queryType
+  onSendMessage: (
+    content: string,
+    option?: ChatOption | null,
+    files?: File[],
+    queryType?: number
+  ) => void;
   isLoading: boolean;
+  queryType?: number;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
+const ChatInput: React.FC<ChatInputProps> = ({
+  onSendMessage,
+  isLoading,
+  queryType,
+}) => {
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(""); // Live (partial) text
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -22,7 +33,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
 
   const handleSend = () => {
     if ((message.trim() || selectedFiles.length > 0) && !isLoading) {
-      onSendMessage(message, null as ChatOption, selectedFiles);
+      // Forward queryType as the 4th parameter (may be undefined)
+      onSendMessage(message, null as ChatOption | null, selectedFiles, queryType);
       setMessage("");
       setSelectedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -51,79 +63,78 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
 
   // 🎤 Start/Stop Speech Recognition with auto language detection
   const toggleMic = async () => {
-  if (listening && recognizer) {
-    recognizer.stopContinuousRecognitionAsync();
-    setListening(false);
-    setPreview("");
-    return;
-  }
-
-  try {
-    // 🔑 Use your endpoint + key directly
-    const speechConfig = sdk.SpeechConfig.fromSubscription(
-      import.meta.env.VITE_AZURE_SPEECH_KEY_CAPEX as string,
-      import.meta.env.VITE_AZURE_SPEECH_REGION_CAPEX as string
-    );
-
-    // 🎙️ Microphone input
-    const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-
-    // 🌍 Auto detect languages
-    const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages([
-      "en-US",
-      // "fr-FR",
-      "es-ES",
-      "de-DE",
-      "pt-PT",
-      // "hu-HU",
-    ]);
-
-    // 🔥 Create recognizer with auto-detect
-    const recognizerInstance = sdk.SpeechRecognizer.FromConfig(
-      speechConfig,
-      autoDetectConfig,
-      audioConfig
-    );
-
-    // 🟢 Live (preview)
-    recognizerInstance.recognizing = (_s, e) => {
-      setPreview(e.result.text);
-    };
-
-    // 🟢 Finalized result
-    recognizerInstance.recognized = (_s, e) => {
-      if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
-        const langResult = sdk.AutoDetectSourceLanguageResult.fromResult(e.result);
-        const detectedLang = langResult.language;
-
-        console.log("Detected language:", detectedLang);
-        console.log("Final text:", e.result.text);
-
-        setMessage((prev) => (prev + " " + e.result.text).trim());
-        setPreview("");
-      }
-    };
-
-    recognizerInstance.canceled = (_s, e) => {
-      console.error("Recognition canceled:", e);
-      recognizerInstance.stopContinuousRecognitionAsync();
+    if (listening && recognizer) {
+      recognizer.stopContinuousRecognitionAsync();
       setListening(false);
-    };
+      setPreview("");
+      return;
+    }
 
-    recognizerInstance.sessionStopped = () => {
-      recognizerInstance.stopContinuousRecognitionAsync();
+    try {
+      // 🔑 Use your endpoint + key directly
+      const speechConfig = sdk.SpeechConfig.fromSubscription(
+        import.meta.env.VITE_AZURE_SPEECH_KEY_CAPEX as string,
+        import.meta.env.VITE_AZURE_SPEECH_REGION_CAPEX as string
+      );
+
+      // 🎙️ Microphone input
+      const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
+
+      // 🌍 Auto detect languages
+      const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages([
+        "en-US",
+        // "fr-FR",
+        "es-ES",
+        "de-DE",
+        "pt-PT",
+        // "hu-HU",
+      ]);
+
+      // 🔥 Create recognizer with auto-detect
+      const recognizerInstance = sdk.SpeechRecognizer.FromConfig(
+        speechConfig,
+        autoDetectConfig,
+        audioConfig
+      );
+
+      // 🟢 Live (preview)
+      recognizerInstance.recognizing = (_s, e) => {
+        setPreview(e.result.text);
+      };
+
+      // 🟢 Finalized result
+      recognizerInstance.recognized = (_s, e) => {
+        if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
+          const langResult = sdk.AutoDetectSourceLanguageResult.fromResult(e.result);
+          const detectedLang = langResult.language;
+
+          console.log("Detected language:", detectedLang);
+          console.log("Final text:", e.result.text);
+
+          setMessage((prev) => (prev + " " + e.result.text).trim());
+          setPreview("");
+        }
+      };
+
+      recognizerInstance.canceled = (_s, e) => {
+        console.error("Recognition canceled:", e);
+        recognizerInstance.stopContinuousRecognitionAsync();
+        setListening(false);
+      };
+
+      recognizerInstance.sessionStopped = () => {
+        recognizerInstance.stopContinuousRecognitionAsync();
+        setListening(false);
+      };
+
+      recognizerInstance.startContinuousRecognitionAsync();
+      setRecognizer(recognizerInstance);
+      setListening(true);
+    } catch (error) {
+      console.error("Speech recognition error:", error);
       setListening(false);
-    };
-
-    recognizerInstance.startContinuousRecognitionAsync();
-    setRecognizer(recognizerInstance);
-    setListening(true);
-  } catch (error) {
-    console.error("Speech recognition error:", error);
-    setListening(false);
-  }
-};
-
+    }
+  };
 
   return (
     <div className="inner-text-body border border-2 rounded-xl p-3 shadow-sm input-context">
@@ -137,7 +148,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
       />
 
       {preview && <div className="preview-text">{preview}</div>}
-
 
       {selectedFiles.length > 0 && (
         <div className="mt-2 mb-2 flex flex-wrap gap-2 text-xs text-gray-600">
@@ -169,10 +179,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
             disabled={isLoading}
             variant="outline"
             size="sm"
-            className={`flex items-center gap-1 text-xs ${listening
-              ? "bg-red-100 text-red-600"
-              : "text-[#da2128] hover:bg-gray-100"
-              }`}
+            className={`flex items-center gap-1 text-xs ${
+              listening ? "bg-red-100 text-red-600" : "text-[#da2128] hover:bg-gray-100"
+            }`}
             aria-label={listening ? "Stop Recording" : "Start Recording"}
             title={listening ? "Stop" : "Speak"}
           >
