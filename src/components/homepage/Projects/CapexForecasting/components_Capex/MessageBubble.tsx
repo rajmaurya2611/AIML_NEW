@@ -457,6 +457,7 @@ import {
   CartesianGrid,
   Legend,
   ResponsiveContainer,
+  Cell
 } from "recharts";
 
 interface MessageBubbleProps {
@@ -666,7 +667,38 @@ const pivotTable = (pt: ParsedTable): PivotResult => {
 //     maximumFractionDigits: 2,
 //   }).format(n);
 
-const colorForIndex = (i: number) => `hsl(${(i * 67) % 360} 70% 45%)`;
+// const colorForIndex = (i: number) => `hsl(${(i * 67) % 360} 70% 45%)`;
+const colors = [
+  "#3b82f6", // blue
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#06b6d4", // cyan
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#6366f1", // indigo
+  "#a855f7", // purple
+  "#22c55e", // emerald
+  "#eab308", // yellow
+  "#0ea5e9", // sky
+  "#d946ef", // fuchsia
+  "#475569", // slate
+  "#f43f5e", // rose
+  "#0891b2", // cyan dark
+  "#65a30d", // olive/lime dark
+  "#2563eb", // deep blue
+  "#dc2626", // deep red
+  "#7c3aed", // deep violet
+  "#fb923c", // light orange
+  "#15803d", // forest green
+];
+
+function colorForIndex(i: number) {
+  return colors[i % colors.length];
+}
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
@@ -863,6 +895,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div className={`${isUser ? "flex ms-prompt justify-end" : "ms-response"} mb-4`}>
+      
       <div
         className={[
           "max-w-[95%] md:max-w-[85%] lg:max-w-[75%] rounded-2xl p-4",
@@ -890,7 +923,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       </button>
                     ))}
                 </div>
-                <p className="mb-3 text-base text-gray-800 mt-3">Enter <span style={{fontWeight:"bold"}}>Exit</span> when done.</p>
+                <p className="mb-3 text-base text-gray-800 mt-3">Enter <span style={{fontWeight:"bold"}}>Exit</span> to change the area of interest.</p>
               </div>
             )}
 
@@ -944,7 +977,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     })} */}
                   </div>
                 )}
-                
                 {message.chart && (
                   <div className="mt-6">
                     <div className="mb-4 text-right">
@@ -960,48 +992,87 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     <h5 className="text-sm font-medium text-gray-700 mb-2">
                       {message.content}
                     </h5>
-                    <div id={`chart-${message.id}`}>
-                      <ResponsiveContainer width="100%" height={350}>
-                        {message.chart.type === "bar" ? (
-                          <BarChart data={message.chart.data}>
-                            <CartesianGrid strokeDasharray="4 4" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Legend />
-                            {message.chart.keys.map((key: string, i: number) => (
-                              <Bar
-                                key={key}
-                                dataKey={key}
-                                fill={colorForIndex(i)}
-                                isAnimationActive={true}
-                              />
-                            ))}
-                          </BarChart>
-                        ) : (
-                          <LineChart data={message.chart.data}>
-                            <CartesianGrid strokeDasharray="4 4" />
-                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Legend />
-                            {message.chart.keys.map((key: string, i: number) => (
-                              <Line
-                                key={key}
-                                type="monotone"
-                                dataKey={key}
-                                stroke={colorForIndex(i)}
-                                strokeWidth={2}
-                                dot={false}
-                              />
-                            ))}
-                          </LineChart>
-                        )}
-                      </ResponsiveContainer>
-                    </div>
+<div id={`chart-${message.id}`}>
+  <ResponsiveContainer width="100%" height={350}>
+    {message.chart.type === "bar" ? (
+      // <BarChart data={message.chart.data}>
+      //   <CartesianGrid strokeDasharray="4 4" />
+      //   <XAxis dataKey="name" tick={false} axisLine={false} />
+      //   <YAxis tick={{ fontSize: 12 }} />
+      //   <Tooltip />
+      //   <Legend />
+      //   {message.chart.keys.map((key: string, i: number) => (
+      //     <Bar
+      //       key={key}
+      //       dataKey={key}
+      //       fill={colorForIndex(i)}   // legend + bar color
+      //       isAnimationActive={true}
+      //     />
+      //   ))}
+      // </BarChart>
+
+      <BarChart data={message.chart.data}>
+        <CartesianGrid strokeDasharray="4 4" />
+        <XAxis dataKey="name" tick={false} axisLine={false} />
+        <YAxis tick={{ fontSize: 10 }} />
+        <Tooltip />
+        <Legend />
+        {message.chart.keys.map((key: string, seriesIndex: number) => (
+          <Bar
+            key={key}
+            dataKey={key}
+            isAnimationActive={true}
+          >
+            {message.chart.data.map((entry, barIndex) => (
+              <Cell
+                key={`cell-${barIndex}`}
+                fill={colorForIndex(barIndex)}
+              />
+            ))}
+          </Bar>
+        ))}
+      </BarChart>
+
+    ) : (
+      <LineChart data={message.chart.data}>
+        <CartesianGrid strokeDasharray="4 4" />
+        <XAxis dataKey="name" tick={false} axisLine={false} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Legend />
+        {message.chart.keys.map((key: string, i: number) => (
+          <Line
+            key={key}
+            type="monotone"
+            dataKey={key}
+            stroke={colorForIndex(i)}
+            strokeWidth={2}
+            dot={false}
+          />
+        ))}
+      </LineChart>
+    )}
+  </ResponsiveContainer>
+
+{/* Custom X labels */}
+<div className="flex justify-between mt-2">
+  {message.chart.data.map((d: any, i: number) => (
+    <span
+      key={i}
+      className="text-xs font-medium"
+      style={{ color: colorForIndex(i) }} // Use dynamic color per index
+    >
+      {d.name}
+    </span>
+  ))}
+</div>
+
+</div>
+
+
                   </div>
                 )}
-
+                
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-semibold mb-2 text-gray-800">

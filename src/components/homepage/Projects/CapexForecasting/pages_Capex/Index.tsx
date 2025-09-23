@@ -46,6 +46,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [queryType,setQueryType] = useState(0);
 
   // 🔐 Okta email is the ONLY session identifier
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -110,7 +111,6 @@ const Index = () => {
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
 
-      
       // 2️⃣ Menu
       if (data.type === "menu" && Array.isArray(data.options)) {
         const menuMessage: Message = {
@@ -141,8 +141,6 @@ const Index = () => {
         return;
       }
      
-
-   
       // 4️⃣ Result
       if (data.type === "result") {
         const parts: string[] = [];
@@ -173,7 +171,8 @@ const Index = () => {
             sources: [],
           },
         ]);
-                       // Chart details
+
+      // Chart details
       if (data.bp_chart) {
         const bpChartMsg: Message = {
           id: uuidv4(),
@@ -351,7 +350,7 @@ const Index = () => {
           />
           <div className="p-4 input-wrappper">
             <AnimatedPrompts onPromptClick={handlePromptClick} />
-            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} queryType={queryType}/>
           </div>
         </div>
       </main>
