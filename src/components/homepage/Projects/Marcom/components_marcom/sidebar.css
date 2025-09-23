@@ -1,7 +1,8 @@
-.sidebar p, span{
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    color: #555555;
+.sidebar p,
+.sidebar span {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #555555;
 }
 
 .sidebar {

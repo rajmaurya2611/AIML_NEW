@@ -19,9 +19,11 @@
     border-bottom-left-radius: 20px;
     border-bottom-right-radius: 20px;
 }
-p, h1, h2, h3, h4, h5, h6{
-      font-family: 'Poppins', sans-serif;
-    }
+
+.homepageContainer :is(p, h1, h2, h3, h4, h5, h6) {
+  font-family: 'Poppins', sans-serif;
+}
+
    
 .appDescription{
     position: relative;
