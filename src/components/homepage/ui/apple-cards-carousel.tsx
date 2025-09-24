@@ -7,6 +7,7 @@ import React, {
   useState,
   createContext,
   useContext,
+  PropsWithChildren,
 } from "react";
 import {
   ArrowLeftOutlined,
@@ -15,9 +16,9 @@ import {
 } from "@ant-design/icons";
 import { AnimatePresence, motion } from "framer-motion";
 import Spline from "@splinetool/react-spline";
+import { createPortal } from "react-dom";
 import { useOutsideClick } from "../../../hooks/use-outside-click";
 
-// Simple classnames util (use your own cn if you have one)
 function cn(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -37,18 +38,27 @@ type CardT = {
 export const CarouselContext = createContext<{
   onCardClose: (index: number) => void;
   currentIndex: number;
+  setModalOpen: (v: boolean) => void;
 }>({
   onCardClose: () => {},
   currentIndex: 0,
+  setModalOpen: () => {},
 });
+
+const BodyPortal = ({ children }: PropsWithChildren) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+};
 
 export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Spline integration refs
   const splineWrapRef = useRef<HTMLDivElement | null>(null);
   const splineCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -66,33 +76,25 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth);
   };
 
-  const scrollLeft = () => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: -300, behavior: "smooth" });
-    }
-  };
-
-  const scrollRight = () => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: 300, behavior: "smooth" });
-    }
-  };
+  const scrollLeft = () =>
+    carouselRef.current?.scrollBy({ left: -300, behavior: "smooth" });
+  const scrollRight = () =>
+    carouselRef.current?.scrollBy({ left: 300, behavior: "smooth" });
 
   const handleCardClose = (index: number) => setCurrentIndex(index);
 
-  // ===== Adjust this to move the cards up/down under the robot =====
-  // smaller negative on mobile, larger on desktop
   const CARD_BELT_LIFT =
-      "mt-[-31vh] sm:mt-[-41vh] md:mt-[-51vh] lg:mt-[-58vh] xl:mt-[-61vh]";
-  // =================================================================
+    "mt-[-31vh] sm:mt-[-41vh] md:mt-[-51vh] lg:mt-[-58vh] xl:mt-[-61vh]";
+
+  useEffect(() => {
+    document.body.style.overflow = modalOpen ? "hidden" : "auto";
+  }, [modalOpen]);
 
   return (
     <CarouselContext.Provider
-      value={{ onCardClose: handleCardClose, currentIndex }}
+      value={{ onCardClose: handleCardClose, currentIndex, setModalOpen }}
     >
-      {/* SECTION: full-height; Spline stays fixed within this area only */}
       <section className="relative w-full min-h-screen overflow-hidden bg-black">
-        {/* Sticky Spline background (fixed inside this section) */}
         <div
           ref={splineWrapRef}
           className="pointer-events-none sticky top-0 h-screen w-full z-0"
@@ -105,10 +107,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
               const canvas = splineWrapRef.current.querySelector("canvas");
               if (canvas instanceof HTMLCanvasElement) {
                 splineCanvasRef.current = canvas;
-                // Wrapper stays pointer-events none so cards are always clickable.
-                // We still allow programmatic events to hit the canvas:
                 canvas.style.pointerEvents = "auto";
-                // Ensure canvas fills the sticky area
                 canvas.style.width = "100%";
                 canvas.style.height = "100%";
                 canvas.style.display = "block";
@@ -117,19 +116,16 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
           />
         </div>
 
-        {/* Foreground content */}
         <div className="relative z-10 w-full h-full">
-          {/* Horizontal carousel (original behavior retained) */}
           <div
             className={cn(
-              // ↓↓↓ This negative margin lifts the whole belt into the chest→legs zone
               CARD_BELT_LIFT,
-              "relative flex w-full overflow-x-scroll overscroll-x-auto py-10 md:py-20 scroll-smooth [scrollbar-width:none]"
+              "relative flex w-full overflow-x-scroll overscroll-x-auto py-10 md:py-20 scroll-smooth [scrollbar-width:none]",
+              modalOpen && "pointer-events-none"
             )}
             ref={carouselRef}
             onScroll={checkScrollability}
             onMouseMove={(e) => {
-              // Proxy mousemove so Spline's mouse animations work under cards
               if (!splineCanvasRef.current) return;
               const evt = new MouseEvent("mousemove", {
                 bubbles: true,
@@ -141,15 +137,10 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
               });
               splineCanvasRef.current.dispatchEvent(evt);
             }}
+            {...(modalOpen ? ({ inert: "" } as any) : {})}
+            aria-hidden={modalOpen || undefined}
           >
-            {/* Right fade edge (kept) */}
-            <div
-              className={cn(
-                "absolute right-0 z-[1000] h-auto w-[5%] overflow-hidden bg-gradient-to-l"
-              )}
-            />
-
-            {/* Cards track */}
+            <div className="absolute right-0 z-10 h-auto w-[5%] overflow-hidden bg-gradient-to-l" />
             <div className={cn("flex flex-row justify-start gap-4 pl-4", "mx-auto")}>
               {items.map((item, index) => (
                 <motion.div
@@ -173,26 +164,24 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="flex justify-end gap-2 mr-10 pb-6">
+          <div className={cn("flex justify-end gap-2 mr-10 pb-6", modalOpen && "pointer-events-none opacity-50")}>
             <button
-              className="relative z-40 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-50"
+              className="relative z-20 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-50"
               onClick={scrollLeft}
-              disabled={!canScrollLeft}
+              disabled={!canScrollLeft || modalOpen}
             >
               <ArrowLeftOutlined className="pl-1 h-6 w-6 text-gray-500" />
             </button>
             <button
-              className="relative z-40 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-50"
+              className="relative z-20 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-50"
               onClick={scrollRight}
-              disabled={!canScrollRight}
+              disabled={!canScrollRight || modalOpen}
             >
               <ArrowRightOutlined className="pl-1 h-6 w-6 text-gray-500" />
             </button>
           </div>
         </div>
 
-        {/* Optional bottom fade to blend with next sections */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent z-10" />
       </section>
     </CarouselContext.Provider>
@@ -210,22 +199,32 @@ export const Card = ({
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { onCardClose } = useContext(CarouselContext);
+  const { onCardClose, setModalOpen } = useContext(CarouselContext);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") handleClose();
     }
-    document.body.style.overflow = open ? "hidden" : "auto";
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
-  useOutsideClick(containerRef, () => handleClose());
+  useOutsideClick(containerRef, () => open && handleClose());
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = () => {
+    setOpen(true);
+    setModalOpen(true);
+  };
   const handleClose = () => {
     setOpen(false);
+    setModalOpen(false);
     onCardClose(index);
   };
 
@@ -233,42 +232,51 @@ export const Card = ({
     <>
       <AnimatePresence>
         {open && (
-          <div className="fixed inset-0 h-screen z-50 overflow-auto">
+          <BodyPortal>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-[9998] bg-black/80 backdrop-blur-lg" />
+
+            {/* Modal */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="bg-black/80 backdrop-blur-lg h-full w-full fixed inset-0"
-            />
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               ref={containerRef}
               layoutId={layout ? `card-${card.title}` : undefined}
-              className="max-w-7xl mx-auto bg-white dark:bg-neutral-900 h-fit z-[60] my-2 p-4 md:p-4 rounded-3xl font-poppins relative"
+              className="fixed inset-0 z-[9999] flex items-start justify-center overflow-auto"
+              aria-modal="true"
+              role="dialog"
             >
-              <button
-                className="sticky top-4 h-8 w-8 right-0 ml-auto bg-black dark:bg-white rounded-full flex items-center justify-center"
-                onClick={handleClose}
-              >
-                <CloseOutlined className="ml-2 mr-1 h-6 w-6 text-neutral-100 dark:text-neutral-900" />
-              </button>
-              <motion.p
-                layoutId={layout ? `category-${card.title}` : undefined}
-                className="text-base font-medium text-black dark:text-white"
-              >
-                {card.category}
-              </motion.p>
-              <motion.p
-                layoutId={layout ? `title-${card.title}` : undefined}
-                className="text-2xl md:text-5xl font-semibold text-neutral-700 mt-4 dark:text-white font-poppins"
-              >
-                {card.title}
-              </motion.p>
-              <div className="py-10">{card.content}</div>
+              <div className="max-w-7xl w-full mx-auto bg-white dark:bg-neutral-900 my-6 p-4 md:p-6 rounded-3xl font-poppins relative">
+                <button
+                  className="sticky top-4 h-8 w-8 right-0 ml-auto bg-black dark:bg-white rounded-full flex items-center justify-center"
+                  onClick={handleClose}
+                  aria-label="Close"
+                >
+                  <CloseOutlined className="ml-2 mr-1 h-6 w-6 text-neutral-100 dark:text-neutral-900" />
+                </button>
+
+                {/* Header block: center-aligned */}
+                <div className="px-2 md:px-4">
+                  <motion.p
+                    layoutId={layout ? `category-${card.title}` : undefined}
+                    className="text-sm md:text-base font-medium text-black dark:text-white text-center"
+                  >
+                    {card.category}
+                  </motion.p>
+                  <motion.p
+                    layoutId={layout ? `title-${card.title}` : undefined}
+                    className="text-2xl md:text-5xl font-semibold text-neutral-700 mt-3 md:mt-4 dark:text-white font-poppins text-center"
+                  >
+                    {card.title}
+                  </motion.p>
+                </div>
+
+                {/* Body stays left-aligned */}
+                <div className="py-10">{card.content}</div>
+              </div>
             </motion.div>
-          </div>
+          </BodyPortal>
         )}
       </AnimatePresence>
 
