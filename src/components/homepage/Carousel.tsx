@@ -44,7 +44,7 @@ export function AppleCardsCarouselDemo() {
 
   return (
     <div className="w-full h-full pt-8 pb-20 bg-black flex flex-col items-center text-center">
-  <h2 className="text-xl md:text-5xl font-poppins font-light text-white">
+  <h2 className="text-xl md:text-5xl font-poppins font-light text-white pb-6">
     Motherson Intelligence
   </h2>
   <Carousel items={cards} />
@@ -154,3 +154,5 @@ const data = [
   //   content: <DummyContent />,
   // },
 ];
+
+
