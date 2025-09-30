@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Logo from '../assets_Capex/logo.png';
-import { Upload, MoreVertical, Files, Eye } from "lucide-react";
+import { Upload, MoreVertical, Files, Eye, Download } from "lucide-react";
 import { useToast } from '../hooks_Capex/use-toast';
 import { motion, AnimatePresence } from "framer-motion";
-
 
 const ChatHeader: React.FC = () => {
   const { toast } = useToast();
@@ -22,22 +21,126 @@ const ChatHeader: React.FC = () => {
   const [showFilesPopup, setShowFilesPopup] = useState(false);
   const [filesData, setFilesData] = useState<string[]>([]);
 
+  // New state for managing selected files
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const [showMppUploadPopup, setShowMppUploadPopup] = useState(false);
   const [mppFile, setMppFile] = useState<File | null>(null);
   const [mppUploading, setMppUploading] = useState(false);
 
-
-
   const handleOpenMppViewer = () => {
-  // set your default MPP table name here or via env
-  const table = (import.meta as any).env?.VITE_MPP_TABLE ?? "invesment_simple";
-  const base = (import.meta as any).env?.BASE_URL ?? "/";
-  const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
-  const url = `${normalized}/capex-forecasting/data-viewer?table=${encodeURIComponent(table)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
-  setEllipsisOpen(false);
-};
+    // set your default MPP table name here or via env
+    const table = (import.meta as any).env?.VITE_MPP_TABLE ?? "invesment_simple";
+    const base = (import.meta as any).env?.BASE_URL ?? "/";
+    const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+    const url = `${normalized}/capex-forecasting/data-viewer?table=${encodeURIComponent(table)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    setEllipsisOpen(false);
+  };
 
+  // Handle checkbox changes
+  const handleFileSelection = (fileName: string, isChecked: boolean) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev);
+      if (isChecked) {
+        newSet.add(fileName);
+      } else {
+        newSet.delete(fileName);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle select all checkbox
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedFiles(new Set(filesData));
+    } else {
+      setSelectedFiles(new Set());
+    }
+  };
+
+  // Download selected files
+  const handleDownloadFiles = async () => {
+    if (selectedFiles.size === 0) {
+      toast({
+        title: "No Files Selected",
+        description: "Please select at least one file to download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/filedownload`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          files: Array.from(selectedFiles)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}`);
+      }
+
+      // Handle file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Set filename based on response headers or default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let fileName = 'download.zip';
+      
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (fileNameMatch) {
+          fileName = fileNameMatch[1];
+        }
+      } else if (selectedFiles.size === 1) {
+        // If single file, use the original filename
+        fileName = Array.from(selectedFiles)[0];
+      }
+      
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: `Successfully downloaded ${selectedFiles.size} file${selectedFiles.size > 1 ? 's' : ''}.`,
+        variant: "default",
+      });
+
+      // Close popup and reset selections
+      setShowFilesPopup(false);
+      setSelectedFiles(new Set());
+
+    } catch (error: any) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download selected files. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Handle cancel button
+  const handleCancelFilesPopup = () => {
+    setShowFilesPopup(false);
+    setSelectedFiles(new Set());
+  };
 
   // Handle upload button clicks and hit respective APIs
   const handleUpload = async (fileType: "BET" | "BP") => {
@@ -121,7 +224,6 @@ const ChatHeader: React.FC = () => {
 
   const filenameDisplay = (fileName: string | null, show: boolean, toggle: () => void) => {
     if (!fileName) return null;
-    // const displayText = fileName.length > 10 ? `${fileName.slice(0, 10)}...` : fileName;
     return (
       <div className="relative flex items-center ml-2">
         <button
@@ -130,7 +232,6 @@ const ChatHeader: React.FC = () => {
           aria-label={`Toggle file name tooltip for ${fileName}`}
           title={fileName}
         >
-          {/* Show ellipsis with underline on hover */}
           <motion.span
             whileHover={{ scale: 1.2, color: "#DA2128" }}
             className="font-mono select-text"
@@ -172,11 +273,6 @@ const ChatHeader: React.FC = () => {
     }
   }, [ellipsisOpen]);
 
-  // const handleDownload = () => {
-  //   // open backend endpoint in new tab -> browser will handle download
-  //   window.open(`${import.meta.env.VITE_CAPEX_BASE_URL}/download-mpp`, "_blank");
-  // };
-
   // Dropdown menu component
   const ellipsisMenu = (
     <AnimatePresence>
@@ -191,7 +287,6 @@ const ChatHeader: React.FC = () => {
           <button
             className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             onClick={async () => {
-              // Uncomment this when ready for real API call
               try {
                 const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/list_data_files`, { method: "GET" });
                 const data = await res.json();
@@ -200,15 +295,9 @@ const ChatHeader: React.FC = () => {
                 setFilesData(["Error fetching files"]);
               }
 
-              // Dummy data for development preview
-              // setFilesData([
-              //   "BET_Q3.csv",
-              //   "BP_schedule_July.xlsx",
-              //   "MPP_Commodities_2025.csv",
-              //   "historic_analysis.xls"
-              // ]);
               setShowFilesPopup(true);
-              setEllipsisOpen(false); // optionally close menu
+              setSelectedFiles(new Set()); // Reset selections when opening popup
+              setEllipsisOpen(false);
             }}
           >
             <Files className="w-3 h-3 text-red-600" />
@@ -216,23 +305,12 @@ const ChatHeader: React.FC = () => {
           </button>
 
           <button
-  className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-  onClick={handleOpenMppViewer}
->
-  <Eye className="w-3 h-3 text-red-600" />
-  View / Edit MPP data
-</button>
-
-          {/* <button
             className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            onClick={() => {
-              setShowMppUploadPopup(true);
-              setEllipsisOpen(false);
-            }}
+            onClick={handleOpenMppViewer}
           >
-            <Upload className="w-3 h-3 text-red-600" />
-            Upload MPP commodity data
-          </button> */}
+            <Eye className="w-3 h-3 text-red-600" />
+            View / Edit MPP data
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
@@ -284,6 +362,8 @@ const ChatHeader: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Files Popup with Checkboxes */}
       <AnimatePresence>
         {showFilesPopup && (
           <motion.div
@@ -293,22 +373,80 @@ const ChatHeader: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
           >
-            <div className="bg-white rounded-lg shadow-xl p-6 min-w-[600px] max-w-[95vw] max-h-[650px] overflow-auto">
-              <div className="flex justify-between items-center mb-2">
+            <div className="bg-white rounded-lg shadow-xl p-6 min-w-[600px] max-w-[95vw] max-h-[650px] flex flex-col">
+              <div className="flex justify-between items-center mb-4">
                 <h2 className="text-base font-semibold text-[#da2128]">Uploaded Files</h2>
                 <button
-                  onClick={() => setShowFilesPopup(false)}
+                  onClick={handleCancelFilesPopup}
                   className="text-gray-400 hover:text-gray-700"
                   aria-label="Close"
                 >
                   &#x2715;
                 </button>
               </div>
-              <ul className="list-disc pl-4">
-                {filesData.map((fname, idx) => (
-                  <li key={idx} className="py-1">{fname}</li>
-                ))}
-              </ul>
+
+              {filesData.length > 0 && (
+                <div className="mb-4 pb-2 border-b border-gray-200">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={selectedFiles.size === filesData.length && filesData.length > 0}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-[#da2128] border-gray-300 rounded focus:ring-[#da2128] focus:ring-2"
+                    />
+                    Select All ({selectedFiles.size} of {filesData.length} selected)
+                  </label>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-auto mb-4">
+                <div className="space-y-2">
+                  {filesData.map((fname, idx) => (
+                    <label key={idx} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.has(fname)}
+                        onChange={(e) => handleFileSelection(fname, e.target.checked)}
+                        className="w-4 h-4 text-[#da2128] border-gray-300 rounded focus:ring-[#da2128] focus:ring-2"
+                      />
+                      <span className="text-sm text-gray-700 select-none">{fname}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {filesData.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Files className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>No files available</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleCancelFilesPopup}
+                  className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                  disabled={isDownloading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDownloadFiles}
+                  disabled={selectedFiles.size === 0 || isDownloading}
+                  className={`px-4 py-2 text-sm rounded transition-colors flex items-center gap-2 ${
+                    selectedFiles.size === 0 || isDownloading
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#da2128] text-white hover:bg-[#ae1b22]'
+                  }`}
+                >
+                  <Download className="w-4 h-4" />
+                  {isDownloading 
+                    ? 'Downloading...' 
+                    : `Download${selectedFiles.size > 0 ? ` (${selectedFiles.size})` : ''}`
+                  }
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -372,7 +510,6 @@ const ChatHeader: React.FC = () => {
                     try {
                       const formData = new FormData();
                       formData.append('file', mppFile);
-                      // Uncomment & update URL as needed
                       const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/upload-mpp`, {
                         method: "POST",
                         body: formData
@@ -406,8 +543,6 @@ const ChatHeader: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-
     </header>
   );
 };

@@ -145,7 +145,7 @@ const Index = () => {
       if (data.type === "result") {
         const parts: string[] = [];
         if (data.bp_table_md) {
-          parts.push(`### My Investment (BP)\n\n${data.bp_table_md}`);
+          parts.push(`### Motherson Investment (BP)\n\n${data.bp_table_md}`);
         }
 
         if (data.bet_table_md) {
@@ -172,37 +172,81 @@ const Index = () => {
         ]);
 
         // Chart details
-        if (data.bp_chart) {
-          const bpChartMsg: Message = {
-            id: uuidv4(),
-            content: data.bp_chart.title || "Here’s the BP chart:",
-            sender: "bot",
-            timestamp: new Date(),
-            chart: {
-              type: data.bp_chart.chartType || "bar",
-              data: data.bp_chart.data,
-              keys: Object.keys(data.bp_chart.data[0]).filter(
-                (k) => k !== "name" && k !== "formattedValue"
-              ),
+        // if (data.bp_chart) {
+        //   console.log("BP Chart Data:", data.bp_chart);
+        //   const bpChartMsg: Message = {
+        //     id: uuidv4(),
+        //     content: data.bp_chart.title || "Here’s the BP chart:",
+        //     sender: "bot",
+        //     timestamp: new Date(),
+        //     chart: {
+        //       type: data.bp_chart.chartType || "bar",
+        //       data: data.bp_chart.data,
+        //       keys: Object.keys(data.bp_chart.data[0]).filter(
+        //         (k) => k !== "name" && k !== "formattedValue"
+        //       ),
+        //     },
+        //   };
+        //   setMessages((prev) => [...prev, bpChartMsg]);
+        // }
+        // if (data.bet_chart) {
+        //   const betChartMsg: Message = {
+        //     id: uuidv4(),
+        //     content: data.bet_chart.title || "Here’s the BET chart:",
+        //     sender: "bot",
+        //     timestamp: new Date(),
+        //     chart: {
+        //       type: data.bet_chart.chartType || "bar",
+        //       data: data.bet_chart.data,
+        //       keys: Object.keys(data.bet_chart.data[0]).filter(
+        //         (k) => k !== "name" && k !== "formattedValue"
+        //       ),
+        //     },
+        //   };
+        //   setMessages((prev) => [...prev, betChartMsg]);
+        // }
+        if (data.bp_chart && data.bp_line_chart) {
+
+           // Prepare keys arrays for bars and lines
+  const bpBarKeys = Object.keys(data.bp_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
+  const bpLineKeys = Object.keys(data.bp_line_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              content: data.bp_chart.title || "BP Bar Chart",
+              sender: "bot",
+              timestamp: new Date(),
+              chartConfig: { ...data.bp_chart, barDataKeys: bpBarKeys },
             },
-          };
-          setMessages((prev) => [...prev, bpChartMsg]);
-        }
-        if (data.bet_chart) {
-          const betChartMsg: Message = {
-            id: uuidv4(),
-            content: data.bet_chart.title || "Here’s the BET chart:",
-            sender: "bot",
-            timestamp: new Date(),
-            chart: {
-              type: data.bet_chart.chartType || "bar",
-              data: data.bet_chart.data,
-              keys: Object.keys(data.bet_chart.data[0]).filter(
-                (k) => k !== "name" && k !== "formattedValue"
-              ),
+            {
+              id: uuidv4(),
+              content: data.bp_line_chart.title || "BP Line Chart",
+              sender: "bot",
+              timestamp: new Date(),
+              chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
             },
-          };
-          setMessages((prev) => [...prev, betChartMsg]);
+          ]);
+        } else if (data.bet_chart && data.bet_line_chart) {
+           const betBarKeys = Object.keys(data.bet_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
+  const betLineKeys = Object.keys(data.bet_line_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uuidv4(),
+              content: data.bet_chart.title || "BET Bar Chart",
+              sender: "bot",
+              timestamp: new Date(),
+              chartConfig: { ...data.bet_chart, barDataKeys: betBarKeys },
+            },
+            {
+              id: uuidv4(),
+              content: data.bet_line_chart.title || "BET Line Chart",
+              sender: "bot",
+              timestamp: new Date(),
+              chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
+            },
+          ]);
         }
         return;
       }
@@ -290,10 +334,10 @@ const Index = () => {
       prev.map((msg) =>
         msg.id === messageId
           ? {
-              ...msg,
-              options: [],
-              content: `${msg.content} (Selected: ${option.text})`,
-            }
+            ...msg,
+            options: [],
+            content: `${msg.content} (Selected: ${option.text})`,
+          }
           : msg
       )
     );
@@ -304,11 +348,11 @@ const Index = () => {
       prev.map((msg) =>
         msg.id === messageId
           ? {
-              ...msg,
-              liked: msg.liked ? false : true,
-              disliked: false,
-              feedbackGiven: !msg.liked,
-            }
+            ...msg,
+            liked: msg.liked ? false : true,
+            disliked: false,
+            feedbackGiven: !msg.liked,
+          }
           : msg
       )
     );
@@ -323,11 +367,11 @@ const Index = () => {
       prev.map((msg) =>
         msg.id === messageId
           ? {
-              ...msg,
-              disliked: msg.disliked ? false : true,
-              liked: false,
-              feedbackGiven: !msg.disliked,
-            }
+            ...msg,
+            disliked: msg.disliked ? false : true,
+            liked: false,
+            feedbackGiven: !msg.disliked,
+          }
           : msg
       )
     );

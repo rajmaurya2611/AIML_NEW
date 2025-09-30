@@ -84,9 +84,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
       const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages([
         "en-US",
         // "fr-FR",
-        "es-ES",
-        "de-DE",
-        "pt-PT",
+        // "es-ES",
+        // "de-DE",
+        // "pt-PT",
         // "hu-HU",
       ]);
 
@@ -100,6 +100,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
       // 🟢 Live (preview)
       recognizerInstance.recognizing = (_s, e) => {
         setPreview(e.result.text);
+        console.log("Recognizing:", e.result.text);
       };
 
       // 🟢 Finalized result

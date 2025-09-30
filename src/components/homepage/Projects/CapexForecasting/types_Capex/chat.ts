@@ -27,10 +27,22 @@
 
 
 
-export interface ChartMessage {
-  type: "bar";
-  data: any[];       // recharts data
-  keys: string[];    // dynamic data keys
+// export interface ChartMessage {
+//   type: "bar";
+//   data: any[];       // recharts data
+//   keys: string[];    // dynamic data keys
+// }
+
+interface ChartConfig {
+  chartType: 'bar' | 'line';
+  config: any;
+  data: any[];
+  title?: string;
+  summary?: {
+    dataPoints: number;
+    formattedTotal: string;
+    totalValue: number;
+  };
 }
 
 export interface Message {
@@ -43,7 +55,7 @@ export interface Message {
   feedbackGiven?: boolean;
   sources?: { file: string; url: string }[];
   options?: { id: string; text: string }[];
-  chart?: ChartMessage;   // 👈 optional chart data
+  chartConfig?: ChartConfig;   // 👈 optional chart data
 }
 
 export interface ChatSession {

@@ -114,3 +114,9 @@ header {
     color: #cf7376;
     cursor: pointer;
 }
+.capex-response h3:first-child {
+    font-weight: 600;
+}
+.capex-response table thead tr th {
+    background-color: #ddd;
+}
