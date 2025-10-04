@@ -103,9 +103,9 @@ header {
     margin-top: 15px;
     cursor: pointer;
 }
-.frequent-prompts {
+/* .frequent-prompts {
     display: none !important;
-}
+} */
 .frequent-prompts button {
     font-size: 13px;
     border: 1px solid #ddd;
@@ -119,4 +119,46 @@ header {
 }
 .capex-response table thead tr th {
     background-color: #ddd;
+}
+
+/* Outer wrapper: gradient animated border */
+.capex-textarea {
+  position: relative;
+  border-radius: 1rem;
+  padding: 1px; /* gradient border thickness */
+  background: linear-gradient(
+  90deg,
+  rgba(218, 33, 39, 0.59),
+  rgba(250, 239, 239, 1),
+  rgba(181, 132, 214, 1)
+);
+  background-size: 300% 300%;
+  animation: gradient-flow 8s ease infinite;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Smooth gradient animation */
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.capex-textarea-inner {
+  border-radius: 0.5rem;
+  background-color: #fff;
+  transition: box-shadow 0.9s ease-in-out;
+}
+
+/* Focus glow effect */
+.capex-textarea:focus-within {
+  box-shadow: 0 0 15px rgba(255, 65, 108, 0.3),
+              0 0 25px rgba(121, 40, 202, 0.2);
+  transform: scale(1.002);
 }

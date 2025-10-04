@@ -11,40 +11,86 @@ import { motion } from "framer-motion";
 import { getUserEmail } from "../okta/getUsersEmail";
 
 const frequentPrompts = [
-  "Total Investment for FY 25/26",
-  "Total Investment for next 3 years?",
-  "Quarterly Investment for FY 25-26",
+  "BP (MPP Investment)",
+  "BET (Customer Investment)",
+  "Total Investment (BP + BET)",
 ];
 
 const AnimatedPrompts = ({
   onPromptClick,
+  showPrompts,
+  // showExit,
 }: {
   onPromptClick: (query: string) => void;
+  showPrompts: boolean;
+  // showExit: boolean;
 }) => (
-  <div className="frequent-prompts flex justify-start gap-4 mb-2">
-    {frequentPrompts.map((prompt, index) => (
-      <motion.button
-        key={prompt}
-        className="cursor-pointer select-none hover:bg-chat-red hover:text-white text-gray-800 px-3 py-1 rounded transition"
-        onClick={() => onPromptClick(prompt)}
-        initial={{ y: 0 }}
-        animate={{ y: [0, -10, 0] }}
-        transition={{
-          delay: index * 0.3,
-          repeat: 0,
-          duration: 0.6,
-          ease: "easeInOut",
-        }}
-      >
-        {prompt}
-      </motion.button>
-    ))}
+  <div className="frequent-prompts flex justify-between gap-4 mb-2">
+    <div className="area-of-interests-cta">
+      {showPrompts &&
+        frequentPrompts.map((prompt, index) => (
+          <motion.button
+            key={prompt}
+            className="cursor-pointer select-none hover:bg-chat-red hover:text-white text-gray-800 px-3 py-1 rounded transition mr-2 font-bold"
+            onClick={() => onPromptClick(prompt)}
+            initial={{ y: 0 }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{
+              delay: index * 0.3,
+              repeat: 0,
+              duration: 0.6,
+              ease: "easeInOut",
+            }}
+          >
+            {prompt}
+          </motion.button>
+        ))}
+    </div>
+    <div className="exit-cta">
+      {(
+        <div className="relative group inline-block">
+          <motion.button
+            className="cursor-pointer select-none hover:bg-chat-red hover:text-white text-gray-800 px-3 py-1 rounded transition font-bold"
+            onClick={() => onPromptClick("Exit")}
+            initial={{ y: 0 }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{
+              delay: 1,
+              repeat: 0,
+              duration: 0.6,
+              ease: "easeInOut",
+            }}
+          >
+            Exit
+          </motion.button>
+          <div
+  className="absolute bottom-full mb-2 left-[-100px] -translate-x-1/2 hidden group-hover:block
+    text-sm text-[#858585] bg-gray-100 rounded shadow-lg
+    px-3 py-2 text-left whitespace-normal break-words
+    min-w-[320px] w-full"
+>
+  Click this to exit from your area of interest
+</div>
+
+
+
+        </div>
+      )}
+
+    </div>
   </div>
 );
+
+
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInputEnabled, setIsInputEnabled] = useState(false);
+  const [showPrompts, setShowPrompts] = useState(true);  // 3 CTAs visible initially
+  // const [showExit, setShowExit] = useState(false);
+
+
   const { toast } = useToast();
   const [queryType] = useState(0);
 
@@ -205,49 +251,68 @@ const Index = () => {
         //   };
         //   setMessages((prev) => [...prev, betChartMsg]);
         // }
-        if (data.bp_chart && data.bp_line_chart) {
 
-           // Prepare keys arrays for bars and lines
-  const bpBarKeys = Object.keys(data.bp_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
-  const bpLineKeys = Object.keys(data.bp_line_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uuidv4(),
-              content: data.bp_chart.title || "BP Bar Chart",
-              sender: "bot",
-              timestamp: new Date(),
-              chartConfig: { ...data.bp_chart, barDataKeys: bpBarKeys },
-            },
-            {
-              id: uuidv4(),
-              content: data.bp_line_chart.title || "BP Line Chart",
-              sender: "bot",
-              timestamp: new Date(),
-              chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
-            },
-          ]);
-        } else if (data.bet_chart && data.bet_line_chart) {
-           const betBarKeys = Object.keys(data.bet_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
-  const betLineKeys = Object.keys(data.bet_line_chart.data[0] || {}).filter(k => k !== 'name' && k !== 'formattedValue');
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uuidv4(),
-              content: data.bet_chart.title || "BET Bar Chart",
-              sender: "bot",
-              timestamp: new Date(),
-              chartConfig: { ...data.bet_chart, barDataKeys: betBarKeys },
-            },
-            {
-              id: uuidv4(),
-              content: data.bet_line_chart.title || "BET Line Chart",
-              sender: "bot",
-              timestamp: new Date(),
-              chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
-            },
-          ]);
+
+        const newMessages: Message[] = [];
+
+        // ✅ BP Charts
+        if (data.bp_chart) {
+          const bpBarKeys = Object.keys(data.bp_chart.data[0] || {}).filter(
+            (k) => k !== "name" && k !== "formattedValue"
+          );
+          newMessages.push({
+            id: uuidv4(),
+            content: data.bp_chart.title || "BP Bar Chart",
+            sender: "bot",
+            timestamp: new Date(),
+            chartConfig: { ...data.bp_chart, barDataKeys: bpBarKeys },
+          });
         }
+        if (data.bp_line_chart) {
+          const bpLineKeys = Object.keys(data.bp_line_chart.data[0] || {}).filter(
+            (k) => k !== "name" && k !== "formattedValue"
+          );
+          newMessages.push({
+            id: uuidv4(),
+            content: data.bp_line_chart.title || "BP Line Chart",
+            sender: "bot",
+            timestamp: new Date(),
+            chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
+          });
+        }
+
+        // ✅ BET Charts
+        if (data.bet_chart) {
+          const betBarKeys = Object.keys(data.bet_chart.data[0] || {}).filter(
+            (k) => k !== "name" && k !== "formattedValue"
+          );
+          newMessages.push({
+            id: uuidv4(),
+            content: data.bet_chart.title || "BET Bar Chart",
+            sender: "bot",
+            timestamp: new Date(),
+            chartConfig: { ...data.bet_chart, barDataKeys: betBarKeys },
+          });
+        }
+        if (data.bet_line_chart) {
+          const betLineKeys = Object.keys(data.bet_line_chart.data[0] || {}).filter(
+            (k) => k !== "name" && k !== "formattedValue"
+          );
+          newMessages.push({
+            id: uuidv4(),
+            content: data.bet_line_chart.title || "BET Line Chart",
+            sender: "bot",
+            timestamp: new Date(),
+            chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
+          });
+        }
+
+        // ✅ Append all collected chart messages
+        if (newMessages.length > 0) {
+          setMessages((prev) => [...prev, ...newMessages]);
+          return;
+        }
+
         return;
       }
 
@@ -301,6 +366,17 @@ const Index = () => {
       pushMissingEmailMessage();
       return;
     }
+
+    if (query === "Exit") {
+      setIsInputEnabled(true);  
+      setShowPrompts(false);
+      // setShowExit(true);         
+    } else {
+      setIsInputEnabled(true);
+      setShowPrompts(false);
+      // setShowExit(true);         
+    }
+
     const userMessage: Message = {
       id: uuidv4(),
       content: query,
@@ -310,6 +386,7 @@ const Index = () => {
     setMessages((prev) => [...prev, userMessage]);
     await sendMessageToBackend(query);
   };
+
 
   // Menu selection
   const handleMenuOptionClick = async (
@@ -394,12 +471,18 @@ const Index = () => {
             onMenuOptionClick={handleMenuOptionClick}
           />
           <div className="p-4 input-wrappper">
-            <AnimatedPrompts onPromptClick={handlePromptClick} />
+            <AnimatedPrompts
+              onPromptClick={handlePromptClick}
+              showPrompts={showPrompts}
+              // showExit={showExit}
+            />
             <ChatInput
               onSendMessage={handleSendMessage}
               isLoading={isLoading}
               queryType={queryType}
+              disabled={!isInputEnabled}
             />
+
           </div>
         </div>
       </main>

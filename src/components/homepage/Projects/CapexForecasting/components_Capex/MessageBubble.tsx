@@ -648,46 +648,6 @@ const pivotTable = (pt: ParsedTable): PivotResult => {
   };
 };
 
-// const formatCurrency = (n: number) =>
-//   new Intl.NumberFormat("en-US", {
-//     style: "currency",
-//     currency: "EUR",
-//     maximumFractionDigits: 2,
-//   }).format(n);
-
-// const colorForIndex = (i: number) => `hsl(${(i * 67) % 360} 70% 45%)`;
-// const colors = [
-//   "#3b82f6", // blue
-//   "#10b981", // green
-//   "#f59e0b", // amber
-//   "#ef4444", // red
-//   "#8b5cf6", // violet
-//   "#06b6d4", // cyan
-//   "#ec4899", // pink
-//   "#84cc16", // lime
-//   "#f97316", // orange
-//   "#14b8a6", // teal
-//   "#6366f1", // indigo
-//   "#a855f7", // purple
-//   "#22c55e", // emerald
-//   "#eab308", // yellow
-//   "#0ea5e9", // sky
-//   "#d946ef", // fuchsia
-//   "#475569", // slate
-//   "#f43f5e", // rose
-//   "#0891b2", // cyan dark
-//   "#65a30d", // olive/lime dark
-//   "#2563eb", // deep blue
-//   "#dc2626", // deep red
-//   "#7c3aed", // deep violet
-//   "#fb923c", // light orange
-//   "#15803d", // forest green
-// ];
-
-// function colorForIndex(i: number) {
-//   return colors[i % colors.length];
-// }
-
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   onLike,
@@ -911,7 +871,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       </button>
                     ))}
                 </div>
-                <p className="mb-3 text-base text-gray-800 mt-3">Enter <span style={{ fontWeight: "bold" }}>Exit</span> to change the area of interest.</p>
+                <p className="mb-3 text-base text-gray-800 mt-3">Click <span style={{ fontWeight: "bold" }}>Exit</span> to change the area of interest.</p>
               </div>
             )}
 

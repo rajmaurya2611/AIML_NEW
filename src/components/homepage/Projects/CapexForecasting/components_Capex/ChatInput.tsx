@@ -15,12 +15,14 @@ interface ChatInputProps {
   ) => void;
   isLoading: boolean;
   queryType?: number;
+  disabled?: boolean;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   isLoading,
   queryType,
+  disabled
 }) => {
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(""); // Live (partial) text
@@ -83,9 +85,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
       // 🌍 Auto detect languages
       const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages([
         "en-US",
-        // "fr-FR",
-        // "es-ES",
-        // "de-DE",
+        "fr-FR",
+        "es-ES",
+        "de-DE",
         // "pt-PT",
         // "hu-HU",
       ]);
@@ -138,79 +140,80 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="inner-text-body border border-2 rounded-xl p-3 shadow-sm input-context">
-      <Textarea
-        placeholder="Ask your query..."
-        className="min-h-[80px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-2"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isLoading}
-      />
+    <div className="inner-text-body rounded-xl shadow-sm input-context capex-textarea">
+      <div className="capex-textarea-inner p-3 rounded-[11px]">
+        <Textarea
+          placeholder="Please select your area of interest from the above and submit any queries related to it...."
+          className="min-h-[80px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-2 font-bold"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled || isLoading}
+        />
 
-      {preview && <div className="preview-text">{preview}</div>}
+        {preview && <div className="preview-text">{preview}</div>}
 
-      {selectedFiles.length > 0 && (
-        <div className="mt-2 mb-2 flex flex-wrap gap-2 text-xs text-gray-600">
-          {selectedFiles.map((file, index) => (
-            <div
-              key={`${file.name}-${index}`}
-              className="flex items-center gap-1 border px-2 py-1 rounded-full bg-gray-100"
-            >
-              <span className="truncate max-w-[150px]">{file.name}</span>
-              <button
-                type="button"
-                onClick={() => removeFile(index)}
-                className="text-chat-red hover:text-chat-red-dark"
-                aria-label="Remove file"
+        {selectedFiles.length > 0 && (
+          <div className="mt-2 mb-2 flex flex-wrap gap-2 text-xs text-gray-600">
+            {selectedFiles.map((file, index) => (
+              <div
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-1 border px-2 py-1 rounded-full bg-gray-100"
               >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-        <div /> {/* left spacer; no options */}
-        <div className="flex items-center gap-2">
-          {/* Mic / Stop Button */}
-          <Button
-            onClick={toggleMic}
-            disabled={isLoading}
-            variant="outline"
-            size="sm"
-            className={`flex items-center gap-1 text-xs ${
-              listening ? "bg-red-100 text-red-600" : "text-[#da2128] hover:bg-gray-100"
-            }`}
-            aria-label={listening ? "Stop Recording" : "Start Recording"}
-            title={listening ? "Stop" : "Speak"}
-          >
-            {listening ? (
-              <div className="relative flex items-center justify-center">
-                {/* Rotating Circle */}
-                <div className="absolute w-6 h-6 rounded-full border-2 border-red-400 border-t-transparent animate-spin"></div>
-                {/* Stop Icon */}
-                <Square className="w-2 h-2 relative z-10 text-red-600" />
+                <span className="truncate max-w-[150px]">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="text-chat-red hover:text-chat-red-dark"
+                  aria-label="Remove file"
+                >
+                  ✕
+                </button>
               </div>
-            ) : (
-              <Mic className="w-4 h-4" />
-            )}
-          </Button>
+            ))}
+          </div>
+        )}
 
-          {/* Send Button */}
-          <Button
-            onClick={handleSend}
-            disabled={(!message.trim() && selectedFiles.length === 0) || isLoading}
-            className="hover:bg-gray-100 sm-textarea-btn"
-            size="sm"
-          >
-            {isLoading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <SendIcon className="w-4 h-4" />
-            )}
-          </Button>
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+          <div /> {/* left spacer; no options */}
+          <div className="flex items-center gap-2">
+            {/* Mic / Stop Button */}
+            <Button
+              onClick={toggleMic}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className={`flex items-center gap-1 text-xs ${listening ? "bg-red-100 text-red-600" : "text-[#da2128] hover:bg-gray-100"
+                }`}
+              aria-label={listening ? "Stop Recording" : "Start Recording"}
+              title={listening ? "Stop" : "Speak"}
+            >
+              {listening ? (
+                <div className="relative flex items-center justify-center">
+                  {/* Rotating Circle */}
+                  <div className="absolute w-6 h-6 rounded-full border-2 border-red-400 border-t-transparent animate-spin"></div>
+                  {/* Stop Icon */}
+                  <Square className="w-2 h-2 relative z-10 text-red-600" />
+                </div>
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
+            </Button>
+
+            {/* Send Button */}
+            <Button
+              onClick={handleSend}
+              disabled={(!message.trim() && selectedFiles.length === 0) || isLoading}
+              className="hover:bg-gray-100 sm-textarea-btn"
+              size="sm"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <SendIcon className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
