@@ -16,10 +16,11 @@ function HomePage({ activeBot,
                     knowledgeHistoryMessages,
                     setKnowledgeHistoryMessages,
                     personaHistoryMessages,
-                    setPersonaHistoryMessages
+                    setPersonaHistoryMessages,
+                    setShowSlider
                 }) {
   return (
-    <div className="homepage">
+    <div className="marcom-homepage">
       {activeBot === "knowledge" ? (
         <KnowledgeBot
           messages={knowledgeMessages}
@@ -30,6 +31,7 @@ function HomePage({ activeBot,
           setKnowledgeHistoryMessages={setKnowledgeHistoryMessages}
           personaHistoryMessages={personaHistoryMessages}
           setPersonaHistoryMessages={setPersonaHistoryMessages}
+          
         />
       ) : (
         <PersonaBot
@@ -42,6 +44,7 @@ function HomePage({ activeBot,
           setKnowledgeHistoryMessages={setKnowledgeHistoryMessages}
           personaHistoryMessages={personaHistoryMessages}
           setPersonaHistoryMessages={setPersonaHistoryMessages}
+          setShowSlider={setShowSlider}
         />
       )}
     </div>

@@ -1,10 +1,10 @@
 import "./PersonaBot.css";
 import ChatBox from "./ChatBox";
 
-function PersonaBot({messages, setMessages, inputMessage, setInputMessage, sliderValue, knowledgeHistoryMessages, setKnowledgeHistoryMessages,personaHistoryMessages,setPersonaHistoryMessages}) {
+function PersonaBot({messages, setMessages, inputMessage, setInputMessage, sliderValue, knowledgeHistoryMessages, setKnowledgeHistoryMessages,personaHistoryMessages,setPersonaHistoryMessages, setShowSlider}) {
 
   return (
-    <div className="persona-bot-container">
+    <div className="persona-bot-container" onClick={()=>setShowSlider(false)}>
       {/* Title always shown on top */}
       {(!messages.length && !personaHistoryMessages.length)&&(
         <div className="persona-bot-title-container">

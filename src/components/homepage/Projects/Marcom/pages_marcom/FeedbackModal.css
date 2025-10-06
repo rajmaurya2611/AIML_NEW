@@ -1,5 +1,5 @@
 /* Overlay */
-.modal-overlay {
+.marcom-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -15,7 +15,7 @@
 
 
 /* Modal Box */
-.modal-content {
+.marcom-modal-content {
   background: #fff;
   padding: 24px;
   border-radius: 14px;
@@ -26,14 +26,14 @@
 }
 
 /* Header */
-.modal-header {
+.marcom-modal-header {
     margin-bottom: 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.modal-title {
+.marcom-modal-title {
   font-size: 18px;
   font-weight: 600;
   color: #222;
@@ -43,26 +43,26 @@
 }
 
 /* Body */
-.modal-body {
+.marcom-modal-body {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
 /* Rating */
-.rating-section label {
+.marcom-rating-section label {
   font-size: 14px;
   font-weight: 500;
   color: #444;
 }
 
-.stars {
+.marcom-stars {
   display: flex;
   gap: 6px;
   margin-top: 6px;
 }
 
-.star {
+.marcom-star {
   font-size: 28px;
   color: #bbb;
   cursor: pointer;
@@ -72,31 +72,31 @@
   padding: 0;
 }
 
-.star:hover {
+.marcom-star:hover {
   transform: scale(1.2);
   color: #ffa726;
 }
 
-.star.active {
+.marcom-star.active {
   color: #ff9800;
   text-shadow: 0 0 4px rgba(255, 152, 0, 0.5);
 }
 
 /* Comment box */
-.comment-section{
+.marcom-comment-section{
     display: flex;
     flex-direction: column;
     width: 95%;
     gap: 10px;
 }
 
-.comment-section label {
+.marcom-comment-section label {
   font-size: 14px;
   font-weight: 500;
   color: #444;
 }
 
-.comment-section textarea {
+.marcom-comment-section textarea {
   width: 100%;
   min-height: 90px;
   border-radius: 8px;
@@ -108,21 +108,21 @@
   transition: border 0.2s, transform 0.2s;
 }
 
-.comment-section textarea:focus {
+.marcom-comment-section textarea:focus {
   border-color: hsl(0 73% 51%);
   transform: scale(1.02);
   box-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
 }
 
 /* Actions */
-.modal-actions {
+.marcom-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
 }
 
-.modal-actions button {
+.marcom-modal-actions button {
   width: 100%;
   padding: 10px 18px;
   border-radius: 8px;
@@ -132,7 +132,7 @@
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.cancel-btn {
+.marcom-cancel-btn {
     background: white;
     color: #333;
     border: none;
@@ -141,17 +141,17 @@
     cursor: pointer;
 }
 
-.cancel-btn:hover {
+.marcom-cancel-btn:hover {
   background: #e0e0e0;
   transform: scale(1.01);
 }
 
-.submit-btn {
+.marcom-submit-btn {
   background: hsl(0 73% 51%);
   color: #fff;
 }
 
-.submit-btn:hover {
+.marcom-submit-btn:hover {
   background: hsl(0 73% 51%);
   transform: scale(1.02);
 }
@@ -167,10 +167,10 @@
   to { transform: scale(1); }
 }
 
-.animate-fade-in {
+.marcom-animate-fade-in {
   animation: fadeIn 0.3s ease;
 }
 
-.animate-scale-in {
+.marcom-animate-scale-in {
   animation: scaleIn 0.25s ease;
 }

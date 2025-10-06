@@ -1,11 +1,11 @@
-.sidebar p,
-.sidebar span {
+.marcom-sidebar p,
+.marcom-sidebar span {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: #555555;
 }
 
-.sidebar {
+.marcom-sidebar {
   position: fixed;
   top: 0;
   left: 0;
@@ -20,12 +20,12 @@
   cursor: pointer;
 }
 
-.sidebar.open {
-  width: 160px;
+.marcom-sidebar.open {
+  width: 170px;
 }
 
 /* Logo */
-.sidebar-header {
+.marcom-sidebar-header {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,7 +34,7 @@
   margin-top: 25px;
 }
 
-.logo {
+.marcom-logo {
   height: 32px;
   object-fit: contain;
   position: absolute;
@@ -42,12 +42,12 @@
   transition: opacity 0.4s ease-in-out;
 }
 
-.logo.visible {
+.marcom-logo.visible {
   opacity: 1;
 }
 
 /* Menu Section */
-.sidebar-menu {
+.marcom-sidebar-menu {
   margin-top: 100px;
   display: flex;
   flex-direction: column;
@@ -57,25 +57,25 @@
   height: 100%;
 }
 
-.menu-item {
+.marcom-menu-item {
   position: relative;
   display: flex;
   align-items: center;
 }
 
 /* Icon-only (collapsed) */
-.menu-icon.collapsed {
+.marcom-menu-icon.collapsed {
   position: absolute;
   opacity: 0;
   transition: opacity 0.4s ease-in-out;
 }
 
-.menu-icon.collapsed.visible {
+.marcom-menu-icon.collapsed.visible {
   opacity: 1;
 }
 
 /* Expanded (icon + text) */
-.menu-expanded {
+.marcom-menu-expanded {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -83,21 +83,21 @@
   transition: opacity 0.4s ease-in-out;
 }
 
-.menu-expanded.visible {
+.marcom-menu-expanded.visible {
   opacity: 1;
 }
 
-.menu-icon {
+.marcom-menu-icon {
   height: 24px;
   width: 24px;
 }
 
-.menu-text {
+.marcom-menu-text {
   white-space: nowrap;
 }
 
 /* Slider Container */
-.slider-container {
+.marcom-slider-container {
   position: relative;
   z-index: 999; /* stays above sidebar */
   background: white;
@@ -110,17 +110,17 @@
 
 
 /* Arrow */
-.arrow-icon {
+.marcom-arrow-icon {
   width: 14px;
   height: 14px;
   cursor: pointer;
 }
 
 /* Floating slider */
-.slider-floating {
+.marcom-slider-floating {
   position: absolute;
   left: 80px;  /* 👈 pushes slider out beyond collapsed sidebar */
-  top: 220px;  /* adjust so it sits just below the creativity item */
+  top: 190px;  /* adjust so it sits just below the creativity item */
   z-index: 1000;
   background: white;
   padding: 14px 20px;
@@ -133,7 +133,7 @@
 }
 
 /* Slider Styling */
-.creativity-slider {
+.marcom-creativity-slider {
   -webkit-appearance: none;
   flex: 1;
   height: 6px;
@@ -143,7 +143,7 @@
   cursor: pointer;
 }
 
-.creativity-slider::-webkit-slider-thumb {
+.marcom-creativity-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
@@ -154,7 +154,7 @@
   box-shadow: 0 0 6px rgba(0,0,0,0.3);
 }
 
-.creativity-slider::-moz-range-thumb {
+.marcom-creativity-slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -165,7 +165,7 @@
 }
 
 /* Value text */
-.slider-value {
+.marcom-slider-value {
   font-size: 14px;
   color: #333;
   min-width: 40px;

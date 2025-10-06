@@ -9,7 +9,7 @@ function App_marcom() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Persona Bot temperature
-  const [sliderValue, setSliderValue] = useState(0.5);
+  const [sliderValue, setSliderValue] = useState(0.8);
   const [headerTitle, setHeaderTitle] = useState("Knowledge Bot");
 
   // Live chat state
@@ -28,6 +28,9 @@ function App_marcom() {
   // ✅ Okta session email (session_id)
   const [sessionEmail, setSessionEmail] = useState(null);
 
+  // Showing and hiding slider
+    const [showSlider, setShowSlider] = useState(false);
+
   // Load Okta email once
   useEffect(() => {
     let mounted = true;
@@ -35,9 +38,11 @@ function App_marcom() {
       try {
         const email = await getUserEmail();
         if (mounted) setSessionEmail(email);
+        console.log("------>",email)
       } catch (e) {
         console.warn("Okta email fetch failed:", e);
         if (mounted) setSessionEmail(null);
+        console.log("Not defined")
       }
     })();
     return () => {
@@ -86,11 +91,11 @@ function App_marcom() {
 
 
   // Auto-load both histories as soon as sessionEmail is known
-  useEffect(() => {
-    if (!sessionEmail) return;
-    loadKnowledgeHistory(sessionEmail);
-    loadPersonaHistory(sessionEmail);
-  }, [sessionEmail]);
+  // useEffect(() => {
+  //   if (!sessionEmail) return;
+  //   loadKnowledgeHistory(sessionEmail);
+  //   loadPersonaHistory(sessionEmail);
+  // }, [sessionEmail]);
 
   return (
     <div className="flex">
@@ -108,6 +113,9 @@ function App_marcom() {
         setPersonaHistoryMessages={setPersonaHistoryMessages}
         loadKnowledgeHistory={loadKnowledgeHistory}
         loadPersonaHistory={loadPersonaHistory}
+        sessionEmail={sessionEmail}
+        showSlider={showSlider}
+        setShowSlider={setShowSlider}
         //sessionEmail={sessionEmail} // ⬅️ in case Sidebar needs to refresh by user action
       />
 
@@ -119,6 +127,8 @@ function App_marcom() {
           knowledgeMessages={knowledgeMessages}
           personaMessages={personaMessages}
           sessionEmail={sessionEmail}
+          knowledgeHistoryMessages={knowledgeHistoryMessages}
+          personaHistoryMessages={personaHistoryMessages}
         />
         <div className="p-6">
           <HomePage
@@ -138,6 +148,7 @@ function App_marcom() {
             personaHistoryMessages={personaHistoryMessages}
             setPersonaHistoryMessages={setPersonaHistoryMessages}
             sessionEmail={sessionEmail} // ⬅️ pass down if children need it
+            setShowSlider={setShowSlider}
           />
         </div>
       </div>

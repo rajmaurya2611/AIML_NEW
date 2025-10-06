@@ -12,28 +12,28 @@ function FeedbackModal({ message, feedbackType, onClose, onSubmit }) {
   };
 
   return (
-    <div className="modal-overlay animate-fade-in">
-      <div className="modal-content animate-scale-in">
-        <div className="modal-header">
+    <div className="marcom-modal-overlay marcom-animate-fade-in">
+      <div className="marcom-modal-content marcom-animate-scale-in">
+        <div className="marcom-modal-header">
             {feedbackType=="like" && (
-              <h3 className="modal-title"> Glad you liked the response, please share your feedback</h3>
+              <h3 className="marcom-modal-title"> Glad you liked the response, please share your feedback</h3>
             )}
             {feedbackType=="dislike" && (
-              <h3 className="modal-title"> Please share how we can improve our response</h3>
+              <h3 className="marcom-modal-title"> Please share how we can improve our response</h3>
             )}
-            <button onClick={onClose} className="cancel-btn">x</button>
+            <button onClick={onClose} className="marcom-cancel-btn">x</button>
         </div>
 
-        <div className="modal-body">
+        <div className="marcom-modal-body">
           {/* Rating Section */}
-          <div className="rating-section">
+          <div className="marcom-rating-section">
             <label>How would you rate this response?</label>
-            <div className="stars">
+            <div className="marcom-stars">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   type="button"
-                  className={`star ${star <= rating ? "active" : ""}`}
+                  className={`marcom-star ${star <= rating ? "active" : ""}`}
                   onClick={() => setRating(star)}
                 >
                   ★
@@ -43,7 +43,7 @@ function FeedbackModal({ message, feedbackType, onClose, onSubmit }) {
           </div>
 
           {/* Comment Box */}
-          <div className="comment-section">
+          <div className="marcom-comment-section">
             <label>Additional Comments (Optional)</label>
             <textarea
               placeholder="Tell us how we can improve..."
@@ -54,7 +54,7 @@ function FeedbackModal({ message, feedbackType, onClose, onSubmit }) {
         </div>
 
         {/* Actions */}
-        <div className="modal-actions">
+        <div className="marcom-modal-actions">
           <button onClick={handleSubmit} className="submit-btn">
             Submit Feedback
           </button>

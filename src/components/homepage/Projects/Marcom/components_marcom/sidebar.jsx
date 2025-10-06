@@ -8,36 +8,34 @@ import information_icon from "../assets_marcom/Document_icon.svg";
 import help_icon from "../assets_marcom/sidebar_help_icon.svg";
 import creativity_icon from "../assets_marcom/creativity_icon.svg";
 import "./sidebar.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import down_arrow from "../assets_marcom/persona_down_arrow.svg";
 
-function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, setHeaderTitle,activeBot, setActiveBot, loadKnowledgeHistory, loadPersonaHistory }) {
+function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, setHeaderTitle,activeBot, setActiveBot, loadKnowledgeHistory, loadPersonaHistory, sessionEmail, showSlider, setShowSlider }) {
   const navigate = useNavigate();
-  const [showSlider, setShowSlider] = useState(false);
-
   return (
-    <div className={`sidebar ${isOpen ? "open" : ""}`}>
+    <div className={`marcom-sidebar ${isOpen ? "open" : ""}`}>
       {/* Logo Section */}
-      <div className="sidebar-header">
+      <div className="marcom-sidebar-header">
         <img
           src={motherson_logo_full}
           alt="logo-full"
-          className={`logo logo-full ${isOpen ? "visible" : ""}`}
+          className={`marcom-logo logo-full ${isOpen ? "visible" : ""}`}
           onClick={() => setIsOpen(!isOpen)}
         />
         <img
           src={motherson_logo_shrinked}
           alt="logo-shrinked"
-          className={`logo logo-shrinked ${!isOpen ? "visible" : ""}`}
+          className={`marcom-logo logo-shrinked ${!isOpen ? "visible" : ""}`}
           onClick={() => setIsOpen(!isOpen)}
         />
       </div>
 
       {/* Menu Section */}
-      <div className="sidebar-menu">
+      <div className="marcom-sidebar-menu">
         {/* Persona Bot */}
         <div
-          className="menu-item"
+          className="marcom-menu-item"
           onClick={() => {
             if (activeBot === "knowledge") {
               setHeaderTitle("Persona Bot");
@@ -53,15 +51,15 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
           <img
             src={activeBot === "knowledge" ? persona_icon : knowledge_icon}
             alt={activeBot === "knowledge" ? "Persona Bot Icon" : "Knowledge Bot Icon"}
-            className={`menu-icon collapsed ${!isOpen ? "visible" : ""}`}
+            className={`marcom-menu-icon collapsed ${!isOpen ? "visible" : ""}`}
           />
-          <div className={`menu-expanded ${isOpen ? "visible" : ""}`}>
+          <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
             <img
               src={activeBot === "knowledge" ? persona_icon : knowledge_icon}
               alt={activeBot === "knowledge" ? "Persona Bot" : "Knowledge Bot"}
-              className="menu-icon"
+              className="marcom-menu-icon"
             />
-            <span className="menu-text">
+            <span className="marcom-menu-text">
               {activeBot === "knowledge" ? "Persona Bot" : "Knowledge Bot"}
             </span>
           </div>
@@ -69,15 +67,15 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
 
 
         {/* Chat History */}
-        <div className="menu-item" onClick={() => {activeBot === "knowledge" ? loadKnowledgeHistory(sessionEmail): loadPersonaHistory(sessionEmail);}}>
+        <div className="marcom-menu-item" onClick={() => {activeBot === "knowledge" ? loadKnowledgeHistory(sessionEmail): loadPersonaHistory(sessionEmail);}}>
           <img
             src={chat_history_icon}
             alt="Chat History Icon"
-            className={`menu-icon collapsed ${!isOpen ? "visible" : ""}`}
+            className={`marcom-menu-icon collapsed ${!isOpen ? "visible" : ""}`}
           />
-          <div className={`menu-expanded ${isOpen ? "visible" : ""}`}>
+          <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
             <img src={chat_history_icon} alt="Chat History" className="menu-icon" />
-            <span className="menu-text">Chat History</span>
+            <span className="marcom-menu-text">Chat History</span>
           </div>
         </div>
 
@@ -88,20 +86,21 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
 
             {/* Creativity Bar (collapsible) */}
             <div
-              className="menu-item"
+              style={{marginTop:"20px"}}
+              className="marcom-menu-item"
               onClick={() => setShowSlider((prev) => !prev)}
             >
               {/* Icon only (collapsed) */}
               <img
                 src={creativity_icon}
                 alt="Creativity Icon"
-                className={`menu-icon collapsed ${!isOpen ? "visible" : ""}`}
+                className={`marcom-menu-icon collapsed ${!isOpen ? "visible" : ""}`}
               />
 
               {/* Icon + Text (expanded) */}
-              <div className={`menu-expanded ${isOpen ? "visible" : ""}`}>
-                <img src={creativity_icon} alt="Creativity" className="menu-icon" />
-                <span className="menu-text">Creativity bar</span>
+              <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
+                <img src={creativity_icon} alt="Creativity" className="marcom-menu-icon" />
+                <span className="marcom-menu-text">Creativity bar</span>
                 <img
                   src={down_arrow}
                   alt="expand"
@@ -117,7 +116,7 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
 
             {/* Slider box – same width for collapsed & expanded */}
             {showSlider && (
-              <div className="slider-floating">
+              <div className="marcom-slider-floating">
                 <input
                   type="range"
                   min="0.5"
@@ -125,9 +124,9 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
                   step="0.01"
                   value={sliderValue}
                   onChange={(e) => setSliderValue(e.target.value)}
-                  className="creativity-slider"
+                  className="marcom-creativity-slider"
                 />
-                <span className="slider-value">{sliderValue}</span>
+                <span className="marcom-slider-value">{sliderValue}</span>
               </div>
             )}
           </div>
@@ -136,27 +135,27 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
 
         {/* Bottom Section */}
         <div style={{ position: "absolute", bottom: "50px" }}>
-          <div className="menu-item">
+          <div className="marcom-menu-item">
             <img
               src={information_icon}
               alt="Information Icon"
-              className={`menu-icon collapsed ${!isOpen ? "visible" : ""}`}
+              className={`marcom-menu-icon collapsed ${!isOpen ? "visible" : ""}`}
             />
-            <div className={`menu-expanded ${isOpen ? "visible" : ""}`}>
-              <img src={information_icon} alt="Information" className="menu-icon" />
-              <span className="menu-text">Information</span>
+            <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
+              <img src={information_icon} alt="Information" className="marcom-menu-icon" />
+              <span className="marcom-menu-text">Information</span>
             </div>
           </div>
 
-          <div className="menu-item" style={{ marginTop: "20px" }}>
+          <div className="marcom-menu-item" style={{ marginTop: "20px" }}>
             <img
               src={help_icon}
               alt="Help Icon"
-              className={`menu-icon collapsed ${!isOpen ? "visible" : ""}`}
+              className={`marcom-menu-icon collapsed ${!isOpen ? "visible" : ""}`}
             />
-            <div className={`menu-expanded ${isOpen ? "visible" : ""}`}>
-              <img src={help_icon} alt="Help" className="menu-icon" />
-              <span className="menu-text">Help</span>
+            <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
+              <img src={help_icon} alt="Help" className="marcom-menu-icon" />
+              <span className="marcom-menu-text">Help</span>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-.header {
+.marcom-header {
   position: fixed;
   height: 60px;
   display: flex;
@@ -10,13 +10,14 @@
   top: 0;
   width: calc(99% - 50px);
   z-index: 99;
+  align-items: center;
 }
 
-.header.shifted {
-  margin-left: 150px; /* expanded sidebar width */
+.marcom-header.shifted {
+  margin-left: 160px; /* expanded sidebar width */
 }
 
-.header-title {
+.marcom-header-title {
   font-size: 24px;
   font-weight: 700;
   background: linear-gradient(90deg, #EE2626, #B41818);
@@ -36,7 +37,7 @@
   cursor: pointer;
 }
 
-.session-email {
+.marcom-session-email {
   font-size: 14px;
   color: #616161;      /* light gray, adjust as needed */
   font-weight: 500;

@@ -1,4 +1,4 @@
-.chat-container{
+.marcom-chat-container{
     width: 100%;
     display: flex;
     justify-content: center;
@@ -7,7 +7,7 @@
     margin-top: 80px;
 }
 /* Chat Messages */
-.chat-messages {
+.marcom-chat-messages {
     flex: 1;
     width: 75%;
     padding: 20px;
@@ -19,13 +19,13 @@
 }
 
 /* Chat Bubbles */
-.chat-bubble {
+.marcom-chat-bubble {
     max-width: 70%;
     border-radius: 12px;
 }   
 
 /* AI message (left) */
-.chat-bubble-message.ai {
+.marcom-chat-bubble-message.ai {
     align-self: flex-start;
     background: #fcfcfc;
     color: #333;
@@ -33,13 +33,13 @@
 }
 
 /* User message (right) */
-.chat-bubble.user {
+.marcom-chat-bubble.user {
     align-self: flex-end;
     background: linear-gradient(90deg, #ee2626, #b41818);
     color: white;
 }
 
-.chat-bubble-message{
+.marcom-chat-bubble-message{
     font-family: "Helvetica Light", "Helvetica", sans-serif;
     font-weight: 300;
     font-size: 16px;
@@ -51,7 +51,7 @@
     word-wrap: break-word; 
 }
 
-.chat-bubble-icons{
+.marcom-chat-bubble-icons{
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;
@@ -59,12 +59,12 @@
     margin-top: 8px;
 }
 
-.chat-bubble-icons img{
+.marcom-chat-bubble-icons img{
     width: 16px;
     height: 16px;
 }
 /* Chat Input Box */
-.chat-input-container{
+.marcom-chat-input-container{
     display: flex;
     position: fixed;
     bottom: 0px;
@@ -74,7 +74,7 @@
     background-color: white;
     padding-top: 16px;
 }
-.chat-input {
+.marcom-chat-input {
     width: 50%;
     background: #fff;
     border-radius: 16px;
@@ -87,8 +87,12 @@
 
 }
 
+.marcom-chat-input textarea:focus {
+  outline: none;            /* removes default blue outline */
+}
+
 /* Textarea */
-.chat-textarea {
+.marcom-chat-textarea {
     border: none;
     resize: none;
     outline: none;
@@ -99,13 +103,13 @@
 }
 
 /* Icon Row */
-.chat-icons {
+.marcom-chat-icons {
     display: flex;
     justify-content: space-between;
     gap: 16px;
 }
 
-.icon {
+.marcom-icon {
     width: 15px;
     height: 20px;
     cursor: pointer;
@@ -113,7 +117,7 @@
     transition: opacity 0.2s;
 }
 
-.icon:hover {
+.marcom-icon:hover {
     opacity: 1;
 }
 
@@ -171,7 +175,7 @@
   opacity: 1;
 }
 
-.icon.listening {
+.marcom-icon.listening {
   filter: drop-shadow(0 0 12px rgba(255, 0, 0, 0.9));
   animation: pulse 1s infinite;
 }
@@ -199,7 +203,7 @@
     cursor: pointer;
 }
 
-.loader {
+.marcom-loader {
   border: 4px solid #f3f3f3;   /* Light grey */
   border-top: 4px solid red;   /* 🔴 Red top */
   border-radius: 50%;

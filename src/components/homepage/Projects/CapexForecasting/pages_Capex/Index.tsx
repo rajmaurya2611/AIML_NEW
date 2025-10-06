@@ -79,10 +79,11 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // First load: input disabled until CTA is clicked (now enables on CTA), or file is chosen
+  // Input is disabled on first paint; unlock on CTA click (so user can type), or on file select.
   const [isInputEnabled, setIsInputEnabled] = useState(false);
-  const hasEnabledOnceRef = useRef(false); // prevent toggling back
+  const hasEnabledOnceRef = useRef(false); // prevent toggling back off
 
+  // Show CTAs on first load (after silent Exit)
   const [showPrompts, setShowPrompts] = useState(false);
 
   const { toast } = useToast();
@@ -91,8 +92,14 @@ const Index = () => {
   // 🔐 Okta email is the ONLY session identifier
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 
-  // fire "Exit" silently once on first load
+  // Fire "Exit" silently once on first load
   const didFireExitRef = useRef(false);
+
+  // When a CTA is clicked, we store its text here to auto-resolve against the next menu
+  const pendingCTARef = useRef<string | null>(null);
+
+  // Track if the user has chosen a file once (for future logic if needed)
+  const hasChosenFileRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -167,7 +174,25 @@ const Index = () => {
 
       if (silent) return;
 
+      // ---- AUTO-RESOLVE CTA → MENU OPTION (by text match) ----
       if (data.type === "menu" && Array.isArray(data.options)) {
+        const cta = pendingCTARef.current;
+        if (cta) {
+          const match = data.options.find((opt: any) => {
+            const a = (opt.text || "").trim().toLowerCase();
+            const b = cta.trim().toLowerCase();
+            return a === b || a.includes(b) || b.includes(a);
+          });
+
+          if (match?.id) {
+            // Clear pending CTA and auto-send the selected option id without showing menu
+            pendingCTARef.current = null;
+            await sendMessageToBackend(match.id);
+            return;
+          }
+        }
+
+        // No CTA pending or no match → show the menu as normal
         const menuMessage: Message = {
           id: uuidv4(),
           content: `Please select your area of interest:`,
@@ -295,7 +320,7 @@ const Index = () => {
     sendMessageToBackend(content);
   };
 
-  // ✅ CTA click now ENABLES input immediately (and hides CTAs)
+  // ✅ CTA click: enable input immediately, hide CTAs, remember CTA to auto-resolve
   const handlePromptClick = async (query: string) => {
     if (!sessionEmail) {
       pushMissingEmailMessage();
@@ -303,10 +328,15 @@ const Index = () => {
     }
 
     setShowPrompts(false);
+
+    // Unlock typing as soon as a CTA is chosen (one-time)
     if (!hasEnabledOnceRef.current) {
       hasEnabledOnceRef.current = true;
-      setIsInputEnabled(true); // unlock typing as soon as CTA is chosen
+      setIsInputEnabled(true);
     }
+
+    // Store CTA so that when backend sends a menu, we auto-pick the matching option
+    pendingCTARef.current = query;
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -319,7 +349,7 @@ const Index = () => {
     await sendMessageToBackend(query);
   };
 
-  // File menu selection still works; input is already enabled by CTA, but keep this guard harmless.
+  // File menu selection → normal flow; we also mark that files were chosen once
   const handleMenuOptionClick = async (
     messageId: string,
     option: { id: string; text: string }
@@ -337,10 +367,7 @@ const Index = () => {
     };
     setMessages((prev) => [...prev, userSelectionMsg]);
 
-    if (!hasEnabledOnceRef.current) {
-      hasEnabledOnceRef.current = true;
-      setIsInputEnabled(true);
-    }
+    hasChosenFileRef.current = true;
 
     await sendMessageToBackend(option.id);
 
