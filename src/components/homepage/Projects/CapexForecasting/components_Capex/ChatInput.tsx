@@ -143,7 +143,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     <div className="inner-text-body rounded-xl shadow-sm input-context capex-textarea">
       <div className="capex-textarea-inner p-3 rounded-[11px]">
         <Textarea
-          placeholder="Please select your area of interest from the above and submit any queries related to it...."
+          placeholder=" Please select an area of interest and type your query here..."
           className="min-h-[80px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-2 font-bold"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
