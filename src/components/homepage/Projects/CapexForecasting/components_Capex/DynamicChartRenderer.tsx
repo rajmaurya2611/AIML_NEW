@@ -117,45 +117,58 @@ const DynamicChartRenderer: React.FC<DynamicChartRendererProps> = ({ chartConfig
                     </div>
                 )}
                 <ResponsiveContainer width="100%" height={config.height || 400}>
-                    <BarChart {...commonProps}>
+                    <BarChart
+                        layout="vertical"
+                        data={data}
+                        margin={{
+                            top: 20,
+                            right: 80,
+                            left: 0,  // 👈 no extra gap on the left
+                            bottom: 5,
+                        }}
+                        barCategoryGap={8} // 👈 optional, controls spacing between bars
+                    >
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis {...commonAxisProps.xAxis} interval={0} />
-                        <YAxis {...commonAxisProps.yAxis} />
-                        <Tooltip content={<CustomTooltip />} />
-                        {/* <Legend verticalAlign={config.legend?.verticalAlign || "top"} height={config.legend?.height || 36} /> */}
-                        {(barDataKeys && barDataKeys.length > 0) ? (
-    barDataKeys.map((key: string, i: number) => (
-        <Bar
-            key={key}
-            dataKey={key}
-            fill={colorForIndex(i)}
-            radius={config.bar?.radius || [0, 0, 0, 0]}
-            name="Investment (EUR)"
-        >
-            <LabelList 
-                dataKey={key} 
-                position="top" 
-                style={{ fontSize: 12, fill: "#374151", fontWeight: 600 }} // optional styling
-            />
-        </Bar>
-    ))
-) : (
-    <Bar
-        dataKey={config.bar?.dataKey || "value"}
-        fill={config.bar?.fill || "#3b82f6"}
-        radius={config.bar?.radius || [0, 0, 0, 0]}
-        name="Investment (EUR)"
-    >
-        <LabelList 
-            dataKey={config.bar?.dataKey || "value"} 
-            position="top" 
-            style={{ fontSize: 12, fill: "#374151", fontWeight: 600 }} 
-        />
-    </Bar>
-)}
 
+                        <XAxis
+                            type="number"
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
+                        />
+
+                        <YAxis
+                            type="category"
+                            dataKey={commonAxisProps.xAxis.dataKey}
+                            tick={{ fontSize: 12 }}
+                            width={200} // 👈 Adjust for your longest label (~180–220)
+                            interval={0}
+                        />
+
+                        <Tooltip content={<CustomTooltip />} />
+
+                        {(barDataKeys?.length
+                            ? barDataKeys
+                            : [config.bar?.dataKey || "value"]
+                        ).map((key, i) => (
+                            <Bar
+                                key={key}
+                                dataKey={key}
+                                fill={colorForIndex(i)}
+                                radius={config.bar?.radius || [0, 0, 0, 0]}
+                                name="Investment (EUR)"
+                            >
+                                <LabelList
+                                    dataKey={key}
+                                    position="right"
+                                    style={{ fontSize: 12, fill: "#374151", fontWeight: 600 }}
+                                />
+                            </Bar>
+                        ))}
                     </BarChart>
                 </ResponsiveContainer>
+
+
+
             </div>
         );
     }

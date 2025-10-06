@@ -442,7 +442,6 @@ import { Message } from "../types_Capex/chat";
 import { ThumbsUp, ThumbsDown, Copy, CheckIcon, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -737,8 +736,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const hasMenuOptions = message.options && message.options.length > 0;
 
-  const downloadOneMarkdownTableAsExcel = (tableMarkdown: string, tableHeading: string) => {
-    // Extract a single table from markdown string
+  const downloadOneMarkdownTableAsCsv = (tableMarkdown: string, tableHeading: string) => {
     const lines = tableMarkdown.split("\n");
     let tableStart = -1,
       tableEnd = -1;
@@ -753,7 +751,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       return;
     }
 
-    // Optionally extract the headers from the heading above table, or use `tableHeading`
+    // Extract title above table if present
     let title = tableHeading;
     for (let i = tableStart - 1; i >= 0; --i) {
       if (lines[i].startsWith("###")) {
@@ -763,9 +761,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
 
     const body = lines.slice(tableStart, tableEnd + 1).join("\n");
-    // Parse using your existing markdown parser
     const [parsed] = parseAllMarkdownTables(body);
-
     if (!parsed) {
       alert("Could not parse table.");
       return;
@@ -774,25 +770,35 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const colCount = parsed.headers.length;
     const sheetData: any[] = [];
 
-    // Add table title as first row (optional)
+    // Add table title row as a comment (optional, remove if not needed)
     sheetData.push([title]);
     sheetData.push([]); // empty row
-    sheetData.push(parsed.headers.map(h => (h == null ? "" : String(h).trim()))); // headers
+    sheetData.push(parsed.headers.map(h => (h == null ? "" : String(h).trim())));
 
-    // --- FIXED ROW NORMALIZATION ---
+    // Normalize row: ensure any currency or number is parsed as a number
     const normalizeRow = (row: any): string[] => {
       let cells: string[];
       if (Array.isArray(row)) {
-        cells = row.map(c => (c == null ? "" : String(c).trim()));
+        cells = row.map((c, idx) => {
+          let v = c == null ? "" : String(c).trim();
+          // Attempt to parse as number if it looks numeric
+          if (idx > 0 && looksNumeric(v)) {
+            v = parseCurrency(v).toString();
+          }
+          return v;
+        });
       } else {
-        // Fallback: split raw markdown line
         cells = String(row).split("|");
         if (cells.length && cells[0].trim() === "") cells.shift();
         if (cells.length && cells[cells.length - 1].trim() === "") cells.pop();
-        cells = cells.map(c => c.trim());
+        cells = cells.map((v, idx) => {
+          v = v.trim();
+          if (idx > 0 && looksNumeric(v)) {
+            v = parseCurrency(v).toString();
+          }
+          return v;
+        });
       }
-
-      // Pad or trim to match header length
       if (cells.length < colCount) {
         cells = cells.concat(Array(colCount - cells.length).fill(""));
       } else if (cells.length > colCount) {
@@ -803,16 +809,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
     parsed.rows.forEach(row => sheetData.push(normalizeRow(row)));
 
-    // Export as Excel
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    const safeSheetName =
-      (title || "Sheet").replace(/[:\\/?*\[\]]/g, "_").substring(0, 31) || "Sheet";
-    XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbout], { type: "application/octet-stream" });
-    saveAs(blob, `${(title || "table").replace(/\s+/g, "_")}_${new Date().toISOString()}.xlsx`);
+    // Convert sheetData to CSV string
+    const csvContent = sheetData
+      .map(row =>
+        row
+          .map((val: any) => {
+            // Escape quotes and wrap if necessary
+            const v = String(val ?? "");
+            return v.includes(",") || v.includes('"') || v.includes("\n")
+              ? `"${v.replace(/"/g, '""')}"`
+              : v;
+          })
+          .join(",")
+      )
+      .join("\n");
+
+    // Download as CSV
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    saveAs(blob, `${(title || "table").replace(/\s+/g, "_")}_${new Date().toISOString()}.csv`);
   };
+
 
   // Export a chart div to PDF
   const exportChartToPdf = async (chartId: string, title = "chart") => {
@@ -893,7 +909,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <div className="mt-6 space-y-10">
                     <div className="mb-4 text-right">
                       <button
-                        onClick={() => downloadOneMarkdownTableAsExcel(displayText, "Total Investment")}
+                        onClick={() => downloadOneMarkdownTableAsCsv(displayText, "Total Investment")}
                         className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
                         title="Download all tables as Excel"
                       >
