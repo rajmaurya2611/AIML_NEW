@@ -52,12 +52,20 @@ export default function DataViewerPage() {
   const [tableName] = useState(tableParam);
 
   const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<ApiRow[]>([]);
-  const [originalRows, setOriginalRows] = useState<ApiRow[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+
+  // Server-page rows (when no filters)
+  const [rowsPage, setRowsPage] = useState<ApiRow[]>([]);
+  const [originalRowsPage, setOriginalRowsPage] = useState<ApiRow[]>([]);
+
+  // Full dataset cache (when filters active)
+  const [rowsAll, setRowsAll] = useState<ApiRow[] | null>(null);
+  const [originalRowsAll, setOriginalRowsAll] = useState<ApiRow[] | null>(null);
+
   const [columnsOrder, setColumnsOrder] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0); // backend total
   const [pageSize, setPageSize] = useState(50);
   const [page, setPage] = useState(1);
 
@@ -85,8 +93,15 @@ export default function DataViewerPage() {
     "MPP L2": "",
   });
 
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some((v) => (v ?? "").trim().length > 0),
+    [filters]
+  );
+
   const handleFilterChange = (key: FilterKey, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    // When filters change, use client-side pagination over full dataset
+    setPage(1);
   };
 
   const clearAllFilters = () => {
@@ -103,16 +118,12 @@ export default function DataViewerPage() {
   };
   // ---------------------------------------------
 
-  useEffect(() => {
-    if (!tableName) {
-      message.warning("Missing ?table=... in URL");
-      return;
-    }
-    fetchData(page, pageSize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableName, page, pageSize]);
+  // Stable row key
+  const rowKey = (r: ApiRow) =>
+    r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`;
 
-  const fetchData = useCallback(
+  // ------- fetch: single page (server pagination) -------
+  const fetchPage = useCallback(
     async (pageNum: number, pageSz: number) => {
       setLoading(true);
       setError(null);
@@ -120,28 +131,32 @@ export default function DataViewerPage() {
         const params = new URLSearchParams();
         params.set("limit", String(pageSz));
         params.set("offset", String((pageNum - 1) * pageSz));
-        // No order_by / order_dir — show data as-is
 
         const url = `${API_BASE}/db/${encodeURIComponent(tableName)}/all?` + params.toString();
         const res = await fetch(url);
         const data = await res.json().catch(() => {
           throw new Error("Invalid JSON from server");
         });
-
         if (data.status !== "success") throw new Error(data.message || "Failed to load data");
 
-        setRows(data.rows || []);
-        setOriginalRows(data.rows || []);
+        setRowsPage(data.rows || []);
+        setOriginalRowsPage(data.rows || []);
         setTotal(data.total || 0);
         setColumnsOrder(Array.isArray(data.columns) ? data.columns : Object.keys(data.rows?.[0] || {}));
+
+        // Reset full cache when table changes/reloads
+        setRowsAll(null);
+        setOriginalRowsAll(null);
       } catch (e: any) {
         const msg = e?.message || "Failed to load data";
         setError(msg);
         message.error(msg);
-        setRows([]);
-        setOriginalRows([]);
+        setRowsPage([]);
+        setOriginalRowsPage([]);
         setTotal(0);
         setColumnsOrder([]);
+        setRowsAll(null);
+        setOriginalRowsAll(null);
       } finally {
         setLoading(false);
       }
@@ -149,15 +164,78 @@ export default function DataViewerPage() {
     [tableName]
   );
 
-  // Stable row key
-  const rowKey = (r: ApiRow) =>
-    r.__rowid__ ?? r.ID ?? r.Id ?? r.id ?? `${r.Company}-${r.Plant}-${r.ID}`;
+  // ------- fetch: all rows in batches (client-side filtering mode) -------
+  const ensureAllRows = useCallback(async () => {
+    if (rowsAll && originalRowsAll) return; // already loaded
+    setLoadingAll(true);
+    try {
+      // First hit to know total
+      const firstParams = new URLSearchParams();
+      const batch = 1000; // safe chunk size
+      firstParams.set("limit", String(batch));
+      firstParams.set("offset", "0");
+      const base = `${API_BASE}/db/${encodeURIComponent(tableName)}/all`;
 
-  // Apply client-side filters to the current page’s dataset
+      const firstRes = await fetch(`${base}?${firstParams.toString()}`);
+      const firstData = await firstRes.json();
+      if (firstData.status !== "success") throw new Error(firstData.message || "Failed to load data");
+
+      const all: ApiRow[] = [...(firstData.rows || [])];
+      const grandTotal: number = firstData.total || all.length;
+      const columns = Array.isArray(firstData.columns)
+        ? firstData.columns
+        : Object.keys(firstData.rows?.[0] || {});
+      setColumnsOrder(columns);
+
+      let offset = all.length;
+      while (offset < grandTotal) {
+        const p = new URLSearchParams();
+        p.set("limit", String(batch));
+        p.set("offset", String(offset));
+        const res = await fetch(`${base}?${p.toString()}`);
+        const data = await res.json();
+        if (data.status !== "success") throw new Error(data.message || "Failed to load data");
+        all.push(...(data.rows || []));
+        offset = all.length;
+      }
+      setRowsAll(all);
+      setOriginalRowsAll(all.map((r) => ({ ...r })));
+      // keep total from backend for header "x/y"
+      setTotal(grandTotal);
+    } catch (e: any) {
+      message.error(e?.message || "Failed to load full dataset");
+      setRowsAll(null);
+      setOriginalRowsAll(null);
+    } finally {
+      setLoadingAll(false);
+    }
+  }, [rowsAll, originalRowsAll, tableName]);
+
+  // initial + page changes (server pagination mode only)
+  useEffect(() => {
+    if (!tableName) {
+      message.warning("Missing ?table=... in URL");
+      return;
+    }
+    if (!hasActiveFilters) {
+      void fetchPage(page, pageSize);
+    } else {
+      // if filters are active, switch to client mode by ensuring all rows
+      void ensureAllRows();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableName, page, pageSize, hasActiveFilters]);
+
+  // Current master datasets (depends on mode)
+  const masterRows = hasActiveFilters ? rowsAll ?? [] : rowsPage;
+  const masterOriginal = hasActiveFilters ? originalRowsAll ?? [] : originalRowsPage;
+
+  // Apply client-side filters to the master set (when active)
   const filteredRows = useMemo(() => {
+    if (!hasActiveFilters) return masterRows;
     const active = Object.entries(filters).filter(([, v]) => (v ?? "").trim().length > 0) as [FilterKey, string][];
-    if (active.length === 0) return rows;
-    return rows.filter((row) => {
+    if (active.length === 0) return masterRows;
+    return masterRows.filter((row) => {
       for (const [col, q] of active) {
         const cell = row[col];
         const s = cell == null ? "" : String(cell);
@@ -165,48 +243,65 @@ export default function DataViewerPage() {
       }
       return true;
     });
-  }, [rows, filters]);
+  }, [hasActiveFilters, masterRows, filters]);
 
-  // Editing by row key (safe under filtering)
+  // Slice for client-side pagination when filters are active
+  const dataForTable = useMemo(() => {
+    if (!hasActiveFilters) return rowsPage;
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredRows.slice(start, end);
+  }, [hasActiveFilters, rowsPage, filteredRows, page, pageSize]);
+
+  // Editing by row key (affects both page and all caches if present)
   const setCell = (recordKey: string, col: "MPP L1" | "MPP L2", value: string) => {
-    setRows((prev) => {
-      const idx = prev.findIndex((r) => rowKey(r) === recordKey);
-      if (idx === -1) return prev;
-      const next = [...prev];
-      next[idx] = { ...next[idx], [col]: value };
-      return next;
-    });
+    const updater = (arr: ApiRow[]) => {
+      const idx = arr.findIndex((r) => rowKey(r) === recordKey);
+      if (idx === -1) return arr;
+      const out = [...arr];
+      out[idx] = { ...out[idx], [col]: value };
+      return out;
+    };
+    // update page cache
+    setRowsPage((prev) => updater(prev));
+    // update full cache if present
+    setRowsAll((prev) => (prev ? updater(prev) : prev));
   };
 
-  // Track changed rows vs original (by index)
+  // Track changed rows vs original (key-based, robust to pagination & filters)
   const changedRows = useMemo(() => {
+    const origMap = new Map<string, ApiRow>();
+    for (const r of masterOriginal) origMap.set(rowKey(r), r);
+
     const out: ApiRow[] = [];
-    for (let i = 0; i < rows.length; i++) {
-      const before = originalRows[i] ?? {};
-      const after = rows[i] ?? {};
+    for (const r of masterRows) {
+      const k = rowKey(r);
+      const before = origMap.get(k);
+      if (!before) continue;
       const delta: ApiRow = {};
       let changed = false;
-      (["MPP L1", "MPP L2"] as const).forEach((col) => {
-        if (before[col] !== after[col]) {
-          delta[col] = after[col];
+      (["MPP L1", "MPP L2"] as const).forEach((c) => {
+        if (before[c] !== r[c]) {
+          delta[c] = r[c];
           changed = true;
         }
       });
       if (changed) {
-        if (after.__rowid__ != null) delta.__rowid__ = after.__rowid__;
-        else if (after.ID != null) delta.ID = after.ID;
+        // prefer __rowid__, fallback to ID
+        if (r.__rowid__ != null) delta.__rowid__ = r.__rowid__;
+        else if (r.ID != null) delta.ID = r.ID;
+        else if (r.id != null) delta.id = r.id;
         out.push(delta);
       }
     }
     return out;
-  }, [rows, originalRows]);
+  }, [masterRows, masterOriginal]);
 
   const saveChanges = async () => {
     if (changedRows.length === 0) {
       message.info("No changes to save.");
       return;
     }
-
     Modal.confirm({
       title: "Are you sure you want to save changes?",
       content: "Doing this will update the Database and cannot be undone.",
@@ -223,7 +318,15 @@ export default function DataViewerPage() {
           const data = await res.json();
           if (data.status === "success" || data.status === "partial_success") {
             message.success(`Updated ${data.updated} row(s).`);
-            fetchData(page, pageSize);
+            // After save, refresh current mode
+            if (hasActiveFilters) {
+              // re-pull all (safer; preserves accurate originals)
+              setRowsAll(null);
+              setOriginalRowsAll(null);
+              await ensureAllRows();
+            } else {
+              await fetchPage(page, pageSize);
+            }
           } else {
             throw new Error(data.message || "Update failed");
           }
@@ -235,11 +338,17 @@ export default function DataViewerPage() {
   };
 
   const resetChanges = () => {
-    setRows(originalRows);
+    if (hasActiveFilters) {
+      if (originalRowsAll) setRowsAll(originalRowsAll.map((r) => ({ ...r })));
+    } else {
+      setRowsPage(originalRowsPage);
+    }
     message.success("Reverted unsaved edits.");
   };
 
-  // Pagination only (sorting disabled)
+  // Pagination handler:
+  // - server mode: triggers page fetch
+  // - filter mode: just updates page/pageSize for client-side slice
   const onTableChange = (pagination: TablePaginationConfig) => {
     const current = pagination.current || 1;
     const size = pagination.pageSize || pageSize;
@@ -254,7 +363,7 @@ export default function DataViewerPage() {
 
   // Build columns; inject header filter inputs for target columns
   const columns: ColumnsType<ApiRow> = useMemo(() => {
-    const order = columnsOrder.filter(Boolean);
+    const order = columnsOrder.filter(Boolean) as FilterKey[] | string[];
 
     const headerWithFilter = (label: FilterKey) => (
       <div className="flex flex-col gap-1">
@@ -290,7 +399,7 @@ export default function DataViewerPage() {
 
     return order.map((name) => {
       // Editable with header filter for MPP L1/L2
-      if (name === "MPP L1" || name === "MPP L2") return buildEditable(name);
+      if (name === "MPP L1" || name === "MPP L2") return buildEditable(name as "MPP L1" | "MPP L2");
 
       // Header filter for commodity L1-L6
       if (
@@ -314,15 +423,15 @@ export default function DataViewerPage() {
 
       // Default column (no header filter)
       return {
-        title: name,
+        title: String(name),
         dataIndex: name,
-        key: name,
-        width: widthFor(name),
-        align: numericAlign(name),
+        key: String(name),
+        width: widthFor(String(name)),
+        align: numericAlign(String(name)),
         ellipsis: true,
         render: (val: any) => {
           if (val === null || val === undefined) return "";
-          if (isFlagCol(name)) {
+          if (isFlagCol(String(name))) {
             const v = String(val).trim();
             const yes = v === "1" || /^(true|yes)$/i.test(v);
             return (
@@ -335,7 +444,7 @@ export default function DataViewerPage() {
               </span>
             );
           }
-          if (isMonthCol(name) || isFYCol(name)) {
+          if (isMonthCol(String(name)) || isFYCol(String(name))) {
             const num = Number(val);
             if (!Number.isNaN(num)) {
               return <span className="font-mono">{num.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span>;
@@ -352,19 +461,24 @@ export default function DataViewerPage() {
     window.open(url, "_blank");
   };
 
+  const effectiveTotal = hasActiveFilters ? filteredRows.length : total;
+  const isBusy = loading || loadingAll;
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center py-3">
         <div className="flex items-center gap-2">
-          <Tooltip title="Reload">
+          <Tooltip title="Reload (server page)">
             <Button
               type="default"
               icon={<RefreshCcw size={16} />}
-              onClick={() => fetchData(page, pageSize)}
+              onClick={() => (!hasActiveFilters ? fetchPage(page, pageSize) : ensureAllRows())}
+              loading={isBusy}
             />
           </Tooltip>
           <span className="text-sm text-gray-600">
-            Table: <b>{tableName}</b> · Rows: {filteredRows.length}/{total}
+            Table: <b>{tableName}</b> · Rows: {hasActiveFilters ? filteredRows.length : rowsPage.length}/{effectiveTotal}
+            {hasActiveFilters && rowsAll === null ? " (loading full set…)" : ""}
           </span>
         </div>
         <Space>
@@ -379,7 +493,7 @@ export default function DataViewerPage() {
             type="primary"
             icon={<Save size={16} />}
             onClick={saveChanges}
-            disabled={changedRows.length === 0}
+            disabled={changedRows.length === 0 || isBusy}
           >
             Save MPP L1/L2
           </Button>
@@ -387,16 +501,16 @@ export default function DataViewerPage() {
       </div>
 
       <Table<ApiRow>
-        dataSource={filteredRows}
+        dataSource={dataForTable}
         columns={columns}
-        loading={loading}
+        loading={isBusy}
         rowKey={rowKey}
         pagination={{
           current: page,
           pageSize,
-          total: total,                    // ✅ FIX: use backend total, not filteredRows.length
+          total: effectiveTotal,     // ✅ reflects filtered count across ALL rows
           showSizeChanger: true,
-          pageSizeOptions: [25, 50, 100, 200],
+          pageSizeOptions: [25, 50, 100, 200, 500],
         }}
         scroll={{ x: totalScrollX }}
         onChange={onTableChange}
