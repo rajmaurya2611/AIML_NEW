@@ -442,10 +442,12 @@ import { Message } from "../types_Capex/chat";
 import { ThumbsUp, ThumbsDown, Copy, CheckIcon, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { saveAs } from "file-saver";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import DynamicChartRenderer from "../components_Capex/DynamicChartRenderer";
+import * as XLSX from "xlsx";
+
+/* ------------------------------ Props ------------------------------ */
 
 interface MessageBubbleProps {
   message: Message;
@@ -453,6 +455,8 @@ interface MessageBubbleProps {
   onDislike: (messageId: string) => void;
   onMenuOptionClick?: (messageId: string, option: { id: string; text: string }) => void;
 }
+
+/* ------------------------- Normalization helpers ------------------------- */
 
 function normalizeContent(raw: string): { text: string; status?: string } {
   try {
@@ -465,9 +469,7 @@ function normalizeContent(raw: string): { text: string; status?: string } {
         return { text: obj.response, status: typeof obj.status === "string" ? obj.status : undefined };
       }
     }
-  } catch {
-    /* not JSON */
-  }
+  } catch { /* not JSON */ }
   return { text: raw };
 }
 
@@ -475,67 +477,6 @@ function normalizeContent(raw: string): { text: string; status?: string } {
 const looksNumeric = (value: any) => {
   const s = (Array.isArray(value) ? value[0] : value)?.toString?.().trim?.() ?? "";
   return /^([€]?\s*)?[-\d][\d,]*(\.\d+)?$/.test(s);
-};
-
-const MarkdownTableWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="relative -mx-1 sm:mx-0 my-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-    <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent invisible" />
-    <div className="min-w-full">{children}</div>
-  </div>
-);
-
-const markdownComponents = {
-  table: (props: any) => (
-    <MarkdownTableWrapper>
-      <table {...props} className="w-full border-collapse text-[13px] sm:text-sm" />
-    </MarkdownTableWrapper>
-  ),
-  thead: (props: any) => (
-    <thead {...props} className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10" />
-  ),
-  th: (props: any) => (
-    <th {...props} className="px-3 py-2 border-b border-gray-200 text-left whitespace-nowrap" />
-  ),
-  tr: (props: any) => (
-    <tr {...props} className="even:bg-white odd:bg-gray-50 border-b border-gray-100 hover:bg-gray-100/60 transition-colors" />
-  ),
-  td: (props: any) => {
-    const numeric = looksNumeric(props.children);
-    return (
-      <td
-        {...props}
-        className={[
-          "px-3 py-2 border-b border-gray-100 align-top whitespace-nowrap",
-          numeric ? "text-right tabular-nums" : "text-left",
-        ].join(" ")}
-      />
-    );
-  },
-  code: ({ inline, className, children, ...props }: any) => (
-    <code
-      className={`${inline ? "bg-gray-100 px-1 rounded text-red-600" : "block bg-gray-900 text-white p-2 rounded-lg"
-        } ${className || ""}`}
-      {...props}
-    >
-      {children}
-    </code>
-  ),
-};
-
-/* ---------------------- Parsing & Transform helpers ---------------------- */
-
-type ParsedTable = {
-  title: string;
-  headers: string[];
-  rows: string[][];
-};
-
-type PivotResult = {
-  tableTitle: string;
-  months: string[];
-  seriesKeys: string[];
-  dataByMonth: Array<Record<string, string | number>>;
-  monthlyTotals?: number[];
 };
 
 const stripMd = (s: string) => s.replace(/\*\*/g, "").replace(/\*/g, "").trim();
@@ -547,22 +488,71 @@ const parseCurrency = (s: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/* ----------------------------- Markdown table parsing (robust) ----------------------------- */
+
+type ParsedTable = {
+  title: string;
+  headers: string[];
+  rows: string[][];
+};
+
+/** split a markdown table row into cells:
+ * - respects escaped pipes `\|`
+ * - trims ONLY outer pipes; preserves empty leading/trailing cells
+ */
+function splitMarkdownRow(row: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let esc = false;
+
+  let s = row;
+  // do not trim internal spaces yet; we only want to trim outer pipes safely
+  s = s.replace(/\r/g, "");
+
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|")) s = s.slice(0, -1);
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (esc) {
+      cur += ch;
+      esc = false;
+      continue;
+    }
+    if (ch === "\\") {
+      esc = true;
+      continue;
+    }
+    if (ch === "|") {
+      out.push(cur.trim());
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
 const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
   const lines = markdown.split("\n");
   const tables: ParsedTable[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line.startsWith("|")) continue;
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
 
-    const t: string[] = [];
+    // collect contiguous table block
+    const block: string[] = [];
     let j = i;
     while (j < lines.length && lines[j].trim().startsWith("|")) {
-      t.push(lines[j].trim());
+      block.push(lines[j]);
       j++;
     }
 
-    if (t.length >= 2 && t[1].includes("---")) {
+    // need at least header + separator
+    if (block.length >= 2 && /-\s*\|.*-|^(\s*\|)?\s*-/.test(block[1])) {
+      // find a preceding ### title (closest)
       let title = "Table";
       for (let k = i - 1; k >= 0; k--) {
         const prev = lines[k].trim();
@@ -572,23 +562,21 @@ const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
         }
       }
 
-      const headerLine = t[0];
-      const headers = headerLine
-        .split("|")
-        .map((h) => h.trim())
-        .filter((h, idx, arr) => !(idx === 0 && h === "") && !(idx === arr.length - 1 && h === ""));
-      // ✅ only strip leading/trailing blanks, not in-between
+      // header
+      const headerCells = splitMarkdownRow(block[0]).map((h) => stripMd(h));
+      const colCount = headerCells.length;
 
-      const rowLines = t.slice(2);
+      // data rows (skip separator line at block[1])
+      const rowLines = block.slice(2);
       const rows = rowLines.map((rl) => {
-        let cells = rl.split("|").map((c) => stripMd(c.trim()));
-        // Remove only the first/last empty if row starts/ends with a pipe
-        if (cells.length && cells[0] === "") cells.shift();
-        if (cells.length && cells[cells.length - 1] === "") cells.pop();
-        return cells; // ✅ do NOT filter(Boolean) → keep blanks
+        let cells = splitMarkdownRow(rl).map((c) => stripMd(c));
+        // pad/truncate to header count to avoid shifting
+        if (cells.length < colCount) cells = cells.concat(Array(colCount - cells.length).fill(""));
+        else if (cells.length > colCount) cells = cells.slice(0, colCount);
+        return cells;
       });
 
-      tables.push({ title, headers, rows });
+      tables.push({ title, headers: headerCells, rows });
       i = j - 1;
     }
   }
@@ -596,6 +584,15 @@ const parseAllMarkdownTables = (markdown: string): ParsedTable[] => {
   return tables;
 };
 
+/* --------------------------- Visualization helper (pivot) --------------------------- */
+
+type PivotResult = {
+  tableTitle: string;
+  months: string[];
+  seriesKeys: string[];
+  dataByMonth: Array<Record<string, string | number>>;
+  monthlyTotals?: number[];
+};
 
 const pivotTable = (pt: ParsedTable): PivotResult => {
   const months = pt.headers.slice(1);
@@ -647,6 +644,141 @@ const pivotTable = (pt: ParsedTable): PivotResult => {
   };
 };
 
+/* --------------------------- Markdown renderers --------------------------- */
+
+const MarkdownTableWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="relative -mx-1 sm:mx-0 my-4 overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent invisible" />
+    <div className="min-w-full">{children}</div>
+  </div>
+);
+
+const markdownComponents = {
+  table: (props: any) => (
+    <MarkdownTableWrapper>
+      <table {...props} className="w-full border-collapse text-[13px] sm:text-sm" />
+    </MarkdownTableWrapper>
+  ),
+  thead: (props: any) => (
+    <thead {...props} className="bg-gray-50 text-gray-900 font-semibold sticky top-0 z-10" />
+  ),
+  th: (props: any) => (
+    <th {...props} className="px-3 py-2 border-b border-gray-200 text-left whitespace-nowrap" />
+  ),
+  tr: (props: any) => (
+    <tr {...props} className="even:bg-white odd:bg-gray-50 border-b border-gray-100 hover:bg-gray-100/60 transition-colors" />
+  ),
+  td: (props: any) => {
+    const numeric = looksNumeric(props.children);
+    return (
+      <td
+        {...props}
+        className={[
+          "px-3 py-2 border-b border-gray-100 align-top whitespace-nowrap",
+          numeric ? "text-right tabular-nums" : "text-left",
+        ].join(" ")}
+      />
+    );
+  },
+  code: ({ inline, className, children, ...props }: any) => (
+    <code
+      className={`${inline ? "bg-gray-100 px-1 rounded text-red-600" : "block bg-gray-900 text-white p-2 rounded-lg"} ${className || ""}`}
+      {...props}
+    >
+      {children}
+    </code>
+  ),
+};
+
+/* --------------------------- Excel export (no shifting) --------------------------- */
+
+const downloadAllMarkdownTablesAsExcel = (markdown: string, defaultName = "Capex_Tables") => {
+  const tables = parseAllMarkdownTables(markdown);
+  if (!tables.length) {
+    alert("No tables found to export.");
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  tables.forEach((pt, idx) => {
+    // header row
+    const aoa: (string | number)[][] = [pt.headers];
+
+    // normalize rows: keep colCount identical to headers
+    const colCount = pt.headers.length;
+
+    pt.rows.forEach((row) => {
+      const cells = row.map((cell, i) => {
+        if (i === 0) return (cell ?? "").toString().trim(); // label column stays string
+        const raw = (cell ?? "").toString().trim();
+        const numericLike = /^([€]?\s*)?[-\d][\d,]*(\.\d+)?$/.test(raw);
+        if (!numericLike) return raw;
+        const cleaned = raw.replace(/[€,\s]/g, "");
+        const n = Number(cleaned);
+        return Number.isFinite(n) ? n : raw;
+      });
+
+      if (cells.length < colCount) cells.push(...Array(colCount - cells.length).fill(""));
+      else if (cells.length > colCount) cells.length = colCount;
+
+      aoa.push(cells);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // column widths
+    const colWidths = pt.headers.map((_, colIdx) => {
+      let maxLen = String(pt.headers[colIdx] ?? "").length;
+      for (let r = 1; r < aoa.length; r++) {
+        const v = aoa[r][colIdx];
+        const s = v == null ? "" : String(v);
+        if (s.length > maxLen) maxLen = s.length;
+      }
+      return { wch: Math.min(Math.max(8, maxLen + 2), 40) };
+    });
+    (ws as any)["!cols"] = colWidths;
+
+    // safe sheet name
+    const rawTitle = pt.title || `Table ${idx + 1}`;
+    const safe = rawTitle.replace(/[\\/?*[\]:]/g, "_").slice(0, 31) || `Table_${idx + 1}`;
+
+    XLSX.utils.book_append_sheet(wb, ws, safe);
+  });
+
+  const fname = `${defaultName.replace(/\s+/g, "_")}_${new Date()
+    .toISOString()
+    .slice(0, 19)
+    .replace(/[:T]/g, "-")}.xlsx`;
+  XLSX.writeFile(wb, fname);
+};
+
+/* --------------------------- PDF export (charts) --------------------------- */
+
+const exportChartToPdf = async (chartId: string, title = "chart") => {
+  const input = document.getElementById(chartId);
+  if (!input) {
+    alert("Chart not found for PDF export!");
+    return;
+  }
+
+  const canvas = await html2canvas(input, { scale: 2, backgroundColor: "#fff" });
+  const imgData = canvas.toDataURL("image/png");
+
+  const pdf = new jsPDF({
+    orientation: "landscape",
+    unit: "pt",
+    format: [canvas.width, canvas.height],
+  });
+
+  pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+  pdf.setFontSize(14);
+  pdf.text(title, 32, 32);
+  pdf.save(`${title.replace(/\s+/g, "_")}_${new Date().toISOString()}.pdf`);
+};
+
+/* ------------------------------ Component ------------------------------ */
+
 const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   onLike,
@@ -664,6 +796,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   );
 
   const [pivoted, setPivoted] = useState<any[]>([]);
+  const hasMenuOptions = message.options && message.options.length > 0;
 
   useEffect(() => {
     if (isUser) return;
@@ -734,145 +867,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       .catch((err) => console.error("Failed to copy text:", err));
   };
 
-  const hasMenuOptions = message.options && message.options.length > 0;
-
-  const downloadOneMarkdownTableAsCsv = (tableMarkdown: string, tableHeading: string) => {
-    const lines = tableMarkdown.split("\n");
-    let tableStart = -1,
-      tableEnd = -1;
-    for (let i = 0; i < lines.length; ++i) {
-      if (lines[i].trim().startsWith("|")) {
-        if (tableStart === -1) tableStart = i;
-        tableEnd = i;
-      }
-    }
-    if (tableStart === -1 || tableEnd === -1) {
-      alert("Table not found.");
-      return;
-    }
-
-    // Extract title above table if present
-    let title = tableHeading;
-    for (let i = tableStart - 1; i >= 0; --i) {
-      if (lines[i].startsWith("###")) {
-        title = lines[i].replace(/^#{2,}\s*/, "");
-        break;
-      }
-    }
-
-    const body = lines.slice(tableStart, tableEnd + 1).join("\n");
-    const [parsed] = parseAllMarkdownTables(body);
-    if (!parsed) {
-      alert("Could not parse table.");
-      return;
-    }
-
-    const colCount = parsed.headers.length;
-    const sheetData: any[] = [];
-
-    // Add table title row as a comment (optional, remove if not needed)
-    sheetData.push([title]);
-    sheetData.push([]); // empty row
-    sheetData.push(parsed.headers.map(h => (h == null ? "" : String(h).trim())));
-
-    // Normalize row: ensure any currency or number is parsed as a number
-    const normalizeRow = (row: any): string[] => {
-      let cells: string[];
-      if (Array.isArray(row)) {
-        cells = row.map((c, idx) => {
-          let v = c == null ? "" : String(c).trim();
-          // Attempt to parse as number if it looks numeric
-          if (idx > 0 && looksNumeric(v)) {
-            v = parseCurrency(v).toString();
-          }
-          return v;
-        });
-      } else {
-        cells = String(row).split("|");
-        if (cells.length && cells[0].trim() === "") cells.shift();
-        if (cells.length && cells[cells.length - 1].trim() === "") cells.pop();
-        cells = cells.map((v, idx) => {
-          v = v.trim();
-          if (idx > 0 && looksNumeric(v)) {
-            v = parseCurrency(v).toString();
-          }
-          return v;
-        });
-      }
-      if (cells.length < colCount) {
-        cells = cells.concat(Array(colCount - cells.length).fill(""));
-      } else if (cells.length > colCount) {
-        cells = cells.slice(0, colCount);
-      }
-      return cells;
-    };
-
-    parsed.rows.forEach(row => sheetData.push(normalizeRow(row)));
-
-    // Convert sheetData to CSV string
-    const csvContent = sheetData
-      .map(row =>
-        row
-          .map((val: any) => {
-            // Escape quotes and wrap if necessary
-            const v = String(val ?? "");
-            return v.includes(",") || v.includes('"') || v.includes("\n")
-              ? `"${v.replace(/"/g, '""')}"`
-              : v;
-          })
-          .join(",")
-      )
-      .join("\n");
-
-    // Download as CSV
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    saveAs(blob, `${(title || "table").replace(/\s+/g, "_")}_${new Date().toISOString()}.csv`);
-  };
-
-
-  // Export a chart div to PDF
-  const exportChartToPdf = async (chartId: string, title = "chart") => {
-    const input = document.getElementById(chartId);
-    if (!input) {
-      alert("Chart not found for PDF export!");
-      return;
-    }
-
-    // Use html2canvas to render chart DOM as image
-    const canvas = await html2canvas(input, { scale: 2, backgroundColor: "#fff" });
-    const imgData = canvas.toDataURL("image/png");
-
-    // Create jsPDF instance
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "pt",
-      format: [canvas.width, canvas.height]
-    });
-
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-    pdf.setFontSize(14);
-    pdf.text(title, 32, 32);
-    pdf.save(`${title.replace(/\s+/g, "_")}_${new Date().toISOString()}.pdf`);
-  };
-
-
-
   return (
     <div className={`${isUser ? "flex ms-prompt justify-end" : "ms-response"} mb-4`}>
-
       <div
         className={[
           "rounded-2xl p-4",
-          isUser
-            ? "bg-chat-red text-white rounded-br-none"
-            : "bg-gray-100 text-gray-900 rounded-bl-none ms-response",
+          isUser ? "bg-chat-red text-white rounded-br-none" : "bg-gray-100 text-gray-900 rounded-bl-none ms-response",
         ].join(" ")}
       >
         {isUser ? (
           <p className="text-sm leading-relaxed">{displayText}</p>
         ) : (
           <div>
-            {hasMenuOptions && onMenuOptionClick && (
+            {hasMenuOptions && onMenuOptionClick ? (
               <div>
                 <p className="mb-3 text-base text-gray-800">{message.content}</p>
                 <div className="flex gap-4 flex-wrap">
@@ -887,11 +894,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       </button>
                     ))}
                 </div>
-                <p className="mb-3 text-base text-gray-800 mt-3">Click <span style={{ fontWeight: "bold" }}>Exit</span> to change the area of interest.</p>
+                <p className="mb-3 text-base text-gray-800 mt-3">
+                  Click <span style={{ fontWeight: "bold" }}>Exit</span> to change the area of interest.
+                </p>
               </div>
-            )}
-
-            {!hasMenuOptions && (
+            ) : (
               <>
                 {status === "clarification" && (
                   <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
@@ -909,141 +916,36 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <div className="mt-6 space-y-10">
                     <div className="mb-4 text-right">
                       <button
-                        onClick={() => downloadOneMarkdownTableAsCsv(displayText, "Total Investment")}
+                        onClick={() => downloadAllMarkdownTablesAsExcel(displayText, "Capex_Response_Tables")}
                         className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
-                        title="Download all tables as Excel"
+                        title="Download all tables as .xlsx"
                       >
                         Download as Excel
                       </button>
                     </div>
-                    {/* {pivoted.map((piv, tIdx) => {
-                      const chartId = `chart-container-${message.id}-${tIdx}`;
-                      return (
-                        <div
-                          key={tIdx}
-                          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6"
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
-                            {piv.tableTitle} — Visualization
-                          </h4>
-                          <div className="text-right">
-                            <button
-                              onClick={() => exportChartToPdf(chartId, piv.tableTitle)}
-                              className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
-                            >
-                              Download chart as PDF
-                            </button>
-                          </div>
-                          </div>
-                        </div>
-                      )
-                    })} */}
+                    {/* per-table chart UI can be added here if needed */}
                   </div>
                 )}
+
                 {message.chartConfig && (
                   <div className="mt-6">
                     <div className="mb-4 text-right">
                       <button
-                        onClick={() =>
-                          exportChartToPdf(`chart-${message.id}`, message.content || "Chart")
-                        }
+                        onClick={() => exportChartToPdf(`chart-${message.id}`, message.content || "Chart")}
                         className="bg-[#da2128] text-white text-sm px-2 py-1 rounded-md transition"
                       >
                         Download chart as PDF
                       </button>
                     </div>
-                    {/* <h5 className="text-sm font-medium text-gray-700 mb-2">
-                      {message.content}
-                    </h5> */}
                     <div id={`chart-${message.id}`}>
-                      {/* <ResponsiveContainer width="100%" height={350}>
-                        {message.chartConfig?.chartType === "bar" ? (
-                          // <BarChart data={message.chart.data}>
-                          //   <CartesianGrid strokeDasharray="4 4" />
-                          //   <XAxis dataKey="name" tick={false} axisLine={false} />
-                          //   <YAxis tick={{ fontSize: 12 }} />
-                          //   <Tooltip />
-                          //   <Legend />
-                          //   {message.chart.keys.map((key: string, i: number) => (
-                          //     <Bar
-                          //       key={key}
-                          //       dataKey={key}
-                          //       fill={colorForIndex(i)}   // legend + bar color
-                          //       isAnimationActive={true}
-                          //     />
-                          //   ))}
-                          // </BarChart>
-
-                          <BarChart data={message.chart.data}>
-                            <CartesianGrid strokeDasharray="4 4" />
-                            <XAxis dataKey="name" tick={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 10 }} />
-                            <Tooltip />
-                            <Legend />
-                            {message.chart.keys.map((key: string) => (
-                              <Bar
-                                key={key}
-                                dataKey={key}
-                                isAnimationActive={true}
-                              >
-                                {message.chart?.data.map((_, barIndex) => (
-                                  <Cell
-                                    key={`cell-${barIndex}`}
-                                    fill={colorForIndex(barIndex)}
-                                  />
-                                ))}
-                              </Bar>
-                            ))}
-                          </BarChart>
-
-                        ) : (
-                          <LineChart data={message.chart.data}>
-                            <CartesianGrid strokeDasharray="4 4" />
-                            <XAxis dataKey="name" tick={false} axisLine={false} />
-                            <YAxis tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Legend />
-                            {message.chart.keys.map((key: string, i: number) => (
-                              <Line
-                                key={key}
-                                type="monotone"
-                                dataKey={key}
-                                stroke={colorForIndex(i)}
-                                strokeWidth={2}
-                                dot={false}
-                              />
-                            ))}
-                          </LineChart>
-                        )}
-                      </ResponsiveContainer> */}
-
                       <DynamicChartRenderer chartConfig={message.chartConfig} />
-
-                      {/* Custom X labels */}
-                      {/* <div className="custom-legends flex justify-between mt-2">
-                        {message.chartConfig?.data.map((d: any, i: number) => (
-                          <span
-                            key={i}
-                            className="text-xs font-medium"
-                            style={{ color: colorForIndex(i) }} // Use dynamic color per index
-                          >
-                            {d.name}
-                          </span>
-                        ))}
-                      </div> */}
-
                     </div>
-
-
                   </div>
                 )}
 
                 {message.sources && message.sources.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-sm font-semibold mb-2 text-gray-800">
-                      📂 Source files used (click to view):
-                    </p>
+                    <p className="text-sm font-semibold mb-2 text-gray-800">📂 Source files used (click to view):</p>
                     <div className="flex flex-wrap gap-2">
                       {message.sources.map((source: any) => (
                         <a
@@ -1064,24 +966,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex justify-end mt-2 pt-2 border-t border-gray-200/60 items-center gap-1.5">
                   <button
                     onClick={handleLike}
-                    className={`rounded-full p-1.5 transition-colors ${message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"
-                      }`}
+                    className={`rounded-full p-1.5 transition-colors ${message.liked ? "bg-green-100 text-green-600" : "text-gray-400 hover:text-green-600"}`}
                     aria-label="Like"
                     title="Like"
                   >
                     <ThumbsUp className="w-4 h-4" />
                   </button>
+
                   <button
                     onClick={handleDislike}
-                    className={`rounded-full p-1.5 transition-colors ${message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"
-                      }`}
+                    className={`rounded-full p-1.5 transition-colors ${message.disliked ? "bg-red-100 text-chat-red" : "text-gray-400 hover:text-chat-red"}`}
                     aria-label="Dislike"
                     title="Dislike"
                   >
                     <ThumbsDown className="w-4 h-4" />
                   </button>
 
-                  {/* Feedback popup */}
+                  {/* Text feedback popup */}
                   <div className="relative">
                     <button
                       onClick={() => setShowFeedbackPopup(!showFeedbackPopup)}
@@ -1124,8 +1025,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
                   <button
                     onClick={handleCopy}
-                    className={`rounded-full p-1.5 transition-colors ${copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"
-                      }`}
+                    className={`rounded-full p-1.5 transition-colors ${copied ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
                     aria-label="Copy message"
                     title="Copy to clipboard"
                   >
@@ -1139,9 +1039,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
     </div>
   );
-
-
 };
 
 export default MessageBubble;
-
