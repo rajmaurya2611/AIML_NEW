@@ -84,7 +84,7 @@ const ChatMessage = ({ message, isBot, isTable, tableData }: ChatMessageProps) =
         >
           {/* ✅ Always render description/message if provided */}
           {message && (
-            <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap break-words">
+            <p className={`text-sm leading-relaxed mb-3 whitespace-pre-wrap break-words ${isBot?"":"text-white"}`} >
               {message}
             </p>
           )}

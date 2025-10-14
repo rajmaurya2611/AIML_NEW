@@ -1,5 +1,3 @@
-// components/homepage/ui/apple-cards-carousel.tsx
-
 "use client";
 import React, {
   useEffect,
@@ -62,6 +60,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
   const splineWrapRef = useRef<HTMLDivElement | null>(null);
   const splineCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Initial scroll + boundary check
   useEffect(() => {
     if (carouselRef.current) {
       carouselRef.current.scrollLeft = initialScroll;
@@ -73,7 +72,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
     if (!carouselRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
     setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
   };
 
   const scrollLeft = () =>
@@ -86,15 +85,40 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
   const CARD_BELT_LIFT =
     "mt-[-31vh] sm:mt-[-41vh] md:mt-[-51vh] lg:mt-[-58vh] xl:mt-[-61vh]";
 
+  // Disable background scroll on modal open
   useEffect(() => {
     document.body.style.overflow = modalOpen ? "hidden" : "auto";
+    // Suspend Spline rendering while modal is open
+    if (splineCanvasRef.current) {
+      splineCanvasRef.current.style.visibility = modalOpen ? "hidden" : "visible";
+    }
   }, [modalOpen]);
+
+  // 🧠 Throttled mousemove handler to reduce CPU
+  const lastMove = useRef<number>(0);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const now = Date.now();
+    if (now - lastMove.current < 100) return; // throttle ~10fps
+    lastMove.current = now;
+    if (splineCanvasRef.current) {
+      const evt = new MouseEvent("mousemove", {
+        bubbles: true,
+        cancelable: true,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        screenX: e.screenX,
+        screenY: e.screenY,
+      });
+      splineCanvasRef.current.dispatchEvent(evt);
+    }
+  };
 
   return (
     <CarouselContext.Provider
       value={{ onCardClose: handleCardClose, currentIndex, setModalOpen }}
     >
       <section className="relative w-full min-h-screen overflow-hidden bg-black">
+        {/* 🌀 Spline 3D background */}
         <div
           ref={splineWrapRef}
           className="pointer-events-none sticky top-0 h-screen w-full z-0"
@@ -116,6 +140,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
           />
         </div>
 
+        {/* Carousel Section */}
         <div className="relative z-10 w-full h-full">
           <div
             className={cn(
@@ -125,23 +150,12 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
             )}
             ref={carouselRef}
             onScroll={checkScrollability}
-            onMouseMove={(e) => {
-              if (!splineCanvasRef.current) return;
-              const evt = new MouseEvent("mousemove", {
-                bubbles: true,
-                cancelable: true,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                screenX: e.screenX,
-                screenY: e.screenY,
-              });
-              splineCanvasRef.current.dispatchEvent(evt);
-            }}
+            onMouseMove={handleMouseMove}
             {...(modalOpen ? ({ inert: "" } as any) : {})}
             aria-hidden={modalOpen || undefined}
           >
             <div className="absolute right-0 z-10 h-auto w-[5%] overflow-hidden bg-gradient-to-l" />
-            <div className={cn("flex flex-row justify-start gap-4 pl-4", "mx-auto")}>
+            <div className="flex flex-row justify-start gap-4 pl-4 mx-auto">
               {items.map((item, index) => (
                 <motion.div
                   key={"card" + index}
@@ -156,6 +170,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
                       once: true,
                     },
                   }}
+                  style={{ willChange: "transform" }}
                   className="last:pr-[5%] md:last:pr-[33%] rounded-3xl relative z-10"
                 >
                   {item}
@@ -164,7 +179,13 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
             </div>
           </div>
 
-          <div className={cn("flex justify-end gap-2 mr-10 pb-6", modalOpen && "pointer-events-none opacity-50")}>
+          {/* Navigation Buttons */}
+          <div
+            className={cn(
+              "flex justify-end gap-2 mr-10 pb-6",
+              modalOpen && "pointer-events-none opacity-50"
+            )}
+          >
             <button
               className="relative z-20 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-50"
               onClick={scrollLeft}
@@ -182,6 +203,7 @@ export const Carousel = ({ items, initialScroll = 0 }: CarouselProps) => {
           </div>
         </div>
 
+        {/* Gradient Overlay */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent z-10" />
       </section>
     </CarouselContext.Provider>
@@ -209,13 +231,6 @@ export const Card = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   useOutsideClick(containerRef, () => open && handleClose());
 
   const handleOpen = () => {
@@ -233,10 +248,7 @@ export const Card = ({
       <AnimatePresence>
         {open && (
           <BodyPortal>
-            {/* Backdrop */}
             <div className="fixed inset-0 z-[9998] bg-black/80 backdrop-blur-lg" />
-
-            {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -246,6 +258,7 @@ export const Card = ({
               className="fixed inset-0 z-[9999] flex items-start justify-center overflow-auto"
               aria-modal="true"
               role="dialog"
+              style={{ willChange: "transform" }}
             >
               <div className="max-w-7xl w-full mx-auto bg-white dark:bg-neutral-900 my-6 p-4 md:p-6 rounded-3xl font-poppins relative">
                 <button
@@ -256,7 +269,6 @@ export const Card = ({
                   <CloseOutlined className="ml-2 mr-1 h-6 w-6 text-neutral-100 dark:text-neutral-900" />
                 </button>
 
-                {/* Header block: center-aligned */}
                 <div className="px-2 md:px-4">
                   <motion.p
                     layoutId={layout ? `category-${card.title}` : undefined}
@@ -272,7 +284,6 @@ export const Card = ({
                   </motion.p>
                 </div>
 
-                {/* Body stays left-aligned */}
                 <div className="py-10">{card.content}</div>
               </div>
             </motion.div>
@@ -284,6 +295,7 @@ export const Card = ({
         layoutId={layout ? `card-${card.title}` : undefined}
         onClick={handleOpen}
         className="rounded-3xl bg-gray-100 dark:bg-neutral-900 h-80 w-56 md:h-[25rem] md:w-80 overflow-hidden flex flex-col items-start justify-start relative z-10 transform transition-transform duration-300 hover:scale-105"
+        style={{ willChange: "transform" }}
       >
         <div className="absolute h-full top-0 inset-x-0 bg-gradient-to-b from-black/50 via-transparent to-transparent z-30 pointer-events-none" />
         <div className="relative z-40 p-8">
@@ -341,7 +353,6 @@ export const BlurImage = ({
     />
   );
 };
-
 
 
 //  without robot (do not delete it)
