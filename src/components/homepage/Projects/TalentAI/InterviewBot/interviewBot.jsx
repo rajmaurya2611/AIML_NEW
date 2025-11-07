@@ -1,697 +1,341 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { useParams } from 'react-router-dom'; // Rohan Singh
-import MainHeader from "../MainHeader.jsx";
-import Sidebar from "../Sidebar.jsx";
-import InterviewInstruction from "./interviewInstruction.jsx";
+import { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import "./interviewBot.css";
-import clock from "../assets_talentAI/clock.svg";
-// import aiImage from "../assets_talentAI/cartoon-ai.png";
-import sendButton from "../assets_talentAI/send-button.png";
-import avatar from "../assets_talentAI/avatar.svg";
 import CameraRecorder from "./cameraRecorder.jsx";
-import Instructions from "../assets_talentAI/instructions.png";
 import mothersonLogo from "../assets_talentAI/motherson_logo.svg";
 import ThankYouPage from "./thankYouPage.jsx";
-// import Header from "../../components/Header/Header";
-// import { askLlm } from "../services/llmService";
 import axios from "axios";
-// after your other imports
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
-import MessageList  from "./MessageList.jsx";
-import MessageInput from "./MessageInput.jsx";
 import AvatarPanel from "./AvatarPanel";
- 
+import InterviewInstruction from "./interviewInstruction.jsx";
+
 export default function InterviewBot() {
-    // Get the UUID of the User
-    const { uuid } = useParams();
-    //ref for Avatar Panel
+  const { uuid } = useParams();
   const avatarRef = useRef(null);
- 
+
   const API_BASE = import.meta.env.VITE_TALENTAI_API_INTERVIEW_BASE_URL;
- 
-  // holds { role, content } objects
-  const [messages, setMessages] = useState([]);
-  // disable UI while waiting
+
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  // raw File objects selected by the user
-//   const [cvFile, setCvFile] = useState(null);
-//   const [jdFile, setJdFile] = useState(null);
- 
-  // plain-text extracted from those PDFs
   const [cvText, setCvText] = useState("");
   const [jdText, setJdText] = useState("");
- 
-  // interview state
+
   const [started, setStarted] = useState(false);
-  // added interviewStarted state
   const [interviewStarted, setInterviewStarted] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState([]); // [{role,content}]
   const historyRef = useRef(history);
-  const [botSpeech, setBotSpeech] = useState("");
-  const [input, setInput] = useState("");
+
   const [timeLeft, setTimeLeft] = useState(1800);
   const timerRef = useRef(null);
-  const [showInterviewSection, setShowInterviewSection] = useState(false);
- 
- 
+
   // STT
   const recognizerRef = useRef(null);
-  const bufRef = useRef("");
-  const pauseTimer = useRef(null);
-  const [speechCreds, setSpeechCreds] = useState(null);
- 
-  // TTS synthesizer ref
+  const userSpeakingRef = useRef(false);
+  const lastFinalRef = useRef("");
+
+  // Fallback TTS (post-first message)
   const synthesizerRef = useRef(null);
- 
-  // useEffect(() => {
-  //   fetch("/api/speech/token")
-  //     .then(r => r.json())
-  //     .then(setSpeechCreds)
-  //     .catch(console.error);
-  // }, []);
- 
+
+  // First-message avatar-only control
+  const firstPendingRef = useRef("");
+  const firstSpokenRef = useRef(false);
+
+  // End-page state
+  const [record, setRecord] = useState(false);
+  const [interviewStatus, setInterviewStatus] = useState(false);
+  const [showPopup, setShowPopup] = useState(true);
+
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
- 
-//   useEffect(() => {
-//     if (!started) return;
-//     timerRef.current = setInterval(() => {
-//       setTimeLeft((t) => Math.max(t - 1, 0));
-//     }, 1000);
-//     return () => clearInterval(timerRef.current);
-//   }, [started]);
- 
-  // Lift files & start interview
-//   const handleAcceptAndUpload = (cv, jd) => {
-//     setCvFile(cv);
-//     setJdFile(jd);
-//     startInterview(cv, jd);
-//   };
- 
-  // CV and JD upload buttons related code here
-//   const uploadCvButton = useRef(null);
-//   const uploadJdButton = useRef(null);
- 
-//   const [cvUploadFileName,setCvUploadFileName] = useState("");
-//   const [jdUploadFileName,setJdUploadFileName] = useState("");
- 
-//   const handleCvUploadInput = ()=>{
-//     uploadCvButton.current.click();
-//   }
-//   const handleJdUploadInput = ()=>{
-//      uploadJdButton.current.click();
- 
-//   }
-//   const handleCvFileChange = (e) => {
-//     setCvFile(e.target.files?.[0] || null)
-//     setCvUploadFileName(e.target.files?.[0]?.name || "");
- 
-//   };
-//   const handleJdFileChange = (e) => {
-//     setJdFile(e.target.files?.[0] || null)
-//     setJdUploadFileName(e.target.files?.[0]?.name || "");
-//   }
-  // Core interview start logic (extracting text, STT, LLM, etc.)
+
+  function speakBot(text) {
+    if (!text) return;
+    if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
+      avatarRef.current.speak(text);
+      return;
+    }
+    if (synthesizerRef.current) {
+      synthesizerRef.current.speakTextAsync(
+        text,
+        () => {},
+        (err) => console.error("Fallback TTS failed:", err)
+      );
+    }
+  }
+
+  function stopBotSpeechNow() {
+    try { avatarRef.current?.stopSpeaking?.(); } catch {}
+    try { synthesizerRef.current?.stopSpeakingAsync?.(() => {}, () => {}); } catch {}
+  }
+
+  function startSTT() {
+    const key = import.meta.env.VITE_AZURE_SPEECH_KEY;
+    const region = import.meta.env.VITE_AZURE_SPEECH_REGION;
+    if (!key || !region) {
+      console.warn("Missing VITE_AZURE_SPEECH_KEY/REGION; STT disabled.");
+      return;
+    }
+
+    const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+    speechConfig.speechRecognitionLanguage = "en-IN";
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+      "1200"
+    );
+    const audioCfg = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+    const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioCfg);
+    recognizerRef.current = recognizer;
+
+    recognizer.recognizing = (_, e) => {
+      const partial = (e?.result?.text || "").trim();
+      if (!partial) return;
+      if (!userSpeakingRef.current) {
+        userSpeakingRef.current = true;
+        stopBotSpeechNow(); // barge-in
+      }
+    };
+
+    recognizer.recognized = async (_, e) => {
+      if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
+      const finalText = (e.result.text || "").trim();
+      if (!finalText) {
+        userSpeakingRef.current = false;
+        return;
+      }
+
+      if (finalText === lastFinalRef.current) {
+        userSpeakingRef.current = false;
+        return;
+      }
+      lastFinalRef.current = finalText;
+      userSpeakingRef.current = false;
+
+      setHistory((h) => [...h, { role: "user", content: finalText }]);
+
+      try {
+        const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
+          messages: [...historyRef.current, { role: "user", content: finalText }],
+          userText: finalText,
+        });
+        setHistory(newHist);
+        const reply = newHist.slice(-1)?.[0]?.content || "";
+        if (reply) speakBot(reply);
+      } catch (err) {
+        console.error("LLM error:", err);
+      }
+    };
+
+    recognizer.startContinuousRecognitionAsync(
+      () => console.log("STT started"),
+      (err) => console.error("STT error", err)
+    );
+  }
+
+  async function speakFirstWithAvatar(text) {
+    if (!text) return;
+    firstPendingRef.current = text;
+
+    const trySpeak = () => {
+      if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
+        avatarRef.current.speak(firstPendingRef.current);
+        firstSpokenRef.current = true;
+        firstPendingRef.current = "";
+        setTimeout(() => startSTT(), 50); // mic after avatar begins
+        return true;
+      }
+      return false;
+    };
+
+    if (trySpeak()) return;
+
+    let attempts = 0;
+    const maxAttempts = 40; // ~8s
+    const id = setInterval(() => {
+      if (trySpeak() || ++attempts >= maxAttempts) {
+        clearInterval(id);
+        if (!firstSpokenRef.current) {
+          console.warn("Avatar did not connect in time. First message not spoken (avatar-only).");
+        }
+      }
+    }, 200);
+  }
+
   const startInterview = async () => {
     setLoading(true);
     try {
-        // 1) extract text
-        //   const form = new FormData();
-        //   form.append("cv", cvArg);
-        //   form.append("jd", jdArg);
-        //   const {
-        //     data: { cvText, jdText },
-        //   } = await axios.post(`${API_BASE}/api/upload`, form);
- 
-        const response  = await axios.post(`${API_BASE}/api/hr/get-status-active`, {
-            UID:uuid
-        });
-        const { status, active, jdText, cvText } = response.data;
-        // console.log(status);
-        // console.log(active);
-        // console.log(jdText);
-        // console.log(cvText);
- 
-        setCvText(cvText);
-        setJdText(jdText);
- 
-        // 2) initial chat prompt
-        const { data } = await axios.post(`${API_BASE}/api/chat`, {
-            cv: cvText,
-            jd: jdText,
-            messages: [],
-        });
-        setHistory(data);
-        const first = data.slice(-1)[0].content;
-        setMessages([{ sender: "HR Bot", text: first }]);
-        setBotSpeech(first);
- 
-        // speak the first prompt
-        synthesizerRef.current?.speakTextAsync(
-            first,
-            () => console.log("TTS finished"),
-            err => console.error("TTS failed:", err)
-        );
- 
-        setStarted(true);
-        // 🟢 Start avatar session
-        avatarRef.current?.start();
- 
-        // 3) Azure STT (assuming SpeechSDK is globally available)
-        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-            import.meta.env.VITE_AZURE_SPEECH_KEY,
-            import.meta.env.VITE_AZURE_SPEECH_REGION
-        );
-        speechConfig.speechRecognitionLanguage = "en-IN";
-        speechConfig.setProperty(
-            SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-            "6000"
-        );
- 
-        // -- instantiate the TTS synthesizer once --
-        const synthConfig = SpeechSDK.SpeechConfig.fromSubscription(
-            import.meta.env.VITE_AZURE_SPEECH_KEY,
-            import.meta.env.VITE_AZURE_SPEECH_REGION
-        );
-        synthConfig.speechSynthesisLanguage = "en-IN";
-        const synthAudioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
-        synthesizerRef.current = new SpeechSDK.SpeechSynthesizer(synthConfig, synthAudioConfig);
- 
-        // -- recognizer setup --
-        const recognizer = new SpeechSDK.SpeechRecognizer(
-            speechConfig,
-            SpeechSDK.AudioConfig.fromDefaultMicrophoneInput()
-        );
-        recognizerRef.current = recognizer;
- 
-        recognizer.recognized = async (_, e) => {
-            if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-            const txt = e.result.text.trim();
-            if (!txt) return;
-            bufRef.current = bufRef.current ? bufRef.current + " " + txt : txt;
-            clearTimeout(pauseTimer.current);
-            pauseTimer.current = setTimeout(async () => {
-                const userText = bufRef.current.trim();
-                bufRef.current = "";
-                // UI update
-                setHistory((h) => [...h, { role: "user", content: userText }]);
-                setMessages((m) => [...m, { sender: "You", text: userText }]);
-                // send to LLM
-                try {
-                const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
-                    messages: [...historyRef.current, { role: "user", content: userText }],
-                    userText,
-                });
-                setHistory(newHist);
-                const reply = newHist.slice(-1)[0].content;
-                setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
-                setBotSpeech(reply);
-                // ** speak the reply **
-                avatarRef.current?.speak(reply);
-                } catch (err) {
-                console.error("LLM error:", err);
-                }
-            }, 2700);
-            }
-        };
- 
-        recognizer.startContinuousRecognitionAsync(
-            () => console.log("STT started"),
-            (err) => console.error("STT error", err)
-        );
-        } catch (err) {
-        console.error("Start error:", err);
-        alert("Could not start interview. See console.");
-        } finally {
-        // Temporary loader until avatar is laoded
-        setTimeout(()=>{
-          setLoading(false);
-        },6000)
-       
-        }
-    };
- 
-    // Manual send
-    const sendText = async () => {
-        const txt = input.trim();
-        if (!txt) return;
-        setInput("");
-        setHistory((h) => [...h, { role: "user", content: txt }]);
-        setMessages((m) => [...m, { sender: "You", text: txt }]);
-        try {
-        const { data: newHist } = await axios.post(`${API_BASE}/api/chat`, {
-            messages: [...historyRef.current, { role: "user", content: txt }],
-            userText: txt,
-        });
-        setHistory(newHist);
-        const reply = newHist.slice(-1)[0].content;
-        setMessages((m) => [...m, { sender: "HR Bot", text: reply }]);
-        setBotSpeech(reply);
-        // ** speak the reply from manual send **
-        synthesizerRef.current.speakTextAsync(
-            reply,
-            () => console.log("TTS finished"),
-            err => console.error("TTS failed:", err)
-        );
-        } catch (err) {
-        console.error("Send error:", err);
-        alert("Failed to send. See console.");
-        }
-    };
- 
-  // // End interview
-  // const endInterview = () => {
-  //   recognizerRef.current?.stopContinuousRecognitionAsync(
-  //     () => console.log("STT stopped"),
-  //     (err) => console.error(err)
-  //   );
-  //   setStarted(false);
-  // };
- 
-   // End interview → save transcript & scorecard on server, then show ThankYouPage
-  const handleEndInterview = async () => {
-   // 1) stop STT and timer
-   recognizerRef.current?.stopContinuousRecognitionAsync(
-     () => console.log("STT stopped"),
-     err => console.error(err)
-   );
-   clearInterval(timerRef.current);
- 
-    // 🔴 Stop the avatar
-    avatarRef.current?.stop();
- 
-   // 2) ask for candidate name
-   const name = window.prompt("Please enter your name to save your transcript:");
-   if (!name) {
-     alert("Name is required to save your transcript.");
-     return;
-   }
- 
-   // 3) call backend save endpoint
-    try {
-        await axios.post(`${API_BASE}/api/chat/save`, {
-        name,
-        conversation: history,    // your full array of {role,content}
-        });
-        // 4) flip to ThankYouPage
-        //  setInterviewStatus(true);
-    } catch (err) {
-        console.error("Save error", err);
-        alert("Failed to save transcript & scorecard.");
-    }
- 
-    stopRecord();
-    };
- 
-  async function handleStartInterview() {
-    setLoading(true);
-    try {
+      const resp = await axios.post(`${API_BASE}/api/hr/get-status-active`, { UID: uuid });
+      const { jdText: jdTxt, cvText: cvTxt } = resp.data || {};
+      setCvText(cvTxt || "");
+      setJdText(jdTxt || "");
+
+      const key = import.meta.env.VITE_AZURE_SPEECH_KEY;
+      const region = import.meta.env.VITE_AZURE_SPEECH_REGION;
+      if (key && region) {
+        const ttsCfg = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+        ttsCfg.speechSynthesisLanguage = "en-IN";
+        const ttsAudioCfg = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
+        synthesizerRef.current = new SpeechSDK.SpeechSynthesizer(ttsCfg, ttsAudioCfg);
+      }
+
       const { data } = await axios.post(`${API_BASE}/api/chat`, {
-        cv: cvText,
-        jd: jdText,
-        messages: [], // empty → backend injects system prompt
-        userText: "", // no candidate reply yet
+        cv: cvTxt || "",
+        jd: jdTxt || "",
+        messages: [],
       });
-      setMessages(data); // first-turn assistant message
+      setHistory(data);
+      const first = data.slice(-1)?.[0]?.content || "";
+
+      setStarted(true);
       setInterviewStarted(true);
+
+      try { avatarRef.current?.start?.(); } catch (e) { console.warn("Avatar start error:", e); }
+      if (first) speakFirstWithAvatar(first);
     } catch (err) {
-      console.error(err);
-      alert("Failed to start interview.");
+      console.error("Start error:", err);
+      alert("Could not start interview. See console.");
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 6000);
     }
-  }
- 
-  // For starting the recording
-  const [record, setRecord] = useState(false);
- 
-  // Check if the interview is completed
-  const [interviewStatus, setInterviewStatus] = useState(false);
- 
-  // Current Date
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
- 
-  // Logic for pop up modal
-  const [showPopup, setShowPopup] = useState(true); // popup visible on first render
- 
-  const closePopup = () => {
-  setShowPopup(false); // Close popup
-  setRecord(true);     // Start recording
- 
-  // Start 10 second delay before showing avatar & camera
-  setTimeout(() => {
-    setShowInterviewSection(true);
-  }, 10000); // 10 seconds
- 
-  // Start countdown timer
-  timerRef.current = setInterval(() => {
-    setTimeLeft((prevTime) => {
-      if (prevTime <= 1) {
-        clearInterval(timerRef.current);
-        stopRecord();
-        return 0;
-      }
-      return prevTime - 1;
-    });
-  }, 1000);
-};
- 
- 
-  // const stopRecord = () => {
-  //   setRecord(false);
-  //   setInterviewStatus(true);
-  // };
- 
-  const stopRecord = ()=>{
+  };
+
+  const handleEndInterview = async () => {
+    recognizerRef.current?.stopContinuousRecognitionAsync(
+      () => console.log("STT stopped"),
+      (err) => console.error(err)
+    );
+    clearInterval(timerRef.current);
+    stopBotSpeechNow();
+    try { avatarRef.current?.stop?.(); } catch {}
+
+    const name = window.prompt("Please enter your name to save your transcript:");
+    if (!name) {
+      alert("Name is required to save your transcript.");
+      return;
+    }
+    try {
+      await axios.post(`${API_BASE}/api/chat/save`, { name, conversation: history });
+    } catch (err) {
+      console.error("Save error", err);
+      alert("Failed to save transcript & scorecard.");
+    }
     setRecord(false);
-    // Remove the content after 5 seconds from the DOM, 5 seconds is needed to save the video and stop the screen record
-    setTimeout(()=>{
-      setInterviewStatus(true);
-    },5000)
-  }
- 
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+    setTimeout(() => setInterviewStatus(true), 5000);
   };
- 
-  const [uploading, setUploading] = useState(false);
-  async function handleUpload() {
-    if (!cvFile || !jdFile) return;
-    const form = new FormData();
-    form.append("cv", cvFile);
-    form.append("jd", jdFile);
-    try {
-      setUploading(true);
-      const resp = await axios.post(`${API_BASE}/api/upload`, form, {
-        headers: { "Content-Type": "multipart/form-data" },
+
+  const closePopup = () => {
+    setShowPopup(false);
+    setRecord(true);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timerRef.current);
+          setRecord(false);
+          return 0;
+        }
+        return prevTime - 1;
       });
-      setCvText(resp.data.cvText);
-      setJdText(resp.data.jdText);
-      alert("CV & JD uploaded successfully!");
- 
-      // Immediately start the interview
-      const chatResp = await axios.post(`${API_BASE}/api/chat`, {
-        cv: resp.data.cvText,
-        jd: resp.data.jdText,
-        messages: [], // empty → system prompt injected
-        userText: "",
-      });
-      setMessages(chatResp.data);
-      setInterviewStarted(true);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to upload or extract text.");
-    } finally {
-      setUploading(false);
-    }
-  }
- 
-  const sendMessage = async () => {
-    const inputEl = document.getElementById("interview-bot-user-message");
-    const userText = inputEl.value.trim();
-    if (!userText || loading) return;
- 
-    // 1) locally add the new user message
-    const userMsg = { role: "user", content: userText };
-    const convo = [...messages, userMsg];
-    setMessages(convo);
-    inputEl.value = "";
- 
-    // 2) call the backend at /api/chat
-    setLoading(true);
-    try {
-      const resp = await axios.post(`${API_BASE}/api/chat`, {
-        ...(messages.length === 0 && { cv: cvText, jd: jdText }),
-        messages: convo.map((m) => [m.role, m.content]),
-        userText,
-      });
-      setMessages(resp.data); // resp.data is ChatMessage[]
-    } catch (err) {
-      console.error(err);
-      alert("Interview service error");
-    } finally {
-      setLoading(false);
-    }
+    }, 1000);
   };
- 
-  const addHRMessages = () => {
-    const input = document.getElementById("interview-bot-user-message");
-    const HrText = input.value.trim();
-    if (!HrText) return; // don't add empty messages
-    input.value = "";
-  };
- 
-    // Logic for number of tab switch -- Rohan Singh
-  const [numOfTabSwitches, changeNumOfTabSwitches] = useState(0);
- 
+
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        window.alert(
-          "🔕 Warning, tab switching is not allowed. A log will be sent for reviewing your interview!"
-        );
- 
-        changeNumOfTabSwitches((prev) => {
-          // Write logic here for number of tab switch
-          return prev + 1;
-        });
-      }
-    };
- 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      try { recognizerRef.current?.stopContinuousRecognitionAsync(() => {}, () => {}); } catch {}
+      try { avatarRef.current?.stop?.(); } catch {}
+      try { synthesizerRef.current?.close?.(); } catch {}
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
- 
+
   const handlePreventCopyPaste = (e) => {
     e.preventDefault();
     alert(`🔕Warning, "${e.type}" action is disabled!`);
   };
-  // Rohan Singh End
- 
-  function startLiveRecognition() {
-    if (!speechCreds) return;
-    const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(
-      speechCreds.token,
-      speechCreds.region
-    );
-    speechConfig.speechRecognitionLanguage = "en-IN";
- 
-    const audioConfig     = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-    const recognizer      = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
- 
-    recognizer.recognized = (_s, e) => {
-      if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-        const text = e.result.text;
-        // push into chat
-        fetch(`${API_BASE}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [["user", text]],
-            userText: text
-          })
-        })
-        .then(r => r.json())
-        .then(newHist => {
-          const reply = newHist.slice(-1)[0][1];
-          setMessages(m => [...m, { sender:"You", text }, { sender:"HR Bot", text:reply }]);
-        })
-        .catch(console.error);
-      }
-    };
- 
-    recognizer.startContinuousRecognitionAsync(
-      () => console.log("STT started"),
-      err => console.error("STT error", err)
-    );
-  }
- 
-  return (// Rohan Singh
-    <main onCopy={handlePreventCopyPaste} onPaste={handlePreventCopyPaste} onCut={handlePreventCopyPaste}>
+
+  return (
+    <main
+      onPaste={handlePreventCopyPaste}
+      onCut={handlePreventCopyPaste}
+      style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+    >
       {loading && (
-        <div className="loading-overlay">
-          <div className="loading-spinner"></div>
-        </div>
+        <div className="loading-overlay"><div className="loading-spinner" /></div>
       )}
-      <div className="mainHeader">
+
+      {/* Header */}
+      <div className="mainHeader" style={{ flex: "0 0 auto" }}>
         <img className="mothersonLogo" src={mothersonLogo} alt="mothersonLogo" />
         <div className="vertical-line"></div>
         <h3 className="appName">Talent AI</h3>
       </div>
+
       {interviewStatus && <ThankYouPage />}
-      {!interviewStatus && !interviewStarted && (
+
+      {!interviewStatus && (
         <>
-          {showPopup && (
+          {showPopup && !interviewStarted && (
             <InterviewInstruction
               recordStatus={record}
               closePopup={closePopup}
               setShowPopup={setShowPopup}
             />
           )}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {/* <div className="interview-bot-header">
-              <div style={{ paddingLeft: "30px", lineHeight: "12px", marginTop: "21px" }}>
-                <h1 className="interview-bot-heading">AI Interview Bot</h1>
-                <p className="interview-bot-date">{formattedDate}</p>
-              </div>
-              <div className="interview-bot-time-left-container">
-                <img src={clock} alt="clock" />
-                <p
-                  style={{ paddingTop: "16px", paddingRight: "10px", color: "red", fontSize: "16px" }}
-                  id="interview-bot-clock"
-                >
-                  {formatTime(timeLeft)}
-                </p>
-              </div>
-              <button style={{ position: "absolute", right: "2%" }} onClick={() => setShowPopup(true)}>
-                <img src={Instructions} alt="instructions" />
-              </button>
-            </div> */}
-            <div className="upload-section">
-              {/* <label>
-                UPLOAD CV
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setCvFile(e.target.files?.[0] || null)}
-                />
-              </label> */}
-              {/* <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                <button
-                  style={{
-                    margin: "1rem 0",
-                    background: "#DA2128",
-                    color: "white",
-                    width: "150px",
-                    height: "35px",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    marginTop: "12px",
-                    marginBottom: "12px"
-                  }}
-                  onClick={handleCvUploadInput}>UPLOAD CV
-                </button>
-                <p className="CvName" style={{fontSize: "10px"}}>{cvUploadFileName}</p>
-                  <input
-                    ref={uploadCvButton}
-                    id="cvUploadInput"
-                    hidden
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handleCvFileChange}
-                  />
-                </div> */}
-              {/* <div style={{display: "flex", flexDirection: "column", alignItems: "center"}}> */}
-                {/* <button
-                  style={{
-                      marginLeft: "25px",
-                      background: "#DA2128",
-                      color: "white",
-                      width: "150px",
-                      height: "35px",
-                      borderRadius: "10px",
-                      fontSize: "14px",
-                      marginTop: "12px",
-                      marginBottom: "12px"
-                    }}
-                  onClick={handleJdUploadInput}>
-                  UPLOAD JD
-                  </button>
-                  <p className="JdName" style={{fontSize: "10px"}}>{jdUploadFileName}</p> */}
-                  {/* JD (PDF): */}
-                 
-                  {/* <input
-                    ref={uploadJdButton}
-                    id="jdUploadInput"
-                    hidden
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handleJdFileChange}
-                  /> */}
-                {/* </div> */}
-             
-              <div style={{ marginLeft: 50 }}>
-                {/* optional Header component */}
-              </div>
-           
-                {/* onClick={() => startInterview()} */}
-               
+
+          {/* 2/3 : 1/3 split */}
+          <div
+            style={{
+              flex: "1 1 auto",
+              display: "flex",
+              gap: 12,
+              background: "white",
+              padding: 12,
+            }}
+          >
+            {/* Left: Avatar 2/3 */}
+            <div style={{ flex: 2, minWidth: 0 }}>
+              <AvatarPanel
+  ref={avatarRef}
+  captionAlign="center"
+  captionMaxWidth={900}
+/>
+
             </div>
-           
- 
-            <div className="interview-bot-body">
-              <div className="interview-bot-avatar-container">
-                <div className="interview-bot-interview-section">    
-                  <AvatarPanel ref={avatarRef} />
-                  <CameraRecorder
-                    setShowPopup={setShowPopup}
-                    recordStatus={record}
-                    setRecord={setRecord}
-                    timerRef={timerRef}
-                    startInterview={startInterview}
-                  />
-                </div>
-                <div className="interview-bot-interview-controls-section">
-                  {/* <button className="interview-bot-end-interview-button" onClick={stopRecord}> */}
-                  <button className="interview-bot-end-interview-button" onClick={handleEndInterview}>
-                    End Interview
-                  </button>
-                </div>
+
+            {/* Right: rail 1/3 (Camera top, End button bottom) */}
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                //minWidth: 200,
+              }}
+            >
+              <div
+                style={{
+                  flex: "0 0 auto",
+                  background: "white",
+                  borderRadius: 8,
+                  padding: 8,
+                }}
+              >
+                <CameraRecorder
+                  setShowPopup={setShowPopup}
+                  recordStatus={record}
+                  setRecord={setRecord}
+                  timerRef={timerRef}
+                  startInterview={startInterview}
+                />
               </div>
-              <div className="interview-bot-transcript-container">
-                <div className="interview-bot-transcript">
-                  <div className="interview-bot-transcript-header">
-                    <div
-                      style={{
-                        borderRadius: "50%",
-                        width: "15px",
-                        height: "15px",
-                        background: "#8a0b0b",
-                      }}
-                    ></div>
-                    <h2
-                      style={{
-                        color: "white",
-                        fontSize: "21px",
-                        marginLeft: "20px",
-                        fontWeight: "200",
-                        paddingTop: "7px",
-                      }}
-                    >
-                      Live Transcript
-                    </h2>
-                  </div>
-                  <div className="interview-bot-transcript-body">
-                    <MessageList messages={messages} />
-                  </div>
-                  <div className="interview-bot-user-input-container">
-                    <MessageInput
-                      value={input}
-                      onChange={setInput}
-                      onSend={sendText}
-                      disabled={!started || loading}
-                    />
-                    <button
-                      onClick={sendMessage}
-                      disabled={loading || !interviewStarted}
-                      style={{ position: "absolute", right: "15px", top: "17px" }}
-                    >
-                      <img src={sendButton} alt="send" style={{ height: "20px" }} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+
+              <div style={{ flex: 1 }} /> {/* Spacer pushes button to bottom */}
+
+              <button
+                className="interview-bot-end-interview-button"
+                onClick={handleEndInterview}
+                style={{ alignSelf: "stretch" }}
+              >
+                End Interview
+              </button>
             </div>
           </div>
         </>
@@ -699,4 +343,3 @@ export default function InterviewBot() {
     </main>
   );
 }
- 

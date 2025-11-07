@@ -1,14 +1,22 @@
-.interview-bot-camera-container{
-    position: absolute;
-    bottom: 0;
-    right: 10px;
-    width: 100%;
-    height: 64%;
+/* cameraRecorder.css — FIXED */
+
+.interview-bot-camera-container {
+  position: relative;      /* was absolute */
+  width: 100%;
+  height: 100%;
+  inset: auto;             /* reset any offsets */
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
 }
 
-.interview-bot-camera-container video{
-    position: relative;
-    border-radius: 10px;
-    left: 63%;
-    top: 25px;
-    }
+.interview-bot-camera-container video {
+  position: static;        /* was relative + left/top offsets */
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;       /* fill without letterboxing */
+  border-radius: 10px;
+  left: auto;
+  top: auto;
+}
