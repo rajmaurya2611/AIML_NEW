@@ -31,7 +31,7 @@ const ChatHeader: React.FC = () => {
 
   const handleOpenMppViewer = () => {
     // set your default MPP table name here or via env
-    const table = (import.meta as any).env?.VITE_MPP_TABLE ?? "invesment_simple";
+    const table = (import.meta as any).env?.VITE_MPP_TABLE ?? "investment_simple";
     const base = (import.meta as any).env?.BASE_URL ?? "/";
     const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
     const url = `${normalized}/capex-forecasting/data-viewer?table=${encodeURIComponent(table)}`;
