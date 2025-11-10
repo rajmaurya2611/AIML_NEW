@@ -18,6 +18,20 @@ const PHASE = Object.freeze({
   BARGE_IN: "BARGE_IN",
 });
 
+// ---------- QUICK BARGE SETTINGS ----------
+const QUICK_BARGE = {
+  ENABLED: true,       // fast barge-in mode
+  MIN_WORDS: 1,        // interrupt even on the first word
+  COOLDOWN_MS: 250,    // min time between interrupts
+  MICRO_HOLD_MS: 120,  // tiny hold to ignore breaths/clicks
+};
+
+// ---------- (Optional) snappier aggregation ----------
+const AGGREGATION = {
+  FLUSH_DEBOUNCE_MS: 600, // was 800
+  FAST_FLUSH_MS: 40,      // was 60
+};
+
 export default function InterviewBot() {
   const { uuid } = useParams();
   const avatarRef = useRef(null);
@@ -37,7 +51,7 @@ export default function InterviewBot() {
 
   // STT
   const recognizerRef = useRef(null);
-  const lastFinalRef = useRef("");
+  const lastFinalRef = useRef(""); // last sent FULL utterance
 
   // Conversation phase UI
   const [phase, setPhase] = useState(PHASE.IDLE);
@@ -46,6 +60,7 @@ export default function InterviewBot() {
   // Speaking / interruption
   const isBotSpeakingRef = useRef(false);
   const interruptionInProgressRef = useRef(false);
+  const lastInterruptAtRef = useRef(0);
 
   // Fallback TTS
   const synthesizerRef = useRef(null);
@@ -62,27 +77,28 @@ export default function InterviewBot() {
   const [interviewStatus, setInterviewStatus] = useState(false);
   const [showPopup, setShowPopup] = useState(true);
 
+  // Utterance aggregation buffer
+  const utteranceBufRef = useRef("");
+  const flushTimerRef = useRef(null);
+
+  // QUICK BARGE helpers
+  const microHoldTimerRef  = useRef(null);
+  const lastPartialAtRef   = useRef(0);
+
   useEffect(() => { historyRef.current = history; }, [history]);
 
   function markSpeaking(on) {
     isBotSpeakingRef.current = !!on;
-    // Don’t override THINKING/BARGE_IN here; only flip between Speaking/Listening.
-    setPhase(prev => {
-      if (on) return PHASE.BOT_SPEAKING;
-      // if we just stopped speaking, default to LISTENING unless we’re already THINKING
-      return prev === PHASE.THINKING ? PHASE.THINKING : PHASE.LISTENING;
-    });
+    setPhase((prev) => (on ? PHASE.BOT_SPEAKING : (prev === PHASE.THINKING ? PHASE.THINKING : PHASE.LISTENING)));
   }
 
   function speakBot(text) {
     if (!text) return;
-    // IMMEDIATE UI flip before any async begins
     flushSync(() => {
       isBotSpeakingRef.current = true;
       setPhase(PHASE.BOT_SPEAKING);
     });
 
-    // Prefer Avatar
     if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
       try {
         avatarRef.current.speak(text);
@@ -92,7 +108,6 @@ export default function InterviewBot() {
       }
     }
 
-    // Fallback TTS
     if (synthesizerRef.current) {
       try {
         synthesizerRef.current.speakTextAsync(
@@ -115,7 +130,6 @@ export default function InterviewBot() {
     try { inflightAbortRef.current?.abort?.(); } catch {}
     inflightAbortRef.current = null;
     isBotSpeakingRef.current = false;
-    // phase handled by partial handler
   }
 
   function cancelInFlightLLM() {
@@ -123,75 +137,65 @@ export default function InterviewBot() {
     inflightAbortRef.current = null;
   }
 
-  function startSTT() {
-    const key = import.meta.env.VITE_AZURE_SPEECH_KEY;
-    const region = import.meta.env.VITE_AZURE_SPEECH_REGION;
-    if (!key || !region) {
-      console.warn("Missing VITE_AZURE_SPEECH_KEY/REGION; STT disabled.");
-      return;
-    }
-
+  // ---- STT config helper ----
+  function createSpeechConfig(key, region) {
     const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
     speechConfig.speechRecognitionLanguage = "en-IN";
-    // Faster finalization
+
+    // Better punctuation/casing
     speechConfig.setProperty(
-      SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-      "2500"
+      SpeechSDK.PropertyId.SpeechServiceResponse_PostProcessingOption,
+      "TrueText"
     );
 
-    const audioCfg = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-    const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioCfg);
-    recognizerRef.current = recognizer;
+    // Allow a bit more silence to finalize a single utterance
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
+      "2500" // tune 2500–4500
+    );
 
-    flushSync(() => setPhase(PHASE.LISTENING));
+    // Reduce mid-utterance splits by tolerating short pauses
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+      "2000" // tune 1500–2500
+    );
 
-    // PARTIALS → IMMEDIATE UI + barge-in once
-    recognizer.recognizing = async (_, e) => {
-      const partial = (e?.result?.text || "").trim();
-      if (!partial) return;
-      if (partial.length < 2) return; // ignore micro-partials
+    // Optional: if first words get clipped, increase initial silence
+    speechConfig.setProperty(
+      SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
+      "6000"
+    );
 
-      // show Listening immediately if not already
-      if (phase !== PHASE.LISTENING && phase !== PHASE.BOT_SPEAKING) {
-        flushSync(() => setPhase(PHASE.LISTENING));
-      }
+    return speechConfig;
+  }
 
-      if (isBotSpeakingRef.current && !interruptionInProgressRef.current) {
-        interruptionInProgressRef.current = true;
+  // ---- aggregation helpers ----
+  function appendFinalChunk(chunk) {
+    const prev = utteranceBufRef.current;
+    if (!prev) { utteranceBufRef.current = chunk; return; }
 
-        // Flash a quick “Barged” badge for 600ms
-        flushSync(() => {
-          setPhase(PHASE.BARGE_IN);
-          setBargeFlash(true);
-        });
-        setTimeout(() => setBargeFlash(false), 600);
+    // small overlap guard (last ≤40 chars overlap)
+    const tail = prev.slice(-40);
+    if (chunk === prev) return;          // identical
+    if (prev.endsWith(chunk)) return;    // repeated stabilized final
+    if (chunk.startsWith(tail)) {
+      utteranceBufRef.current = (prev + chunk.slice(tail.length)).trim();
+    } else {
+      utteranceBufRef.current = (prev + " " + chunk).trim();
+    }
+  }
 
-        await interruptBotNow();
-        // snap UI back to Listening right away
-        flushSync(() => setPhase(PHASE.LISTENING));
-      }
-    };
+  function scheduleFlushToBackend(delayMs = AGGREGATION.FLUSH_DEBOUNCE_MS) {
+    if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = window.setTimeout(async () => {
+      const finalUtterance = (utteranceBufRef.current || "").trim();
+      if (!finalUtterance) return;
 
-    // FINAL → LLM
-    recognizer.recognized = async (_, e) => {
-      if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
+      // reset buffer before network
+      utteranceBufRef.current = "";
+      lastFinalRef.current = finalUtterance;
 
-      const finalText = (e.result.text || "").trim();
-      interruptionInProgressRef.current = false;
-
-      if (!finalText) {
-        flushSync(() => setPhase(PHASE.LISTENING));
-        return;
-      }
-      if (finalText === lastFinalRef.current) {
-        flushSync(() => setPhase(PHASE.LISTENING));
-        return;
-      }
-      lastFinalRef.current = finalText;
-
-      setHistory((h) => [...h, { role: "user", content: finalText }]);
-
-      // Show THINKING before any network call
+      setHistory((h) => [...h, { role: "user", content: finalUtterance }]);
       flushSync(() => setPhase(PHASE.THINKING));
 
       try {
@@ -202,8 +206,8 @@ export default function InterviewBot() {
         const { data: newHist } = await axios.post(
           `${API_BASE}/api/chat`,
           {
-            messages: [...historyRef.current, { role: "user", content: finalText }],
-            userText: finalText,
+            messages: [...historyRef.current, { role: "user", content: finalUtterance }],
+            userText: finalUtterance,
           },
           { signal: ctrl.signal }
         );
@@ -211,22 +215,88 @@ export default function InterviewBot() {
         inflightAbortRef.current = null;
         setHistory(newHist);
         const reply = newHist.slice(-1)?.[0]?.content || "";
-
-        if (reply) {
-          // Speak now (UI flips to Speaking immediately inside speakBot)
-          speakBot(reply);
-        } else {
-          flushSync(() => setPhase(PHASE.LISTENING));
-        }
+        reply ? speakBot(reply) : flushSync(() => setPhase(PHASE.LISTENING));
       } catch (err) {
-        if (err?.name === "CanceledError" || err?.name === "AbortError" || axios.isCancel?.(err)) {
-          // likely due to barge-in; partial handler already set UI
-        } else {
+        const canceled = err?.name === "CanceledError" || err?.name === "AbortError" || axios.isCancel?.(err);
+        if (!canceled) {
           console.error("LLM error:", err);
           flushSync(() => setPhase(PHASE.LISTENING));
         }
         inflightAbortRef.current = null;
       }
+    }, delayMs);
+  }
+
+  function startSTT() {
+    const key = import.meta.env.VITE_AZURE_SPEECH_KEY;
+    const region = import.meta.env.VITE_AZURE_SPEECH_REGION;
+    if (!key || !region) {
+      console.warn("Missing VITE_AZURE_SPEECH_KEY/REGION; STT disabled.");
+      return;
+    }
+
+    const speechConfig = createSpeechConfig(key, region);
+    const audioCfg = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+    const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioCfg);
+    recognizerRef.current = recognizer;
+
+    flushSync(() => setPhase(PHASE.LISTENING));
+
+    // ----------- QUICK BARGE-IN recognizing -----------
+    recognizer.recognizing = async (_, e) => {
+      const partial = (e?.result?.text || "").trim();
+      if (!partial) return;
+
+      if (phase !== PHASE.LISTENING && phase !== PHASE.BOT_SPEAKING) {
+        flushSync(() => setPhase(PHASE.LISTENING));
+      }
+
+      lastPartialAtRef.current = Date.now();
+
+      if (QUICK_BARGE.ENABLED && isBotSpeakingRef.current && !interruptionInProgressRef.current) {
+        const wordCount = partial.split(/\s+/).filter(Boolean).length;
+        const now = Date.now();
+        if (now - (lastInterruptAtRef.current || 0) < QUICK_BARGE.COOLDOWN_MS) return;
+
+        if (microHoldTimerRef.current) {
+          clearTimeout(microHoldTimerRef.current);
+          microHoldTimerRef.current = null;
+        }
+        microHoldTimerRef.current = setTimeout(async () => {
+          if (!isBotSpeakingRef.current || interruptionInProgressRef.current) return;
+          const since = Date.now() - (lastPartialAtRef.current || 0);
+          if (since > QUICK_BARGE.MICRO_HOLD_MS + 50) return; // partial stream went quiet during hold
+
+          if (wordCount >= QUICK_BARGE.MIN_WORDS) {
+            interruptionInProgressRef.current = true;
+            lastInterruptAtRef.current = Date.now();
+
+            flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+            setTimeout(() => setBargeFlash(false), 300); // shorter flash for fast feel
+
+            await interruptBotNow();
+            flushSync(() => setPhase(PHASE.LISTENING));
+          }
+        }, QUICK_BARGE.MICRO_HOLD_MS);
+      }
+    };
+
+    // FINALS: append chunks, debounce-send once
+    recognizer.recognized = async (_, e) => {
+      if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
+      const chunk = (e.result.text || "").trim();
+      interruptionInProgressRef.current = false;
+
+      if (!chunk) { flushSync(() => setPhase(PHASE.LISTENING)); return; }
+
+      appendFinalChunk(chunk);
+      scheduleFlushToBackend(AGGREGATION.FLUSH_DEBOUNCE_MS);
+    };
+
+    // Fast flush on speech end
+    recognizer.speechEndDetected = () => {
+      if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
+      scheduleFlushToBackend(AGGREGATION.FAST_FLUSH_MS);
     };
 
     // Resilience
@@ -262,11 +332,7 @@ export default function InterviewBot() {
 
     const trySpeak = () => {
       if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
-        // IMMEDIATE UI flip
-        flushSync(() => {
-          isBotSpeakingRef.current = true;
-          setPhase(PHASE.BOT_SPEAKING);
-        });
+        flushSync(() => { isBotSpeakingRef.current = true; setPhase(PHASE.BOT_SPEAKING); });
         avatarRef.current.speak(firstPendingRef.current);
         firstSpokenRef.current = true;
         firstPendingRef.current = "";
@@ -292,7 +358,7 @@ export default function InterviewBot() {
   }
 
   const startInterview = async () => {
-    flushSync(() => setPhase(PHASE.THINKING)); // immediate feedback while loading/opening
+    flushSync(() => setPhase(PHASE.THINKING));
     setLoading(true);
     try {
       const resp = await axios.post(`${API_BASE}/api/hr/get-status-active`, { UID: uuid });
@@ -342,6 +408,9 @@ export default function InterviewBot() {
       );
     } catch {}
 
+    if (flushTimerRef.current) { window.clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+    utteranceBufRef.current = "";
+
     clearInterval(timerRef.current);
     await interruptBotNow();
     try { avatarRef.current?.stop?.(); } catch {}
@@ -384,6 +453,9 @@ export default function InterviewBot() {
       try { synthesizerRef.current?.close?.(); } catch {}
       cancelInFlightLLM();
       if (timerRef.current) clearInterval(timerRef.current);
+      if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
+      if (microHoldTimerRef.current) clearTimeout(microHoldTimerRef.current);
+      utteranceBufRef.current = "";
     };
   }, []);
 
@@ -392,7 +464,6 @@ export default function InterviewBot() {
     alert(`🔕Warning, "${e.type}" action is disabled!`);
   };
 
-  // ---------- Status pill UI ----------
   const phaseMeta = useMemo(() => {
     switch (phase) {
       case PHASE.BARGE_IN:    return { label: "Barge-in",  bg: "#FFF4E5", fg: "#8A4B00", icon: "⏹️" };
