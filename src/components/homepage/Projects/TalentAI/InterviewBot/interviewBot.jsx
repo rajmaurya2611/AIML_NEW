@@ -20,17 +20,34 @@ const PHASE = Object.freeze({
 
 // ---------- QUICK BARGE SETTINGS ----------
 const QUICK_BARGE = {
-  ENABLED: true,       // fast barge-in mode
-  MIN_WORDS: 1,        // interrupt even on the first word
-  COOLDOWN_MS: 250,    // min time between interrupts
-  MICRO_HOLD_MS: 120,  // tiny hold to ignore breaths/clicks
+  ENABLED: true,
+  MIN_WORDS: 1,
+  COOLDOWN_MS: 250,
+  MICRO_HOLD_MS: 120,
 };
 
-// ---------- (Optional) snappier aggregation ----------
+// ---------- Aggregation timing ----------
 const AGGREGATION = {
-  FLUSH_DEBOUNCE_MS: 600, // was 800
-  FAST_FLUSH_MS: 40,      // was 60
+  FLUSH_DEBOUNCE_MS: 600,
+  FAST_FLUSH_MS: 40,
 };
+
+// ---------- CONTROL WORDS (instant interrupt) ----------
+const CONTROL_WORDS = /\b(stop|wait|hold on|pause|please stop|can you stop|one sec|one second)\b/i;
+
+// ---------- Post-barge partial suppression ----------
+const POST_BARGE_IGNORE_MS = 1200; // ignore STT partials briefly after an interrupt
+
+// ------- DIAGNOSTICS -------
+const DEBUG = true;
+function dbg(tag, info = {}) {
+  if (!DEBUG) return;
+  const ts = new Date().toISOString();
+  try { console.log(`[IB ${ts}] ${tag}`, info); }
+  catch { console.log(`[IB ${ts}] ${tag}`, String(info)); }
+}
+
+const BARGE_AVATAR_ONLY = true;
 
 export default function InterviewBot() {
   const { uuid } = useParams();
@@ -55,12 +72,25 @@ export default function InterviewBot() {
 
   // Conversation phase UI
   const [phase, setPhase] = useState(PHASE.IDLE);
-  const [bargeFlash, setBargeFlash] = useState(false); // brief “BARGED” flash
+  const [bargeFlash, setBargeFlash] = useState(false);
+
+  // Keep current phase available in SDK callbacks
+  const phaseRef = useRef(PHASE.IDLE);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   // Speaking / interruption
-  const isBotSpeakingRef = useRef(false);
+  const isBotSpeakingRef = useRef(false);   // bot speaking (avatar or TTS)
+  const avatarSpeakingRef = useRef(false);  // avatar speaking
   const interruptionInProgressRef = useRef(false);
   const lastInterruptAtRef = useRef(0);
+  const lastBargeAtRef = useRef(0);         // for post-barge suppression
+
+  // Speech session tokens (avoid race)
+  const speakSessionIdRef = useRef(0);
+
+  // Discard-on-barge guard
+  const discardCurrentUtteranceRef = useRef(false);
+  const discardSafetyTimerRef = useRef(null);
 
   // Fallback TTS
   const synthesizerRef = useRef(null);
@@ -98,6 +128,7 @@ export default function InterviewBot() {
       isBotSpeakingRef.current = true;
       setPhase(PHASE.BOT_SPEAKING);
     });
+    dbg("speakBot.start", { len: text.length });
 
     if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
       try {
@@ -112,7 +143,7 @@ export default function InterviewBot() {
       try {
         synthesizerRef.current.speakTextAsync(
           text,
-          () => markSpeaking(false),
+          () => { dbg("tts.end"); markSpeaking(false); },
           (err) => { console.error("Fallback TTS failed:", err); markSpeaking(false); }
         );
       } catch (e) {
@@ -124,12 +155,33 @@ export default function InterviewBot() {
     }
   }
 
+  // best-effort stop with timeout; always flip flags immediately
   async function interruptBotNow() {
-    try { await avatarRef.current?.stopSpeaking?.(); } catch {}
+    dbg("interruptBotNow.begin", { isBotSpeaking: isBotSpeakingRef.current, avatarSpeaking: avatarSpeakingRef.current });
+
+    // Flip flags immediately to gate recognizing
+    isBotSpeakingRef.current = false;
+    avatarSpeakingRef.current = false;
+
+    // Try to stop avatar speech, but don't hang
+    try {
+      const stopP = avatarRef.current?.stopSpeaking?.();
+      if (stopP && typeof stopP.then === "function") {
+        await Promise.race([
+          stopP,
+          new Promise((resolve) => setTimeout(resolve, 300)) // 300ms timeout
+        ]);
+      }
+    } catch {}
+
+    // Stop TTS best-effort (non-blocking)
     try { synthesizerRef.current?.stopSpeakingAsync?.(() => {}, () => {}); } catch {}
+
+    // Abort any inflight LLM stream
     try { inflightAbortRef.current?.abort?.(); } catch {}
     inflightAbortRef.current = null;
-    isBotSpeakingRef.current = false;
+
+    dbg("interruptBotNow.done");
   }
 
   function cancelInFlightLLM() {
@@ -151,13 +203,13 @@ export default function InterviewBot() {
     // Allow a bit more silence to finalize a single utterance
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-      "2500" // tune 2500–4500
+      "2500"
     );
 
     // Reduce mid-utterance splits by tolerating short pauses
     speechConfig.setProperty(
       SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
-      "2000" // tune 1500–2500
+      "2000"
     );
 
     // Optional: if first words get clipped, increase initial silence
@@ -174,10 +226,9 @@ export default function InterviewBot() {
     const prev = utteranceBufRef.current;
     if (!prev) { utteranceBufRef.current = chunk; return; }
 
-    // small overlap guard (last ≤40 chars overlap)
     const tail = prev.slice(-40);
-    if (chunk === prev) return;          // identical
-    if (prev.endsWith(chunk)) return;    // repeated stabilized final
+    if (chunk === prev) return;
+    if (prev.endsWith(chunk)) return;
     if (chunk.startsWith(tail)) {
       utteranceBufRef.current = (prev + chunk.slice(tail.length)).trim();
     } else {
@@ -189,13 +240,15 @@ export default function InterviewBot() {
     if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
     flushTimerRef.current = window.setTimeout(async () => {
       const finalUtterance = (utteranceBufRef.current || "").trim();
-      if (!finalUtterance) return;
+      if (!finalUtterance) { dbg("flush.skip.empty"); return; }
 
       // reset buffer before network
       utteranceBufRef.current = "";
       lastFinalRef.current = finalUtterance;
 
       setHistory((h) => [...h, { role: "user", content: finalUtterance }]);
+      dbg("flush.send", { text: finalUtterance });
+
       flushSync(() => setPhase(PHASE.THINKING));
 
       try {
@@ -215,9 +268,11 @@ export default function InterviewBot() {
         inflightAbortRef.current = null;
         setHistory(newHist);
         const reply = newHist.slice(-1)?.[0]?.content || "";
+        dbg("flush.recv", { ok: !!reply, len: reply?.length ?? 0 });
         reply ? speakBot(reply) : flushSync(() => setPhase(PHASE.LISTENING));
       } catch (err) {
         const canceled = err?.name === "CanceledError" || err?.name === "AbortError" || axios.isCancel?.(err);
+        dbg("flush.err", { canceled, err: String(err) });
         if (!canceled) {
           console.error("LLM error:", err);
           flushSync(() => setPhase(PHASE.LISTENING));
@@ -242,66 +297,154 @@ export default function InterviewBot() {
 
     flushSync(() => setPhase(PHASE.LISTENING));
 
-    // ----------- QUICK BARGE-IN recognizing -----------
+    // ----------- STRICT AVATAR-ONLY, SESSION-SAFE BARGE-IN -----------
     recognizer.recognizing = async (_, e) => {
       const partial = (e?.result?.text || "").trim();
       if (!partial) return;
 
-      if (phase !== PHASE.LISTENING && phase !== PHASE.BOT_SPEAKING) {
+      const curPhase = phaseRef.current;
+
+      // post-barge suppression: ignore tail partials
+      if (Date.now() - lastBargeAtRef.current < POST_BARGE_IGNORE_MS) {
+        dbg("recognizing.partial", { partial, note: "post-barge-ignore", curPhase, avatarSpeaking: avatarSpeakingRef.current, isBotSpeaking: isBotSpeakingRef.current });
+        return;
+      }
+
+      if (curPhase !== PHASE.LISTENING && curPhase !== PHASE.BOT_SPEAKING) {
         flushSync(() => setPhase(PHASE.LISTENING));
       }
 
       lastPartialAtRef.current = Date.now();
 
-      if (QUICK_BARGE.ENABLED && isBotSpeakingRef.current && !interruptionInProgressRef.current) {
-        const wordCount = partial.split(/\s+/).filter(Boolean).length;
-        const now = Date.now();
-        if (now - (lastInterruptAtRef.current || 0) < QUICK_BARGE.COOLDOWN_MS) return;
+      const eligible =
+        (!BARGE_AVATAR_ONLY || avatarSpeakingRef.current) &&
+        avatarSpeakingRef.current &&
+        isBotSpeakingRef.current &&
+        !interruptionInProgressRef.current;
 
-        if (microHoldTimerRef.current) {
-          clearTimeout(microHoldTimerRef.current);
-          microHoldTimerRef.current = null;
-        }
-        microHoldTimerRef.current = setTimeout(async () => {
-          if (!isBotSpeakingRef.current || interruptionInProgressRef.current) return;
-          const since = Date.now() - (lastPartialAtRef.current || 0);
-          if (since > QUICK_BARGE.MICRO_HOLD_MS + 50) return; // partial stream went quiet during hold
-
-          if (wordCount >= QUICK_BARGE.MIN_WORDS) {
-            interruptionInProgressRef.current = true;
-            lastInterruptAtRef.current = Date.now();
-
-            flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
-            setTimeout(() => setBargeFlash(false), 300); // shorter flash for fast feel
-
-            await interruptBotNow();
-            flushSync(() => setPhase(PHASE.LISTENING));
-          }
-        }, QUICK_BARGE.MICRO_HOLD_MS);
+      if (!eligible) {
+        dbg("recognizing.partial", {
+          partial, note: "no-barge",
+          curPhase,
+          avatarSpeaking: avatarSpeakingRef.current,
+          isBotSpeaking: isBotSpeakingRef.current,
+          interruptionInProgress: interruptionInProgressRef.current
+        });
+        return;
       }
+
+      // Control-word instant interrupt
+      if (CONTROL_WORDS.test(partial)) {
+        interruptionInProgressRef.current = true;
+        lastInterruptAtRef.current = Date.now();
+        lastBargeAtRef.current = Date.now();
+
+        discardCurrentUtteranceRef.current = true;
+        utteranceBufRef.current = "";
+        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+
+        if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
+        discardSafetyTimerRef.current = setTimeout(() => {
+          dbg("discard.safetyTimeout.reset");
+          discardCurrentUtteranceRef.current = false;
+        }, 4000);
+
+        flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+        setTimeout(() => setBargeFlash(false), 300);
+
+        dbg("barge.trigger.control", { partial });
+        await interruptBotNow();
+        flushSync(() => setPhase(PHASE.LISTENING));
+        interruptionInProgressRef.current = false;
+        return;
+      }
+
+      // Quick-barge on first word
+      const wordCount = partial.split(/\s+/).filter(Boolean).length;
+      const now = Date.now();
+      if (now - (lastInterruptAtRef.current || 0) < QUICK_BARGE.COOLDOWN_MS) return;
+
+      const mySession = speakSessionIdRef.current;
+
+      if (microHoldTimerRef.current) {
+        clearTimeout(microHoldTimerRef.current);
+        microHoldTimerRef.current = null;
+      }
+
+      microHoldTimerRef.current = setTimeout(async () => {
+        if (!avatarSpeakingRef.current || speakSessionIdRef.current !== mySession) {
+          dbg("barge.skipped", { reason: "session-changed-or-avatar-stopped", mySession, currentSession: speakSessionIdRef.current });
+          return;
+        }
+        if (interruptionInProgressRef.current) return;
+
+        if (wordCount >= QUICK_BARGE.MIN_WORDS) {
+          interruptionInProgressRef.current = true;
+          lastInterruptAtRef.current = Date.now();
+          lastBargeAtRef.current = Date.now();
+
+          discardCurrentUtteranceRef.current = true;
+          utteranceBufRef.current = "";
+          if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+
+          if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
+          discardSafetyTimerRef.current = setTimeout(() => {
+            dbg("discard.safetyTimeout.reset");
+            discardCurrentUtteranceRef.current = false;
+          }, 4000);
+
+          flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+          setTimeout(() => setBargeFlash(false), 300);
+
+          dbg("barge.trigger.quick", { partial, mySession });
+          await interruptBotNow();
+          flushSync(() => setPhase(PHASE.LISTENING));
+          interruptionInProgressRef.current = false;
+        }
+      }, QUICK_BARGE.MICRO_HOLD_MS);
     };
 
-    // FINALS: append chunks, debounce-send once
+    // FINALS
     recognizer.recognized = async (_, e) => {
       if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
       const chunk = (e.result.text || "").trim();
       interruptionInProgressRef.current = false;
 
+      if (discardCurrentUtteranceRef.current) {
+        dbg("recognized.drop", { chunk });
+        return;
+      }
+
       if (!chunk) { flushSync(() => setPhase(PHASE.LISTENING)); return; }
 
       appendFinalChunk(chunk);
+      dbg("recognized.append", { chunk, bufferLen: utteranceBufRef.current.length });
       scheduleFlushToBackend(AGGREGATION.FLUSH_DEBOUNCE_MS);
     };
 
-    // Fast flush on speech end
+    // Speech end: reset discard flag OR fast-flush
     recognizer.speechEndDetected = () => {
-      if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
+      dbg("speechEndDetected", { discarding: discardCurrentUtteranceRef.current });
+
+      if (discardCurrentUtteranceRef.current) {
+        discardCurrentUtteranceRef.current = false;
+        utteranceBufRef.current = "";
+        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+        if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
+        dbg("discard.reset.onSpeechEnd");
+        return; // do not flush anything from barged utterance
+      }
+
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+      dbg("flush.fast");
       scheduleFlushToBackend(AGGREGATION.FAST_FLUSH_MS);
     };
 
     // Resilience
     recognizer.canceled = (_, e) => {
-      console.warn("STT canceled:", e?.errorDetails);
+      dbg("stt.canceled", { err: e?.errorDetails });
+      discardCurrentUtteranceRef.current = false;
+      if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
       interruptionInProgressRef.current = false;
       recognizer.stopContinuousRecognitionAsync(
         () => recognizer.startContinuousRecognitionAsync(() => {}, console.error),
@@ -311,7 +454,9 @@ export default function InterviewBot() {
     };
 
     recognizer.sessionStopped = () => {
-      console.warn("STT session stopped — restarting");
+      dbg("stt.sessionStopped");
+      discardCurrentUtteranceRef.current = false;
+      if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
       interruptionInProgressRef.current = false;
       recognizer.stopContinuousRecognitionAsync(
         () => recognizer.startContinuousRecognitionAsync(() => {}, console.error),
@@ -332,7 +477,11 @@ export default function InterviewBot() {
 
     const trySpeak = () => {
       if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
-        flushSync(() => { isBotSpeakingRef.current = true; setPhase(PHASE.BOT_SPEAKING); });
+        const id = ++speakSessionIdRef.current;
+        avatarSpeakingRef.current = true;
+        isBotSpeakingRef.current = true;
+        dbg("avatar.firstSpeak.try", { speakSessionId: id });
+        flushSync(() => { setPhase(PHASE.BOT_SPEAKING); });
         avatarRef.current.speak(firstPendingRef.current);
         firstSpokenRef.current = true;
         firstPendingRef.current = "";
@@ -408,8 +557,10 @@ export default function InterviewBot() {
       );
     } catch {}
 
-    if (flushTimerRef.current) { window.clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+    if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+    if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
     utteranceBufRef.current = "";
+    discardCurrentUtteranceRef.current = false;
 
     clearInterval(timerRef.current);
     await interruptBotNow();
@@ -453,9 +604,13 @@ export default function InterviewBot() {
       try { synthesizerRef.current?.close?.(); } catch {}
       cancelInFlightLLM();
       if (timerRef.current) clearInterval(timerRef.current);
-      if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       if (microHoldTimerRef.current) clearTimeout(microHoldTimerRef.current);
+      if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
       utteranceBufRef.current = "";
+      discardCurrentUtteranceRef.current = false;
+      avatarSpeakingRef.current = false;
+      isBotSpeakingRef.current = false;
     };
   }, []);
 
@@ -567,8 +722,19 @@ export default function InterviewBot() {
                 ref={avatarRef}
                 captionAlign="center"
                 captionMaxWidth={900}
-                onSpeechStart={() => { isBotSpeakingRef.current = true; flushSync(() => setPhase(PHASE.BOT_SPEAKING)); }}
-                onSpeechEnd={()   => { isBotSpeakingRef.current = false; flushSync(() => setPhase(PHASE.LISTENING)); }}
+                onSpeechStart={() => {
+                  isBotSpeakingRef.current = true;
+                  avatarSpeakingRef.current = true;
+                  const id = ++speakSessionIdRef.current;
+                  dbg("avatar.onSpeechStart", { speakSessionId: id });
+                  flushSync(() => setPhase(PHASE.BOT_SPEAKING));
+                }}
+                onSpeechEnd={() => {
+                  avatarSpeakingRef.current = false;
+                  isBotSpeakingRef.current = false;
+                  dbg("avatar.onSpeechEnd", { lastSpeakSessionId: speakSessionIdRef.current });
+                  flushSync(() => setPhase(PHASE.LISTENING));
+                }}
               />
             </div>
 
