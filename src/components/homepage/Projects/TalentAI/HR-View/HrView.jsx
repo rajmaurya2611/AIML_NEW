@@ -197,7 +197,7 @@ function HrView(){
                       // local
                       //value={`http://localhost:5173/talentai/uuid/interview/${uuid}`}
                       // production
-                     value={`https://genai.motherson.com/talentai/uuid/interview/${uuid}`}
+                      value={`https://genai.motherson.com/talentai/uuid/interview/${uuid}`}
                       readOnly
                     />
                     <button className="copy-button" onClick={() => handleCopy(uuid)}>

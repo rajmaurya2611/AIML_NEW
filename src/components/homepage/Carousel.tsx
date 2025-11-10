@@ -15,6 +15,7 @@ import Dwg from "../../assets/images/projects/DrawingComparison/Dwg_sm.png"
 import Glove from "../../assets/images/projects/Glove Detection/Glove_sm.png"
 import Raw from "../../assets/images/projects/Raw Material/Raw_sm.png"
 import Mbimg from "../../assets/images/projects/MothersonBot/Motherson Bot.png"
+import Capexx from "../../components/homepage/Projects/CapexForecasting/assets_Capex/capexx.png"
 //import Pbimg from "../../assets/images/projects/PersonaBot/Persona small.png"
 //import MothersonBot from "./Projects/KnowledgeKingdom/MothersonBot";
 //import PersonaBot from "./Projects/PersonaPrime/PersonaBot";
@@ -141,8 +142,8 @@ const data = [
   },
   {
     category: "",
-    title: "Capex",
-    src: do33Image, // Direct reference to imported image
+    title: "Capex Forecasting",
+    src: Capexx, // Direct reference to imported image
     content: <CAPEX/>
   },
   
