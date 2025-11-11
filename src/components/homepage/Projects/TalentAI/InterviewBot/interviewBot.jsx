@@ -79,11 +79,12 @@ export default function InterviewBot() {
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   // Speaking / interruption
-  const isBotSpeakingRef = useRef(false);   // bot speaking (avatar or TTS)
-  const avatarSpeakingRef = useRef(false);  // avatar speaking
+  const isBotSpeakingRef = useRef(false);      // bot speaking (any backend)
+  const avatarSpeakingRef = useRef(false);     // avatar speaking
+  const ttsSpeakingRef = useRef(false);        // fallback TTS speaking (PATCH)
   const interruptionInProgressRef = useRef(false);
   const lastInterruptAtRef = useRef(0);
-  const lastBargeAtRef = useRef(0);         // for post-barge suppression
+  const lastBargeAtRef = useRef(0);            // for post-barge suppression
 
   // Speech session tokens (avoid race)
   const speakSessionIdRef = useRef(0);
@@ -117,6 +118,20 @@ export default function InterviewBot() {
 
   useEffect(() => { historyRef.current = history; }, [history]);
 
+  // ---- SPEAK STATE GUARD (PATCH) ----
+  function canBargeNow() {
+    // Only when we KNOW the bot is actively speaking in THIS session
+    const speaking = BARGE_AVATAR_ONLY
+      ? avatarSpeakingRef.current
+      : (avatarSpeakingRef.current || ttsSpeakingRef.current);
+    return (
+      phaseRef.current === PHASE.BOT_SPEAKING &&
+      isBotSpeakingRef.current === true &&
+      speaking === true &&
+      !interruptionInProgressRef.current
+    );
+  }
+
   function markSpeaking(on) {
     isBotSpeakingRef.current = !!on;
     setPhase((prev) => (on ? PHASE.BOT_SPEAKING : (prev === PHASE.THINKING ? PHASE.THINKING : PHASE.LISTENING)));
@@ -130,8 +145,13 @@ export default function InterviewBot() {
     });
     dbg("speakBot.start", { len: text.length });
 
+    // Try avatar first
     if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
       try {
+        const id = ++speakSessionIdRef.current;
+        avatarSpeakingRef.current = true;         // PATCH: assert flags before call
+        isBotSpeakingRef.current = true;
+        dbg("avatar.speak", { speakSessionId: id });
         avatarRef.current.speak(text);
         return;
       } catch (e) {
@@ -139,15 +159,29 @@ export default function InterviewBot() {
       }
     }
 
+    // Fallback TTS
     if (synthesizerRef.current) {
       try {
+        ttsSpeakingRef.current = true;            // PATCH
+        isBotSpeakingRef.current = true;          // PATCH
+        setPhase(PHASE.BOT_SPEAKING);             // PATCH
+
         synthesizerRef.current.speakTextAsync(
           text,
-          () => { dbg("tts.end"); markSpeaking(false); },
-          (err) => { console.error("Fallback TTS failed:", err); markSpeaking(false); }
+          () => {
+            dbg("tts.end");
+            ttsSpeakingRef.current = false;       // PATCH
+            markSpeaking(false);
+          },
+          (err) => {
+            console.error("Fallback TTS failed:", err);
+            ttsSpeakingRef.current = false;       // PATCH
+            markSpeaking(false);
+          }
         );
       } catch (e) {
         console.error("TTS error:", e);
+        ttsSpeakingRef.current = false;           // PATCH
         markSpeaking(false);
       }
     } else {
@@ -157,11 +191,12 @@ export default function InterviewBot() {
 
   // best-effort stop with timeout; always flip flags immediately
   async function interruptBotNow() {
-    dbg("interruptBotNow.begin", { isBotSpeaking: isBotSpeakingRef.current, avatarSpeaking: avatarSpeakingRef.current });
+    dbg("interruptBotNow.begin", { isBotSpeaking: isBotSpeakingRef.current, avatarSpeaking: avatarSpeakingRef.current, ttsSpeaking: ttsSpeakingRef.current });
 
     // Flip flags immediately to gate recognizing
     isBotSpeakingRef.current = false;
     avatarSpeakingRef.current = false;
+    ttsSpeakingRef.current = false;
 
     // Try to stop avatar speech, but don't hang
     try {
@@ -180,6 +215,11 @@ export default function InterviewBot() {
     // Abort any inflight LLM stream
     try { inflightAbortRef.current?.abort?.(); } catch {}
     inflightAbortRef.current = null;
+
+    // Ensure phase not stuck
+    flushSync(() => {
+      if (phaseRef.current !== PHASE.THINKING) setPhase(PHASE.LISTENING);
+    });
 
     dbg("interruptBotNow.done");
   }
@@ -302,39 +342,21 @@ export default function InterviewBot() {
       const partial = (e?.result?.text || "").trim();
       if (!partial) return;
 
-      const curPhase = phaseRef.current;
-
       // post-barge suppression: ignore tail partials
       if (Date.now() - lastBargeAtRef.current < POST_BARGE_IGNORE_MS) {
-        dbg("recognizing.partial", { partial, note: "post-barge-ignore", curPhase, avatarSpeaking: avatarSpeakingRef.current, isBotSpeaking: isBotSpeakingRef.current });
+        dbg("recognizing.partial", { partial, note: "post-barge-ignore", curPhase: phaseRef.current, avatarSpeaking: avatarSpeakingRef.current, isBotSpeaking: isBotSpeakingRef.current });
         return;
-      }
-
-      if (curPhase !== PHASE.LISTENING && curPhase !== PHASE.BOT_SPEAKING) {
-        flushSync(() => setPhase(PHASE.LISTENING));
       }
 
       lastPartialAtRef.current = Date.now();
 
-      const eligible =
-        (!BARGE_AVATAR_ONLY || avatarSpeakingRef.current) &&
-        avatarSpeakingRef.current &&
-        isBotSpeakingRef.current &&
-        !interruptionInProgressRef.current;
-
-      if (!eligible) {
-        dbg("recognizing.partial", {
-          partial, note: "no-barge",
-          curPhase,
-          avatarSpeaking: avatarSpeakingRef.current,
-          isBotSpeaking: isBotSpeakingRef.current,
-          interruptionInProgress: interruptionInProgressRef.current
-        });
-        return;
-      }
-
-      // Control-word instant interrupt
+      // ---- Control-word barge (PATCH: hard-gated) ----
       if (CONTROL_WORDS.test(partial)) {
+        if (!canBargeNow()) {
+          dbg("barge.control.ignored", { partial, phase: phaseRef.current });
+          return;
+        }
+
         interruptionInProgressRef.current = true;
         lastInterruptAtRef.current = Date.now();
         lastBargeAtRef.current = Date.now();
@@ -359,48 +381,45 @@ export default function InterviewBot() {
         return;
       }
 
-      // Quick-barge on first word
-      const wordCount = partial.split(/\s+/).filter(Boolean).length;
-      const now = Date.now();
-      if (now - (lastInterruptAtRef.current || 0) < QUICK_BARGE.COOLDOWN_MS) return;
-
-      const mySession = speakSessionIdRef.current;
-
+      // ---- Quick-barge with micro hold (PATCH: hard-gated) ----
       if (microHoldTimerRef.current) {
         clearTimeout(microHoldTimerRef.current);
         microHoldTimerRef.current = null;
       }
 
       microHoldTimerRef.current = setTimeout(async () => {
-        if (!avatarSpeakingRef.current || speakSessionIdRef.current !== mySession) {
-          dbg("barge.skipped", { reason: "session-changed-or-avatar-stopped", mySession, currentSession: speakSessionIdRef.current });
+        // MUST be currently speaking to allow barge
+        if (!canBargeNow()) {
+          dbg("barge.quick.ignored", { phase: phaseRef.current });
           return;
         }
         if (interruptionInProgressRef.current) return;
 
-        if (wordCount >= QUICK_BARGE.MIN_WORDS) {
-          interruptionInProgressRef.current = true;
-          lastInterruptAtRef.current = Date.now();
-          lastBargeAtRef.current = Date.now();
+        const wordCount = partial.split(/\s+/).filter(Boolean).length;
+        if (Date.now() - (lastInterruptAtRef.current || 0) < QUICK_BARGE.COOLDOWN_MS) return;
+        if (wordCount < QUICK_BARGE.MIN_WORDS) return;
 
-          discardCurrentUtteranceRef.current = true;
-          utteranceBufRef.current = "";
-          if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+        interruptionInProgressRef.current = true;
+        lastInterruptAtRef.current = Date.now();
+        lastBargeAtRef.current = Date.now();
 
-          if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
-          discardSafetyTimerRef.current = setTimeout(() => {
-            dbg("discard.safetyTimeout.reset");
-            discardCurrentUtteranceRef.current = false;
-          }, 4000);
+        discardCurrentUtteranceRef.current = true;
+        utteranceBufRef.current = "";
+        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
 
-          flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
-          setTimeout(() => setBargeFlash(false), 300);
+        if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
+        discardSafetyTimerRef.current = setTimeout(() => {
+          dbg("discard.safetyTimeout.reset");
+          discardCurrentUtteranceRef.current = false;
+        }, 4000);
 
-          dbg("barge.trigger.quick", { partial, mySession });
-          await interruptBotNow();
-          flushSync(() => setPhase(PHASE.LISTENING));
-          interruptionInProgressRef.current = false;
-        }
+        flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+        setTimeout(() => setBargeFlash(false), 300);
+
+        dbg("barge.trigger.quick", { partial, session: speakSessionIdRef.current });
+        await interruptBotNow();
+        flushSync(() => setPhase(PHASE.LISTENING));
+        interruptionInProgressRef.current = false;
       }, QUICK_BARGE.MICRO_HOLD_MS);
     };
 
@@ -446,11 +465,14 @@ export default function InterviewBot() {
       discardCurrentUtteranceRef.current = false;
       if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
       interruptionInProgressRef.current = false;
+
+      // restart continuous STT
       recognizer.stopContinuousRecognitionAsync(
         () => recognizer.startContinuousRecognitionAsync(() => {}, console.error),
         console.error
       );
-      flushSync(() => setPhase(PHASE.LISTENING));
+      // Do NOT force LISTENING here if bot might be speaking; keep flags authoritative
+      if (!isBotSpeakingRef.current) flushSync(() => setPhase(PHASE.LISTENING));
     };
 
     recognizer.sessionStopped = () => {
@@ -458,11 +480,12 @@ export default function InterviewBot() {
       discardCurrentUtteranceRef.current = false;
       if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
       interruptionInProgressRef.current = false;
+
       recognizer.stopContinuousRecognitionAsync(
         () => recognizer.startContinuousRecognitionAsync(() => {}, console.error),
         console.error
       );
-      flushSync(() => setPhase(PHASE.LISTENING));
+      if (!isBotSpeakingRef.current) flushSync(() => setPhase(PHASE.LISTENING));
     };
 
     recognizer.startContinuousRecognitionAsync(
@@ -478,7 +501,7 @@ export default function InterviewBot() {
     const trySpeak = () => {
       if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
         const id = ++speakSessionIdRef.current;
-        avatarSpeakingRef.current = true;
+        avatarSpeakingRef.current = true;         // PATCH: pre-set flags
         isBotSpeakingRef.current = true;
         dbg("avatar.firstSpeak.try", { speakSessionId: id });
         flushSync(() => { setPhase(PHASE.BOT_SPEAKING); });
@@ -610,6 +633,7 @@ export default function InterviewBot() {
       utteranceBufRef.current = "";
       discardCurrentUtteranceRef.current = false;
       avatarSpeakingRef.current = false;
+      ttsSpeakingRef.current = false;
       isBotSpeakingRef.current = false;
     };
   }, []);
@@ -723,17 +747,22 @@ export default function InterviewBot() {
                 captionAlign="center"
                 captionMaxWidth={900}
                 onSpeechStart={() => {
-                  isBotSpeakingRef.current = true;
-                  avatarSpeakingRef.current = true;
+                  isBotSpeakingRef.current = true;     // PATCH
+                  avatarSpeakingRef.current = true;    // PATCH
                   const id = ++speakSessionIdRef.current;
                   dbg("avatar.onSpeechStart", { speakSessionId: id });
                   flushSync(() => setPhase(PHASE.BOT_SPEAKING));
                 }}
                 onSpeechEnd={() => {
-                  avatarSpeakingRef.current = false;
-                  isBotSpeakingRef.current = false;
-                  dbg("avatar.onSpeechEnd", { lastSpeakSessionId: speakSessionIdRef.current });
-                  flushSync(() => setPhase(PHASE.LISTENING));
+                  avatarSpeakingRef.current = false;   // PATCH
+                  // If TTS is not speaking, overall is not speaking
+                  if (!ttsSpeakingRef.current) {
+                    isBotSpeakingRef.current = false;
+                    dbg("avatar.onSpeechEnd", { lastSpeakSessionId: speakSessionIdRef.current });
+                    flushSync(() => setPhase(PHASE.LISTENING));
+                  } else {
+                    dbg("avatar.onSpeechEnd.ttsStillSpeaking");
+                  }
                 }}
               />
             </div>
