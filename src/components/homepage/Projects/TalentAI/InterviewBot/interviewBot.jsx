@@ -10,6 +10,7 @@ import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 import AvatarPanel from "./AvatarPanel";
 import InterviewInstruction from "./interviewInstruction.jsx";
 
+// ================== PHASES ==================
 const PHASE = Object.freeze({
   IDLE: "IDLE",
   LISTENING: "LISTENING",
@@ -26,12 +27,6 @@ const QUICK_BARGE = {
   MICRO_HOLD_MS: 120,
 };
 
-// ---------- Aggregation timing ----------
-const AGGREGATION = {
-  FLUSH_DEBOUNCE_MS: 600,
-  FAST_FLUSH_MS: 40,
-};
-
 // ---------- CONTROL WORDS (instant interrupt) ----------
 const CONTROL_WORDS = /\b(stop|wait|hold on|pause|please stop|can you stop|one sec|one second)\b/i;
 
@@ -43,11 +38,14 @@ const DEBUG = true;
 function dbg(tag, info = {}) {
   if (!DEBUG) return;
   const ts = new Date().toISOString();
-  try { console.log(`[IB ${ts}] ${tag}`, info); }
-  catch { console.log(`[IB ${ts}] ${tag}`, String(info)); }
+  try {
+    console.log(`[IB ${ts}] ${tag}`, info);
+  } catch {
+    console.log(`[IB ${ts}] ${tag}`, String(info));
+  }
 }
 
-const BARGE_AVATAR_ONLY = true;
+const BARGE_AVATAR_ONLY = true; // if true, only barge when avatar is speaking (not TTS)
 
 export default function InterviewBot() {
   const { uuid } = useParams();
@@ -55,6 +53,7 @@ export default function InterviewBot() {
 
   const API_BASE = import.meta.env.VITE_TALENTAI_API_INTERVIEW_BASE_URL;
 
+  // -------------- App State --------------
   const [loading, setLoading] = useState(false);
   const [cvText, setCvText] = useState("");
   const [jdText, setJdText] = useState("");
@@ -66,28 +65,32 @@ export default function InterviewBot() {
   const [timeLeft, setTimeLeft] = useState(1800);
   const timerRef = useRef(null);
 
-  // STT
+  // -------------- STT & Speech --------------
   const recognizerRef = useRef(null);
   const lastFinalRef = useRef(""); // last sent FULL utterance
 
   // Conversation phase UI
   const [phase, setPhase] = useState(PHASE.IDLE);
+  const phaseRef = useRef(PHASE.IDLE);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
   const [bargeFlash, setBargeFlash] = useState(false);
 
-  // Keep current phase available in SDK callbacks
-  const phaseRef = useRef(PHASE.IDLE);
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
-
-  // Speaking / interruption
-  const isBotSpeakingRef = useRef(false);      // bot speaking (any backend)
-  const avatarSpeakingRef = useRef(false);     // avatar speaking
-  const ttsSpeakingRef = useRef(false);        // fallback TTS speaking (PATCH)
+  // Speaking / interruption flags
+  const isBotSpeakingRef = useRef(false); // overall speaking
+  const avatarSpeakingRef = useRef(false); // avatar is speaking
+  const ttsSpeakingRef = useRef(false); // TTS is speaking
   const interruptionInProgressRef = useRef(false);
   const lastInterruptAtRef = useRef(0);
-  const lastBargeAtRef = useRef(0);            // for post-barge suppression
+  const lastBargeAtRef = useRef(0); // for post-barge suppression
 
-  // Speech session tokens (avoid race)
+  // Speak session tokens (avoid race)
   const speakSessionIdRef = useRef(0);
+
+  // Speak watchdog to avoid sticky states
+  const speakWatchdogRef = useRef(null);
 
   // Discard-on-barge guard
   const discardCurrentUtteranceRef = useRef(false);
@@ -108,22 +111,34 @@ export default function InterviewBot() {
   const [interviewStatus, setInterviewStatus] = useState(false);
   const [showPopup, setShowPopup] = useState(true);
 
-  // Utterance aggregation buffer
+  // Utterance aggregation buffer (accumulate all Azure finals here)
   const utteranceBufRef = useRef("");
-  const flushTimerRef = useRef(null);
 
   // QUICK BARGE helpers
-  const microHoldTimerRef  = useRef(null);
-  const lastPartialAtRef   = useRef(0);
+  const microHoldTimerRef = useRef(null);
+  const lastPartialAtRef = useRef(0);
 
-  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
 
-  // ---- SPEAK STATE GUARD (PATCH) ----
+  // ================== Helpers: Phase & Flags ==================
+  function normalizeToListening() {
+    avatarSpeakingRef.current = false;
+    ttsSpeakingRef.current = false;
+    isBotSpeakingRef.current = false;
+    flushSync(() => setPhase(PHASE.LISTENING));
+  }
+
+  function markSpeakingOn() {
+    isBotSpeakingRef.current = true;
+    flushSync(() => setPhase(PHASE.BOT_SPEAKING));
+  }
+
   function canBargeNow() {
-    // Only when we KNOW the bot is actively speaking in THIS session
     const speaking = BARGE_AVATAR_ONLY
       ? avatarSpeakingRef.current
-      : (avatarSpeakingRef.current || ttsSpeakingRef.current);
+      : avatarSpeakingRef.current || ttsSpeakingRef.current;
     return (
       phaseRef.current === PHASE.BOT_SPEAKING &&
       isBotSpeakingRef.current === true &&
@@ -132,28 +147,61 @@ export default function InterviewBot() {
     );
   }
 
-  function markSpeaking(on) {
-    isBotSpeakingRef.current = !!on;
-    setPhase((prev) => (on ? PHASE.BOT_SPEAKING : (prev === PHASE.THINKING ? PHASE.THINKING : PHASE.LISTENING)));
+  // ================== Speak Session Guard + Watchdog ==================
+  function clearSpeakWatchdog() {
+    if (speakWatchdogRef.current) {
+      clearTimeout(speakWatchdogRef.current);
+      speakWatchdogRef.current = null;
+    }
   }
 
+  function beginSpeakSessionGuard(text) {
+    const id = ++speakSessionIdRef.current;
+    // Estimation: ~160 wpm -> ~375ms per word + buffer
+    const estMs = Math.min(25000, Math.max(1200, text.split(/\s+/).filter(Boolean).length * 375 + 800));
+    clearSpeakWatchdog();
+    speakWatchdogRef.current = setTimeout(() => {
+      // If still same session and speaking flags are set, force normalize
+      if (
+        speakSessionIdRef.current === id &&
+        (avatarSpeakingRef.current || ttsSpeakingRef.current)
+      ) {
+        console.warn("Speak watchdog fired — forcing stop");
+        normalizeToListening();
+      }
+    }, estMs);
+    return id;
+  }
+
+  function endSpeakSessionGuard(sessionId) {
+    // Ignore stale ends
+    if (speakSessionIdRef.current !== sessionId) return;
+    clearSpeakWatchdog();
+    normalizeToListening();
+  }
+
+  // ================== LLM Control ==================
+  function cancelInFlightLLM() {
+    try {
+      inflightAbortRef.current?.abort?.();
+    } catch {}
+    inflightAbortRef.current = null;
+  }
+
+  // ================== Speech: Avatar/TTS ==================
   function speakBot(text) {
     if (!text) return;
-    flushSync(() => {
-      isBotSpeakingRef.current = true;
-      setPhase(PHASE.BOT_SPEAKING);
-    });
-    dbg("speakBot.start", { len: text.length });
+    markSpeakingOn();
+    const sessionId = beginSpeakSessionGuard(text);
 
-    // Try avatar first
+    // Avatar first
     if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
       try {
-        const id = ++speakSessionIdRef.current;
-        avatarSpeakingRef.current = true;         // PATCH: assert flags before call
+        avatarSpeakingRef.current = true;
         isBotSpeakingRef.current = true;
-        dbg("avatar.speak", { speakSessionId: id });
+        dbg("avatar.speak", { sessionId });
         avatarRef.current.speak(text);
-        return;
+        return; // onSpeechEnd -> endSpeakSessionGuard(sessionId)
       } catch (e) {
         console.warn("Avatar speak failed, falling back to TTS:", e);
       }
@@ -162,41 +210,40 @@ export default function InterviewBot() {
     // Fallback TTS
     if (synthesizerRef.current) {
       try {
-        ttsSpeakingRef.current = true;            // PATCH
-        isBotSpeakingRef.current = true;          // PATCH
-        setPhase(PHASE.BOT_SPEAKING);             // PATCH
-
+        ttsSpeakingRef.current = true;
+        isBotSpeakingRef.current = true;
         synthesizerRef.current.speakTextAsync(
           text,
           () => {
             dbg("tts.end");
-            ttsSpeakingRef.current = false;       // PATCH
-            markSpeaking(false);
+            endSpeakSessionGuard(sessionId);
           },
           (err) => {
             console.error("Fallback TTS failed:", err);
-            ttsSpeakingRef.current = false;       // PATCH
-            markSpeaking(false);
+            endSpeakSessionGuard(sessionId);
           }
         );
       } catch (e) {
         console.error("TTS error:", e);
-        ttsSpeakingRef.current = false;           // PATCH
-        markSpeaking(false);
+        endSpeakSessionGuard(sessionId);
       }
     } else {
-      markSpeaking(false);
+      endSpeakSessionGuard(sessionId);
     }
   }
 
-  // best-effort stop with timeout; always flip flags immediately
   async function interruptBotNow() {
-    dbg("interruptBotNow.begin", { isBotSpeaking: isBotSpeakingRef.current, avatarSpeaking: avatarSpeakingRef.current, ttsSpeaking: ttsSpeakingRef.current });
+    dbg("interruptBotNow.begin", {
+      isBotSpeaking: isBotSpeakingRef.current,
+      avatarSpeaking: avatarSpeakingRef.current,
+      ttsSpeaking: ttsSpeakingRef.current,
+    });
 
-    // Flip flags immediately to gate recognizing
-    isBotSpeakingRef.current = false;
+    // Flip flags & clear watchdog immediately to gate recognition
+    clearSpeakWatchdog();
     avatarSpeakingRef.current = false;
     ttsSpeakingRef.current = false;
+    isBotSpeakingRef.current = false;
 
     // Try to stop avatar speech, but don't hang
     try {
@@ -204,17 +251,18 @@ export default function InterviewBot() {
       if (stopP && typeof stopP.then === "function") {
         await Promise.race([
           stopP,
-          new Promise((resolve) => setTimeout(resolve, 300)) // 300ms timeout
+          new Promise((resolve) => setTimeout(resolve, 300)), // 300ms timeout
         ]);
       }
     } catch {}
 
     // Stop TTS best-effort (non-blocking)
-    try { synthesizerRef.current?.stopSpeakingAsync?.(() => {}, () => {}); } catch {}
+    try {
+      synthesizerRef.current?.stopSpeakingAsync?.(() => {}, () => {});
+    } catch {}
 
-    // Abort any inflight LLM stream
-    try { inflightAbortRef.current?.abort?.(); } catch {}
-    inflightAbortRef.current = null;
+    // Abort any inflight LLM
+    cancelInFlightLLM();
 
     // Ensure phase not stuck
     flushSync(() => {
@@ -224,12 +272,7 @@ export default function InterviewBot() {
     dbg("interruptBotNow.done");
   }
 
-  function cancelInFlightLLM() {
-    try { inflightAbortRef.current?.abort?.(); } catch {}
-    inflightAbortRef.current = null;
-  }
-
-  // ---- STT config helper ----
+  // ================== Azure STT Setup ==================
   function createSpeechConfig(key, region) {
     const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
     speechConfig.speechRecognitionLanguage = "en-IN";
@@ -240,16 +283,10 @@ export default function InterviewBot() {
       "TrueText"
     );
 
-    // Allow a bit more silence to finalize a single utterance
+    // Single EOU policy: finalize only after ~2.5s silence
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
       "2500"
-    );
-
-    // Reduce mid-utterance splits by tolerating short pauses
-    speechConfig.setProperty(
-      SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
-      "2000"
     );
 
     // Optional: if first words get clipped, increase initial silence
@@ -261,11 +298,12 @@ export default function InterviewBot() {
     return speechConfig;
   }
 
-  // ---- aggregation helpers ----
   function appendFinalChunk(chunk) {
     const prev = utteranceBufRef.current;
-    if (!prev) { utteranceBufRef.current = chunk; return; }
-
+    if (!prev) {
+      utteranceBufRef.current = chunk;
+      return;
+    }
     const tail = prev.slice(-40);
     if (chunk === prev) return;
     if (prev.endsWith(chunk)) return;
@@ -276,50 +314,53 @@ export default function InterviewBot() {
     }
   }
 
-  function scheduleFlushToBackend(delayMs = AGGREGATION.FLUSH_DEBOUNCE_MS) {
-    if (flushTimerRef.current) window.clearTimeout(flushTimerRef.current);
-    flushTimerRef.current = window.setTimeout(async () => {
-      const finalUtterance = (utteranceBufRef.current || "").trim();
-      if (!finalUtterance) { dbg("flush.skip.empty"); return; }
+  async function sendFinalToBackend() {
+    const finalUtterance = (utteranceBufRef.current || "").trim();
+    if (!finalUtterance) {
+      dbg("flush.skip.empty");
+      return;
+    }
 
-      // reset buffer before network
-      utteranceBufRef.current = "";
-      lastFinalRef.current = finalUtterance;
+    // reset buffer before network
+    utteranceBufRef.current = "";
+    lastFinalRef.current = finalUtterance;
 
-      setHistory((h) => [...h, { role: "user", content: finalUtterance }]);
-      dbg("flush.send", { text: finalUtterance });
+    setHistory((h) => [...h, { role: "user", content: finalUtterance }]);
+    dbg("flush.send", { text: finalUtterance });
 
-      flushSync(() => setPhase(PHASE.THINKING));
+    flushSync(() => setPhase(PHASE.THINKING));
 
-      try {
-        cancelInFlightLLM();
-        const ctrl = new AbortController();
-        inflightAbortRef.current = ctrl;
+    try {
+      cancelInFlightLLM();
+      const ctrl = new AbortController();
+      inflightAbortRef.current = ctrl;
 
-        const { data: newHist } = await axios.post(
-          `${API_BASE}/api/chat`,
-          {
-            messages: [...historyRef.current, { role: "user", content: finalUtterance }],
-            userText: finalUtterance,
-          },
-          { signal: ctrl.signal }
-        );
+      const { data: newHist } = await axios.post(
+        `${API_BASE}/api/chat`,
+        {
+          messages: [...historyRef.current, { role: "user", content: finalUtterance }],
+          userText: finalUtterance,
+        },
+        { signal: ctrl.signal }
+      );
 
-        inflightAbortRef.current = null;
-        setHistory(newHist);
-        const reply = newHist.slice(-1)?.[0]?.content || "";
-        dbg("flush.recv", { ok: !!reply, len: reply?.length ?? 0 });
-        reply ? speakBot(reply) : flushSync(() => setPhase(PHASE.LISTENING));
-      } catch (err) {
-        const canceled = err?.name === "CanceledError" || err?.name === "AbortError" || axios.isCancel?.(err);
-        dbg("flush.err", { canceled, err: String(err) });
-        if (!canceled) {
-          console.error("LLM error:", err);
-          flushSync(() => setPhase(PHASE.LISTENING));
-        }
-        inflightAbortRef.current = null;
+      inflightAbortRef.current = null;
+      setHistory(newHist);
+      const reply = newHist.slice(-1)?.[0]?.content || "";
+      dbg("flush.recv", { ok: !!reply, len: reply?.length ?? 0 });
+      reply ? speakBot(reply) : flushSync(() => setPhase(PHASE.LISTENING));
+    } catch (err) {
+      const canceled =
+        err?.name === "CanceledError" ||
+        err?.name === "AbortError" ||
+        axios.isCancel?.(err);
+      dbg("flush.err", { canceled, err: String(err) });
+      if (!canceled) {
+        console.error("LLM error:", err);
+        flushSync(() => setPhase(PHASE.LISTENING));
       }
-    }, delayMs);
+      inflightAbortRef.current = null;
+    }
   }
 
   function startSTT() {
@@ -344,13 +385,19 @@ export default function InterviewBot() {
 
       // post-barge suppression: ignore tail partials
       if (Date.now() - lastBargeAtRef.current < POST_BARGE_IGNORE_MS) {
-        dbg("recognizing.partial", { partial, note: "post-barge-ignore", curPhase: phaseRef.current, avatarSpeaking: avatarSpeakingRef.current, isBotSpeaking: isBotSpeakingRef.current });
+        dbg("recognizing.partial", {
+          partial,
+          note: "post-barge-ignore",
+          curPhase: phaseRef.current,
+          avatarSpeaking: avatarSpeakingRef.current,
+          isBotSpeaking: isBotSpeakingRef.current,
+        });
         return;
       }
 
       lastPartialAtRef.current = Date.now();
 
-      // ---- Control-word barge (PATCH: hard-gated) ----
+      // ---- Control-word barge ----
       if (CONTROL_WORDS.test(partial)) {
         if (!canBargeNow()) {
           dbg("barge.control.ignored", { partial, phase: phaseRef.current });
@@ -363,7 +410,6 @@ export default function InterviewBot() {
 
         discardCurrentUtteranceRef.current = true;
         utteranceBufRef.current = "";
-        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
 
         if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
         discardSafetyTimerRef.current = setTimeout(() => {
@@ -371,7 +417,10 @@ export default function InterviewBot() {
           discardCurrentUtteranceRef.current = false;
         }, 4000);
 
-        flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+        flushSync(() => {
+          setPhase(PHASE.BARGE_IN);
+          setBargeFlash(true);
+        });
         setTimeout(() => setBargeFlash(false), 300);
 
         dbg("barge.trigger.control", { partial });
@@ -381,14 +430,13 @@ export default function InterviewBot() {
         return;
       }
 
-      // ---- Quick-barge with micro hold (PATCH: hard-gated) ----
+      // ---- Quick-barge with micro hold ----
       if (microHoldTimerRef.current) {
         clearTimeout(microHoldTimerRef.current);
         microHoldTimerRef.current = null;
       }
 
       microHoldTimerRef.current = setTimeout(async () => {
-        // MUST be currently speaking to allow barge
         if (!canBargeNow()) {
           dbg("barge.quick.ignored", { phase: phaseRef.current });
           return;
@@ -405,7 +453,6 @@ export default function InterviewBot() {
 
         discardCurrentUtteranceRef.current = true;
         utteranceBufRef.current = "";
-        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
 
         if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
         discardSafetyTimerRef.current = setTimeout(() => {
@@ -413,7 +460,10 @@ export default function InterviewBot() {
           discardCurrentUtteranceRef.current = false;
         }, 4000);
 
-        flushSync(() => { setPhase(PHASE.BARGE_IN); setBargeFlash(true); });
+        flushSync(() => {
+          setPhase(PHASE.BARGE_IN);
+          setBargeFlash(true);
+        });
         setTimeout(() => setBargeFlash(false), 300);
 
         dbg("barge.trigger.quick", { partial, session: speakSessionIdRef.current });
@@ -423,7 +473,7 @@ export default function InterviewBot() {
       }, QUICK_BARGE.MICRO_HOLD_MS);
     };
 
-    // FINALS
+    // FINALS (accumulate only; no send here)
     recognizer.recognized = async (_, e) => {
       if (e.result.reason !== SpeechSDK.ResultReason.RecognizedSpeech) return;
       const chunk = (e.result.text || "").trim();
@@ -434,36 +484,40 @@ export default function InterviewBot() {
         return;
       }
 
-      if (!chunk) { flushSync(() => setPhase(PHASE.LISTENING)); return; }
+      if (!chunk) return;
 
       appendFinalChunk(chunk);
       dbg("recognized.append", { chunk, bufferLen: utteranceBufRef.current.length });
-      scheduleFlushToBackend(AGGREGATION.FLUSH_DEBOUNCE_MS);
+      // No flush here — single send will happen on speechEndDetected.
     };
 
-    // Speech end: reset discard flag OR fast-flush
+    // Speech end: reset discard flag OR single immediate send
     recognizer.speechEndDetected = () => {
       dbg("speechEndDetected", { discarding: discardCurrentUtteranceRef.current });
 
       if (discardCurrentUtteranceRef.current) {
         discardCurrentUtteranceRef.current = false;
         utteranceBufRef.current = "";
-        if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
-        if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
+        if (discardSafetyTimerRef.current) {
+          clearTimeout(discardSafetyTimerRef.current);
+          discardSafetyTimerRef.current = null;
+        }
         dbg("discard.reset.onSpeechEnd");
         return; // do not flush anything from barged utterance
       }
 
-      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
-      dbg("flush.fast");
-      scheduleFlushToBackend(AGGREGATION.FAST_FLUSH_MS);
+      dbg("flush.immediate");
+      sendFinalToBackend(); // one and only send point per user turn
     };
 
     // Resilience
     recognizer.canceled = (_, e) => {
       dbg("stt.canceled", { err: e?.errorDetails });
       discardCurrentUtteranceRef.current = false;
-      if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
+      if (discardSafetyTimerRef.current) {
+        clearTimeout(discardSafetyTimerRef.current);
+        discardSafetyTimerRef.current = null;
+      }
       interruptionInProgressRef.current = false;
 
       // restart continuous STT
@@ -471,14 +525,16 @@ export default function InterviewBot() {
         () => recognizer.startContinuousRecognitionAsync(() => {}, console.error),
         console.error
       );
-      // Do NOT force LISTENING here if bot might be speaking; keep flags authoritative
       if (!isBotSpeakingRef.current) flushSync(() => setPhase(PHASE.LISTENING));
     };
 
     recognizer.sessionStopped = () => {
       dbg("stt.sessionStopped");
       discardCurrentUtteranceRef.current = false;
-      if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
+      if (discardSafetyTimerRef.current) {
+        clearTimeout(discardSafetyTimerRef.current);
+        discardSafetyTimerRef.current = null;
+      }
       interruptionInProgressRef.current = false;
 
       recognizer.stopContinuousRecognitionAsync(
@@ -495,16 +551,21 @@ export default function InterviewBot() {
   }
 
   async function speakFirstWithAvatar(text) {
-    if (!text) { startSTT(); return; }
+    if (!text) {
+      startSTT();
+      return;
+    }
     firstPendingRef.current = text;
 
     const trySpeak = () => {
       if (avatarRef.current?.isConnected?.() && avatarRef.current?.speak) {
-        const id = ++speakSessionIdRef.current;
-        avatarSpeakingRef.current = true;         // PATCH: pre-set flags
+        const id = beginSpeakSessionGuard(firstPendingRef.current);
+        avatarSpeakingRef.current = true;
         isBotSpeakingRef.current = true;
-        dbg("avatar.firstSpeak.try", { speakSessionId: id });
-        flushSync(() => { setPhase(PHASE.BOT_SPEAKING); });
+        dbg("avatar.firstSpeak.try", { sessionId: id });
+        flushSync(() => {
+          setPhase(PHASE.BOT_SPEAKING);
+        });
         avatarRef.current.speak(firstPendingRef.current);
         firstSpokenRef.current = true;
         firstPendingRef.current = "";
@@ -560,7 +621,11 @@ export default function InterviewBot() {
 
       setInterviewStarted(true);
 
-      try { avatarRef.current?.start?.(); } catch (e) { console.warn("Avatar start error:", e); }
+      try {
+        avatarRef.current?.start?.();
+      } catch (e) {
+        console.warn("Avatar start error:", e);
+      }
       if (first) speakFirstWithAvatar(first);
       else startSTT();
     } catch (err) {
@@ -580,14 +645,18 @@ export default function InterviewBot() {
       );
     } catch {}
 
-    if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
-    if (discardSafetyTimerRef.current) { clearTimeout(discardSafetyTimerRef.current); discardSafetyTimerRef.current = null; }
+    if (discardSafetyTimerRef.current) {
+      clearTimeout(discardSafetyTimerRef.current);
+      discardSafetyTimerRef.current = null;
+    }
     utteranceBufRef.current = "";
     discardCurrentUtteranceRef.current = false;
 
     clearInterval(timerRef.current);
     await interruptBotNow();
-    try { avatarRef.current?.stop?.(); } catch {}
+    try {
+      avatarRef.current?.stop?.();
+    } catch {}
 
     const name = window.prompt("Please enter your name to save your transcript:");
     if (!name) {
@@ -622,14 +691,20 @@ export default function InterviewBot() {
 
   useEffect(() => {
     return () => {
-      try { recognizerRef.current?.stopContinuousRecognitionAsync(() => {}, () => {}); } catch {}
-      try { avatarRef.current?.stop?.(); } catch {}
-      try { synthesizerRef.current?.close?.(); } catch {}
+      try {
+        recognizerRef.current?.stopContinuousRecognitionAsync(() => {}, () => {});
+      } catch {}
+      try {
+        avatarRef.current?.stop?.();
+      } catch {}
+      try {
+        synthesizerRef.current?.close?.();
+      } catch {}
       cancelInFlightLLM();
       if (timerRef.current) clearInterval(timerRef.current);
-      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       if (microHoldTimerRef.current) clearTimeout(microHoldTimerRef.current);
       if (discardSafetyTimerRef.current) clearTimeout(discardSafetyTimerRef.current);
+      clearSpeakWatchdog();
       utteranceBufRef.current = "";
       discardCurrentUtteranceRef.current = false;
       avatarSpeakingRef.current = false;
@@ -645,11 +720,16 @@ export default function InterviewBot() {
 
   const phaseMeta = useMemo(() => {
     switch (phase) {
-      case PHASE.BARGE_IN:    return { label: "Barge-in",  bg: "#FFF4E5", fg: "#8A4B00", icon: "⏹️" };
-      case PHASE.LISTENING:   return { label: "Listening", bg: "#E6F4EA", fg: "#137333", icon: "🎤" };
-      case PHASE.THINKING:    return { label: "Thinking",  bg: "#E8F0FE", fg: "#174EA6", icon: "⌛" };
-      case PHASE.BOT_SPEAKING:return { label: "Speaking",  bg: "#FCE8E6", fg: "#B80606", icon: "🔊" };
-      default:                return { label: "Idle",      bg: "#F1F3F4", fg: "#3C4043", icon: "⏸️" };
+      case PHASE.BARGE_IN:
+        return { label: "Barge-in", bg: "#FFF4E5", fg: "#8A4B00", icon: "⏹️" };
+      case PHASE.LISTENING:
+        return { label: "Listening", bg: "#E6F4EA", fg: "#137333", icon: "🎤" };
+      case PHASE.THINKING:
+        return { label: "Thinking", bg: "#E8F0FE", fg: "#174EA6", icon: "⌛" };
+      case PHASE.BOT_SPEAKING:
+        return { label: "Speaking", bg: "#FCE8E6", fg: "#B80606", icon: "🔊" };
+      default:
+        return { label: "Idle", bg: "#F1F3F4", fg: "#3C4043", icon: "⏸️" };
     }
   }, [phase]);
 
@@ -657,11 +737,18 @@ export default function InterviewBot() {
     <div
       style={{
         position: "absolute",
-        top: 12, right: 12, zIndex: 10,
-        display: "inline-flex", gap: 8, alignItems: "center",
-        padding: "6px 10px", borderRadius: 999,
-        background: phaseMeta.bg, color: phaseMeta.fg,
-        fontSize: 13, fontWeight: 600,
+        top: 12,
+        right: 12,
+        zIndex: 10,
+        display: "inline-flex",
+        gap: 8,
+        alignItems: "center",
+        padding: "6px 10px",
+        borderRadius: 999,
+        background: phaseMeta.bg,
+        color: phaseMeta.fg,
+        fontSize: 13,
+        fontWeight: 600,
         boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
         transform: bargeFlash ? "scale(1.06)" : "scale(1.0)",
         transition: "transform 120ms ease",
@@ -671,21 +758,32 @@ export default function InterviewBot() {
       <span>{phaseMeta.icon}</span>
       <span>{phaseMeta.label}</span>
       {phase === PHASE.THINKING && (
-        <span className="spinner" style={{
-          width: 12, height: 12, borderRadius: "50%",
-          border: "2px solid rgba(0,0,0,0.15)",
-          borderTopColor: phaseMeta.fg,
-          display: "inline-block",
-          animation: "spin 0.9s linear infinite"
-        }}/>
+        <span
+          className="spinner"
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            border: "2px solid rgba(0,0,0,0.15)",
+            borderTopColor: phaseMeta.fg,
+            display: "inline-block",
+            animation: "spin 0.9s linear infinite",
+          }}
+        />
       )}
       {phase === PHASE.LISTENING && (
-        <span className="pulse" style={{
-          width: 10, height: 10, borderRadius: "50%",
-          background: phaseMeta.fg, opacity: 0.9,
-          boxShadow: "0 0 0 0 rgba(19,115,51,0.7)",
-          animation: "pulse 1.4s infinite"
-        }}/>
+        <span
+          className="pulse"
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: phaseMeta.fg,
+            opacity: 0.9,
+            boxShadow: "0 0 0 0 rgba(19,115,51,0.7)",
+            animation: "pulse 1.4s infinite",
+          }}
+        />
       )}
     </div>
   );
@@ -706,7 +804,9 @@ export default function InterviewBot() {
       `}</style>
 
       {loading && (
-        <div className="loading-overlay"><div className="loading-spinner" /></div>
+        <div className="loading-overlay">
+          <div className="loading-spinner" />
+        </div>
       )}
 
       {/* Header */}
@@ -747,22 +847,16 @@ export default function InterviewBot() {
                 captionAlign="center"
                 captionMaxWidth={900}
                 onSpeechStart={() => {
-                  isBotSpeakingRef.current = true;     // PATCH
-                  avatarSpeakingRef.current = true;    // PATCH
-                  const id = ++speakSessionIdRef.current;
-                  dbg("avatar.onSpeechStart", { speakSessionId: id });
+                  // idempotent, do not increment session id here (speak path did)
+                  isBotSpeakingRef.current = true;
+                  avatarSpeakingRef.current = true;
+                  dbg("avatar.onSpeechStart", { speakSessionId: speakSessionIdRef.current });
                   flushSync(() => setPhase(PHASE.BOT_SPEAKING));
                 }}
                 onSpeechEnd={() => {
-                  avatarSpeakingRef.current = false;   // PATCH
-                  // If TTS is not speaking, overall is not speaking
-                  if (!ttsSpeakingRef.current) {
-                    isBotSpeakingRef.current = false;
-                    dbg("avatar.onSpeechEnd", { lastSpeakSessionId: speakSessionIdRef.current });
-                    flushSync(() => setPhase(PHASE.LISTENING));
-                  } else {
-                    dbg("avatar.onSpeechEnd.ttsStillSpeaking");
-                  }
+                  const id = speakSessionIdRef.current;
+                  dbg("avatar.onSpeechEnd", { lastSpeakSessionId: id });
+                  endSpeakSessionGuard(id);
                 }}
               />
             </div>
@@ -776,32 +870,32 @@ export default function InterviewBot() {
                 gap: 12,
               }}
             >
-                <div
-                  style={{
-                    flex: "0 0 auto",
-                    background: "white",
-                    borderRadius: 8,
-                    padding: 8,
-                  }}
-                >
-                  <CameraRecorder
-                    setShowPopup={setShowPopup}
-                    recordStatus={record}
-                    setRecord={setRecord}
-                    timerRef={timerRef}
-                    startInterview={startInterview}
-                  />
-                </div>
+              <div
+                style={{
+                  flex: "0 0 auto",
+                  background: "white",
+                  borderRadius: 8,
+                  padding: 8,
+                }}
+              >
+                <CameraRecorder
+                  setShowPopup={setShowPopup}
+                  recordStatus={record}
+                  setRecord={setRecord}
+                  timerRef={timerRef}
+                  startInterview={startInterview}
+                />
+              </div>
 
-                <div style={{ flex: 1 }} />
+              <div style={{ flex: 1 }} />
 
-                <button
-                  className="interview-bot-end-interview-button"
-                  onClick={handleEndInterview}
-                  style={{ alignSelf: "stretch" }}
-                >
-                  End Interview
-                </button>
+              <button
+                className="interview-bot-end-interview-button"
+                onClick={handleEndInterview}
+                style={{ alignSelf: "stretch" }}
+              >
+                End Interview
+              </button>
             </div>
           </div>
         </>

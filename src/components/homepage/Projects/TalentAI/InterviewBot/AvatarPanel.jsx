@@ -1,6 +1,15 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect } from "react";
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
+/**
+ * AvatarPanel (hardened)
+ * - Deterministic speech start/end with session guards
+ * - Captions queued until actual audio playback ("playing")
+ * - Watchdogs for missing media events and SDK callbacks
+ * - Idempotent teardown; safe across rapid start/stop and barge-in
+ * - Public API (via ref): start(), stop(), speak(text):Promise<void>, stopSpeaking():Promise<void>,
+ *   isConnected(), isSpeaking(), setCaption(text), clearCaption()
+ */
 const AvatarPanel = forwardRef(
   (
     {
@@ -9,76 +18,68 @@ const AvatarPanel = forwardRef(
       typewriterSpeedMs = 18,
       onSpeechStart,
       onSpeechEnd,
-      onConnected,            // after avatar session starts
-      onFirstFrame,           // first audio/video frame plays
-      fit = "cover",          // "cover" | "contain"
-      captionAlign = "center",// "left" | "center" | "right"
-      captionMaxWidth = 900,  // px
+      onConnected, // after avatar session starts
+      onFirstFrame, // first audio/video frame plays
+      fit = "cover", // "cover" | "contain"
+      captionAlign = "center", // "left" | "center" | "right"
+      captionMaxWidth = 900, // px
     },
     ref
   ) => {
+    // ====== Connection & media handles ======
     const [connected, setConnected] = useState(false);
-
     const containerRef = useRef(null);
     const avatarSynthRef = useRef(null);
     const pcRef = useRef(null);
 
+    // ====== Caption state ======
     const [captionFull, setCaptionFull] = useState("");
     const [captionLive, setCaptionLive] = useState("");
     const typewriterTimerRef = useRef(null);
 
-    // Speaking / media-state latches
-    const speakingRef = useRef(false);       // true while avatar audio is actually playing
-    const endedLatchRef = useRef(true);      // prevents duplicate onSpeechEnd
+    // ====== Speech/session state ======
+    const speakingRef = useRef(false); // true while avatar audio is actually playing
+    const endedLatchRef = useRef(true); // prevents duplicate onSpeechEnd
     const firstFrameSeenRef = useRef(false); // ensures onFirstFrame runs only once per session
 
-    // NEW: queue caption so it appears when audio starts
+    // Speech session guard to ignore stale events
+    const speakSessionIdRef = useRef(0);
+
+    // Pending caption & watchdog (if audio "playing" is late)
     const pendingCaptionRef = useRef("");
     const pendingWatchdogRef = useRef(null);
 
-    // Expose controls to parent via ref
-    useImperativeHandle(ref, () => ({
-      start: startSession,
-      speak: speakText,
-      stop: stopSession,
-      stopSpeaking: stopSpeakingNow,      // returns Promise<void>
-      isConnected: () => connected,
-      isSpeaking: () => speakingRef.current,
-      setCaption: (t) => setCaptionInstant(t),
-      clearCaption: () => clearCaption(),
-    }));
+    // Global speech watchdog (SLA backstop)
+    const speechWatchdogRef = useRef(null);
 
     useEffect(() => {
       return () => {
-        if (typewriterTimerRef.current) clearInterval(typewriterTimerRef.current);
-        clearWatchdog();
+        // component unmount cleanup
+        clearTypewriter();
+        clearPendingWatchdog();
+        clearSpeechWatchdog();
+        tryStopSpeakingNoThrow();
+        tryCloseSynthNoThrow();
+        tryClosePcNoThrow();
       };
     }, []);
 
-    // ---------- Caption helpers ----------
-    function clearWatchdog() {
-      if (pendingWatchdogRef.current) {
-        clearTimeout(pendingWatchdogRef.current);
-        pendingWatchdogRef.current = null;
-      }
-    }
-
-    function setCaptionInstant(text) {
-      if (!showCaptions) return;
+    // ====== Helpers: caption handling ======
+    function clearTypewriter() {
       if (typewriterTimerRef.current) {
         clearInterval(typewriterTimerRef.current);
         typewriterTimerRef.current = null;
       }
+    }
+    function setCaptionInstant(text) {
+      if (!showCaptions) return;
+      clearTypewriter();
       setCaptionFull(text || "");
       setCaptionLive(text || "");
     }
-
     function setCaptionTypewriter(text) {
       if (!showCaptions) return;
-      if (typewriterTimerRef.current) {
-        clearInterval(typewriterTimerRef.current);
-        typewriterTimerRef.current = null;
-      }
+      clearTypewriter();
       setCaptionFull(text || "");
       setCaptionLive("");
       if (!text) return;
@@ -86,25 +87,56 @@ const AvatarPanel = forwardRef(
         setCaptionLive((prev) => {
           const next = text.slice(0, prev.length + 1);
           if (next.length >= text.length) {
-            clearInterval(typewriterTimerRef.current);
-            typewriterTimerRef.current = null;
+            clearTypewriter();
           }
           return next;
         });
       }, Math.max(5, typewriterSpeedMs));
     }
-
     function clearCaption() {
-      if (typewriterTimerRef.current) {
-        clearInterval(typewriterTimerRef.current);
-        typewriterTimerRef.current = null;
-      }
+      clearTypewriter();
       setCaptionFull("");
       setCaptionLive("");
-      // do not touch pending here—only when stopping speech/session
     }
 
-    // ---------- Session lifecycle ----------
+    // ====== Helpers: watchdogs ======
+    function clearPendingWatchdog() {
+      if (pendingWatchdogRef.current) {
+        clearTimeout(pendingWatchdogRef.current);
+        pendingWatchdogRef.current = null;
+      }
+    }
+    function clearSpeechWatchdog() {
+      if (speechWatchdogRef.current) {
+        clearTimeout(speechWatchdogRef.current);
+        speechWatchdogRef.current = null;
+      }
+    }
+    function beginSpeechWatchdog(text, sessionId) {
+      clearSpeechWatchdog();
+      // ~160wpm → ~375ms/word, with floor/ceiling + buffer
+      const est = Math.min(30000, Math.max(1200, text.split(/\s+/).filter(Boolean).length * 375 + 800));
+      speechWatchdogRef.current = setTimeout(() => {
+        if (speakSessionIdRef.current === sessionId && speakingRef.current) {
+          // Force end if media callbacks were missed
+          maybeFireSpeechEnd(sessionId);
+        }
+      }, est);
+    }
+
+    // ====== Public API ======
+    useImperativeHandle(ref, () => ({
+      start: startSession,
+      stop: stopSession,
+      speak: speakText,
+      stopSpeaking: stopSpeakingNow,
+      isConnected: () => connected,
+      isSpeaking: () => speakingRef.current,
+      setCaption: (t) => setCaptionInstant(t),
+      clearCaption: () => clearCaption(),
+    }));
+
+    // ====== Session lifecycle ======
     async function startSession() {
       try {
         const region = import.meta.env.VITE_AZURE_SPEECH_REGION;
@@ -114,16 +146,24 @@ const AvatarPanel = forwardRef(
           return;
         }
 
-        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(apiKey, region);
+        // Tear down any prior session first
+        await stopSpeakingNow();
+        tryCloseSynthNoThrow();
+        tryClosePcNoThrow();
+        firstFrameSeenRef.current = false;
 
-        // Basic avatar config – adjust model/posture as needed
-        const avatarCfg = new SpeechSDK.AvatarConfig("lisa", "casual-sitting");
-        avatarCfg.useBuiltInVoice = true;
+        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(apiKey, region);
+        // Choose your preferred voice (keep aligned with backend expectations)
+        speechConfig.speechSynthesisVoiceName = "en-US-GuyNeural";
+
+        const avatarCfg = new SpeechSDK.AvatarConfig("Max", "business");
+        avatarCfg.useBuiltInVoice = false; // use the voice set above
         avatarCfg.customized = false;
 
-        avatarSynthRef.current = new SpeechSDK.AvatarSynthesizer(speechConfig, avatarCfg);
+        const synth = new SpeechSDK.AvatarSynthesizer(speechConfig, avatarCfg);
+        avatarSynthRef.current = synth;
 
-        // ICE server token for relay (Azure)
+        // Relay token for ICE servers
         const tokenRes = await fetch(
           `https://${region}.tts.speech.microsoft.com/cognitiveservices/avatar/relay/token/v1`,
           { headers: { "Ocp-Apim-Subscription-Key": apiKey } }
@@ -132,20 +172,17 @@ const AvatarPanel = forwardRef(
           console.error("Relay token fetch failed:", tokenRes.status);
           return;
         }
-        const { Urls, Username, Password } = await tokenRes.json();
-        if (!Urls?.length) {
+        const token = await tokenRes.json();
+        const urls = Array.isArray(token?.Urls) ? token.Urls : [];
+        if (!urls.length) {
           console.error("No ICE URLs returned");
           return;
         }
 
-        if (typeof RTCPeerConnection === "undefined") {
-          console.error("RTCPeerConnection not available in this environment");
-          return;
-        }
-
         const pc = new RTCPeerConnection({
-          iceServers: [{ urls: [Urls[0]], username: Username, credential: Password }],
+          iceServers: [{ urls, username: token.Username, credential: token.Password }],
         });
+        pcRef.current = pc;
 
         // Bidirectional A/V
         pc.addTransceiver("video", { direction: "sendrecv" });
@@ -166,16 +203,16 @@ const AvatarPanel = forwardRef(
             v.style.width = "100%";
             v.style.height = "100%";
             v.style.objectFit = fit === "contain" ? "contain" : "cover";
-
             v.addEventListener("playing", () => {
               if (!firstFrameSeenRef.current) {
                 firstFrameSeenRef.current = true;
-                onFirstFrame?.(); // first decoded frame (video)
+                onFirstFrame?.();
               }
             });
-
             container.appendChild(v);
-          } else if (event.track.kind === "audio") {
+          }
+
+          if (event.track.kind === "audio") {
             container.querySelectorAll("audio").forEach((a) => a.remove());
             const a = document.createElement("audio");
             a.autoplay = true;
@@ -185,41 +222,35 @@ const AvatarPanel = forwardRef(
             a.addEventListener("playing", () => {
               if (!firstFrameSeenRef.current) {
                 firstFrameSeenRef.current = true;
-                onFirstFrame?.(); // first decoded frame (audio)
+                onFirstFrame?.();
               }
-              // Real audio started → mark speaking + fire start once
+              // Real audio started → definitive start (guarded)
+              const sid = speakSessionIdRef.current;
               speakingRef.current = true;
               endedLatchRef.current = false;
-              onSpeechStart?.();
-
-              // PUSH PENDING CAPTION NOW
+              safeFireSpeechStart();
+              // Push pending caption now
               const pending = pendingCaptionRef.current;
-              clearWatchdog(); // cancel any watchdog timer
+              clearPendingWatchdog();
               if (pending) {
-                if (typewriter) setCaptionTypewriter(pending);
-                else setCaptionInstant(pending);
+                typewriter ? setCaptionTypewriter(pending) : setCaptionInstant(pending);
               }
             });
 
-            // End playback – debounce duplicate ends
-            const endOnce = () => {
-              if (!endedLatchRef.current) {
-                endedLatchRef.current = true;
-                speakingRef.current = false;
-                onSpeechEnd?.();
-                // optional: keep the last caption visible; clear only on next speak/stop
-              }
+            const maybeEnded = () => {
+              const sid = speakSessionIdRef.current;
+              maybeFireSpeechEnd(sid);
             };
-            a.addEventListener("ended", endOnce);
-            // (optional) a.addEventListener("pause", endOnce);
+
+            a.addEventListener("ended", maybeEnded);
+            a.addEventListener("pause", maybeEnded);
+            a.addEventListener("emptied", maybeEnded);
 
             container.appendChild(a);
           }
         };
 
-        pcRef.current = pc;
-
-        await avatarSynthRef.current.startAvatarAsync(pc);
+        await synth.startAvatarAsync(pc);
         setConnected(true);
         onConnected?.();
       } catch (e) {
@@ -227,79 +258,102 @@ const AvatarPanel = forwardRef(
       }
     }
 
-    // DO NOT RENDER CAPTIONS HERE — queue them and wait for audio 'playing'
-    function speakText(text) {
+    // ====== Speech controls ======
+    function safeFireSpeechStart() {
       try {
-        if (!avatarSynthRef.current || !text) return;
-
-        // Queue the caption first (so it's definitely set before audio starts)
-        pendingCaptionRef.current = text;
-
-        // Watchdog: if 'playing' doesn't arrive in time (e.g., stream reuse), show anyway
-        clearWatchdog();
-        pendingWatchdogRef.current = setTimeout(() => {
-          // show caption to avoid "missing captions"
-          if (pendingCaptionRef.current) {
-            if (typewriter) setCaptionTypewriter(pendingCaptionRef.current);
-            else setCaptionInstant(pendingCaptionRef.current);
-          }
-          pendingWatchdogRef.current = null;
-        }, 600); // tweak if you want longer/shorter grace
-
-        // Optimistic start; definitive start comes from audio 'playing'
-        speakingRef.current = true;
-        endedLatchRef.current = false;
         onSpeechStart?.();
-
-        avatarSynthRef.current.speakTextAsync(
-          text,
-          () => {
-            // SDK ended; ensure single onSpeechEnd
-            if (!endedLatchRef.current) {
-              endedLatchRef.current = true;
-              speakingRef.current = false;
-              onSpeechEnd?.();
-            }
-            // clear the pending text after success (caption stays until next speak)
-            pendingCaptionRef.current = "";
-            clearWatchdog();
-          },
-          (err) => {
-            console.error("Avatar speak error", err);
-            if (!endedLatchRef.current) {
-              endedLatchRef.current = true;
-              speakingRef.current = false;
-              onSpeechEnd?.();
-            }
-            // prevent stale caption from appearing later
-            pendingCaptionRef.current = "";
-            clearWatchdog();
-          }
-        );
       } catch (e) {
-        console.error("speakText error:", e);
+        console.warn("onSpeechStart handler error", e);
       }
     }
 
-    // Promise-returning stop so callers can await clean cancel
+    function maybeFireSpeechEnd(sessionId) {
+      // Ignore stale ends
+      if (sessionId !== speakSessionIdRef.current) return;
+      if (!endedLatchRef.current) {
+        endedLatchRef.current = true;
+        speakingRef.current = false;
+        clearPendingWatchdog();
+        clearSpeechWatchdog();
+        try {
+          onSpeechEnd?.();
+        } catch (e) {
+          console.warn("onSpeechEnd handler error", e);
+        }
+      }
+    }
+
+    /**
+     * Speak text. Returns a Promise that resolves when SDK signals completion
+     * (or earlier if media events already ended). Session-guarded to avoid
+     * late callbacks from prior utterances interfering with the latest.
+     */
+    function speakText(text) {
+      return new Promise((resolve) => {
+        try {
+          if (!avatarSynthRef.current || !text) return resolve();
+
+          const sessionId = ++speakSessionIdRef.current;
+
+          // Queue caption (rendered on audio playing)
+          pendingCaptionRef.current = text;
+          clearPendingWatchdog();
+          pendingWatchdogRef.current = setTimeout(() => {
+            // If playing didn't happen quickly, still show caption
+            if (pendingCaptionRef.current === text) {
+              typewriter ? setCaptionTypewriter(text) : setCaptionInstant(text);
+            }
+            pendingWatchdogRef.current = null;
+          }, 600);
+
+          // Optimistic start; true start on audio "playing"
+          speakingRef.current = true;
+          endedLatchRef.current = false;
+          safeFireSpeechStart();
+
+          beginSpeechWatchdog(text, sessionId);
+
+          avatarSynthRef.current.speakTextAsync(
+            text,
+            () => {
+              // SDK completed for this session (may precede media end)
+              maybeFireSpeechEnd(sessionId);
+              if (pendingCaptionRef.current === text) pendingCaptionRef.current = "";
+              clearPendingWatchdog();
+              resolve();
+            },
+            (err) => {
+              console.error("Avatar speak error", err);
+              maybeFireSpeechEnd(sessionId);
+              if (pendingCaptionRef.current === text) pendingCaptionRef.current = "";
+              clearPendingWatchdog();
+              resolve();
+            }
+          );
+        } catch (e) {
+          console.error("speakText error:", e);
+          resolve();
+        }
+      });
+    }
+
     function stopSpeakingNow() {
       return new Promise((resolve) => {
         try {
           const done = () => {
-            if (!endedLatchRef.current) {
-              endedLatchRef.current = true;
-              speakingRef.current = false;
-              onSpeechEnd?.();
-            }
-            // cancel any caption that hasn’t shown yet
-            pendingCaptionRef.current = "";
-            clearWatchdog();
+            const sid = speakSessionIdRef.current;
+            maybeFireSpeechEnd(sid);
+            pendingCaptionRef.current = ""; // drop any queued caption
+            clearPendingWatchdog();
             resolve();
           };
           if (avatarSynthRef.current?.stopSpeakingAsync) {
             avatarSynthRef.current.stopSpeakingAsync(
               done,
-              (e) => { console.warn("stopSpeakingAsync error", e); done(); }
+              (e) => {
+                console.warn("stopSpeakingAsync error", e);
+                done();
+              }
             );
           } else {
             done();
@@ -311,18 +365,18 @@ const AvatarPanel = forwardRef(
       });
     }
 
-    function stopSession() {
+    async function stopSession() {
       try {
-        // fire-and-forget; caller may also await via ref.stopSpeaking()
-        stopSpeakingNow();
-        avatarSynthRef.current?.close();
-        pcRef.current?.close();
+        await stopSpeakingNow();
+        tryCloseSynthNoThrow();
+        tryClosePcNoThrow();
         setConnected(false);
         speakingRef.current = false;
         endedLatchRef.current = true;
         firstFrameSeenRef.current = false;
         pendingCaptionRef.current = "";
-        clearWatchdog();
+        clearPendingWatchdog();
+        clearSpeechWatchdog();
         if (containerRef.current) containerRef.current.innerHTML = "";
         clearCaption();
       } catch (e) {
@@ -330,9 +384,28 @@ const AvatarPanel = forwardRef(
       }
     }
 
-    // Caption alignment mapping
-    const textAlign =
-      captionAlign === "right" ? "right" : captionAlign === "center" ? "center" : "left";
+    // ====== Low-level cleanup helpers ======
+    function tryCloseSynthNoThrow() {
+      try {
+        avatarSynthRef.current?.close?.();
+      } catch {}
+      avatarSynthRef.current = null;
+    }
+    function tryClosePcNoThrow() {
+      try {
+        pcRef.current?.getSenders?.().forEach((s) => s.track && s.track.stop && s.track.stop());
+        pcRef.current?.close?.();
+      } catch {}
+      pcRef.current = null;
+    }
+    function tryStopSpeakingNoThrow() {
+      try {
+        avatarSynthRef.current?.stopSpeakingAsync?.(() => {}, () => {});
+      } catch {}
+    }
+
+    // ====== UI ======
+    const textAlign = captionAlign === "right" ? "right" : captionAlign === "center" ? "center" : "left";
 
     return (
       <div style={{ padding: 10, height: "100%", width: "100%" }}>
