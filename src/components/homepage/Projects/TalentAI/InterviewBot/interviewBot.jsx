@@ -38,14 +38,14 @@ const CONTROL_WORDS = /\b(stop|wait|hold on|pause|please stop|can you stop|one s
 // ---------- Post-barge partial suppression ----------
 const POST_BARGE_IGNORE_MS = 1200; // ignore STT partials briefly after an interrupt
 
-// ------- DIAGNOSTICS -------
-const DEBUG = true;
-function dbg(tag, info = {}) {
-  if (!DEBUG) return;
-  const ts = new Date().toISOString();
-  try { console.log(`[IB ${ts}] ${tag}`, info); }
-  catch { console.log(`[IB ${ts}] ${tag}`, String(info)); }
-}
+// // ------- DIAGNOSTICS -------
+// const DEBUG = true;
+// function dbg(tag, info = {}) {
+//   if (!DEBUG) return;
+//   const ts = new Date().toISOString();
+//   try { console.log(`[IB ${ts}] ${tag}`, info); }
+//   catch { console.log(`[IB ${ts}] ${tag}`, String(info)); }
+// }
 
 const BARGE_AVATAR_ONLY = true;
 
