@@ -303,7 +303,7 @@ const handleSpeak = (messageId: string, text: string) => {
     console.log(messageText);
     console.log(sessionId);
 
-    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_UR;
+    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
     try {
       // const formData = new FormData();
       // formData.append("query", messageText);
