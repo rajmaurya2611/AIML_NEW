@@ -1,0 +1,11 @@
+.zabbixHeading{
+background: linear-gradient(90deg, #EE2626, #B41818);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text; /* for Firefox */
+  color: transparent;
+  font-size: 30px;
+  font-weight: bold;
+  text-align: center;
+}
+

@@ -30,6 +30,7 @@ import DO33 from "./Projects/DO33/do33";
 import SMP_BI from "./Projects/SMP_BI/smp_bi";
 import CAPEX from "./Projects/CapexForecasting/capex";
 import Marcom from "./Projects/Marcom/Marcom";
+import Yachiyo from "./Projects/Yachiyo/Yachiyo";
 
 //import Forkliftcard from "./Projects/Forklift"
 // import M_Translate from "../../assets/images/homepage/M translate.jpg"
@@ -146,6 +147,12 @@ const data = [
     src: Capexx, // Direct reference to imported image
     content: <CAPEX/>
   },
+  {
+    category: "",
+    title: "Yachiyo",
+    src: Mbimg, // Direct reference to imported image
+    content: <Yachiyo/>
+  }
   
   
   // {
