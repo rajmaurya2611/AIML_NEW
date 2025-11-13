@@ -1,21 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Slider, ConfigProvider, Tag, Input, Select } from "antd";
 import "antd/dist/reset.css";
- 
-// export default function JobForm({ formData, setFormData }) {
+
+const { Option } = Select;
+
 export default function JobForm({ formData, setFormData, onGenerate, disabled }) {
   const [experienceRange, setExperienceRange] = useState([3, 8]);
   const [skillInput, setSkillInput] = useState("");
- 
+
+  //Sync default slider values into formData on mount
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      experience: `${experienceRange[0]}-${experienceRange[1]}`
+    }));
+  }, []);
+
+  //Auto-sync formData whenever slider changes
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      experience: `${experienceRange[0]}-${experienceRange[1]}`
+    }));
+  }, [experienceRange]);
+
+  //Handle text input fields
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
- 
+
+  //Handle slider movement
   const handleSliderChange = (value) => {
     setExperienceRange(value);
-    setFormData({ ...formData, experience: `${value[0]}-${value[1]}` });
   };
- 
+
+  //Handle adding skills
   const handleSkillAdd = () => {
     if (skillInput.trim()) {
       setFormData({
@@ -25,57 +44,65 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
       setSkillInput("");
     }
   };
- 
+
+  //Handle skill input keys (Enter, Tab, Backspace)
   const handleSkillKeyDown = (e) => {
-    if ((e.key === "Enter" || e.key === "Tab" || e.key === " " || e.key === ",") && skillInput.trim()) {
+    if (["Enter", "Tab", " ", ","].includes(e.key) && skillInput.trim()) {
       e.preventDefault();
       handleSkillAdd();
     }
- 
+
     if (e.key === "Backspace" && skillInput === "" && formData.preferredSkills.length > 0) {
       const updatedSkills = [...formData.preferredSkills];
       updatedSkills.pop();
-      setFormData({
-        ...formData,
-        preferredSkills: updatedSkills,
-      });
+      setFormData({ ...formData, preferredSkills: updatedSkills });
     }
   };
- 
+
+  //Remove a skill tag
   const handleSkillRemove = (removedSkill) => {
     setFormData({
       ...formData,
       preferredSkills: formData.preferredSkills.filter((skill) => skill !== removedSkill),
     });
   };
- 
+
   return (
     <div className="w-1/2 max-h-[calc(100vh-100px)] overflow-y-auto p-4 flex flex-col gap-5 jd-form-wrapper">
       <h2 className="text-xl font-semibold text-[#DA2128]">JD Generator</h2>
- 
+
+      {/* Job Title */}
       <div className="space-y-1">
-        <label className="block">Job Title<sup className="text-[#DA2128]">*</sup></label>
-        <input name="jobTitle" value={formData.jobTitle} onChange={handleChange} className="input rounded-lg" />
+        <label className="block">
+          Job Title<sup className="text-[#DA2128]">*</sup>
+        </label>
+        <input
+          name="jobTitle"
+          value={formData.jobTitle}
+          onChange={handleChange}
+          className="input rounded-lg"
+        />
       </div>
- 
+
+      {/* Location */}
       <div className="space-y-1">
-        <label className="block">Location<sup className="text-[#DA2128]">*</sup></label>
+        <label className="block">
+          Location<sup className="text-[#DA2128]">*</sup>
+        </label>
         <Select
           value={formData.location}
           onChange={(value) => setFormData({ ...formData, location: value })}
           className="w-full"
         >
-          {['Noida', 'Hyderabad', 'Chennai', 'Banglore'].map((loc) => (
-            <Option key={loc} value={loc}>{loc}</Option>
+          {["Noida", "Hyderabad", "Chennai", "Bangalore"].map((loc) => (
+            <Option key={loc} value={loc}>
+              {loc}
+            </Option>
           ))}
         </Select>
       </div>
- 
-      {/* <div className="space-y-1">
-        <label className="block">Employment Type</label>
-        <input name="employmentType" value={formData.employmentType} onChange={handleChange} className="input rounded-lg" />
-      </div> */}
- 
+
+      {/* Employment Type */}
       <div className="space-y-1">
         <label className="block">Employment Type</label>
         <Select
@@ -84,40 +111,61 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
           className="w-full"
         >
           {["Full-Time", "Contractual", "Third Party - Contractual"].map((type) => (
-            <Option key={type} value={type}>{type}</Option>
+            <Option key={type} value={type}>
+              {type}
+            </Option>
           ))}
         </Select>
       </div>
- 
+
+      {/* Department */}
       <div className="space-y-1">
         <label className="block">Department</label>
-        {/* <input name="businessUnit" value={formData.businessUnit} onChange={handleChange} className="input rounded-lg" /> */}
         <Select
           value={formData.businessUnit}
           onChange={(value) => setFormData({ ...formData, businessUnit: value })}
           className="w-full"
         >
-          {["AIML", "HR", "Application", "GBS", "IEC", "SAP", "Analytics", "Empro", "Infra", "ERP", "ADMIN", "Finance", "Oracle"].map((type) => (
-            <Option key={type} value={type}>{type}</Option>
+          {[
+            "AIML",
+            "HR",
+            "Application",
+            "GBS",
+            "IEC",
+            "SAP",
+            "Analytics",
+            "Empro",
+            "Infra",
+            "ERP",
+            "ADMIN",
+            "Finance",
+            "Oracle",
+          ].map((type) => (
+            <Option key={type} value={type}>
+              {type}
+            </Option>
           ))}
         </Select>
       </div>
- 
+
+      {/* Experience Range Slider */}
       <div className="space-y-2">
-        <label className="block text-gray-700 font-medium">Experience Range<sup className="text-[#DA2128]">*</sup></label>
+        <label className="block text-gray-700 font-medium">
+          Experience Range<sup className="text-[#DA2128]">*</sup>
+        </label>
         <ConfigProvider
           theme={{
             components: {
               Slider: {
-                colorPrimary: "#DA2129", // slider track (filled portion)
-                colorPrimaryHover: "#b71c23", // hover state
-                handleColor: "#DA2129",       // thumb/circle color
-                handleColorHover: "#b71c23",  // thumb hover
-                trackBg: "#DA2129",           // extra: filled track
-                trackHoverBg: "#b71c23",      // extra: hover fill
+                colorPrimary: "#DA2129",
+                colorPrimaryHover: "#b71c23",
+                handleColor: "#DA2129",
+                handleColorHover: "#b71c23",
+                trackBg: "#DA2129",
+                trackHoverBg: "#b71c23",
                 railBg: "#f1f1f1",
-                handleActiveColor: "#DA2129",    // Thumb active (drag) color
-              }
+                handleActiveColor: "#DA2129",
+              },
             },
           }}
         >
@@ -130,19 +178,26 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
             onChange={handleSliderChange}
           />
         </ConfigProvider>
- 
+
         <div className="flex items-center gap-4 text-sm mt-2">
           <div className="px-4 py-1 rounded-lg">Min: {experienceRange[0]} yrs</div>
           <span>-</span>
           <div className="px-4 py-1 rounded-lg">Max: {experienceRange[1]} yrs</div>
         </div>
       </div>
- 
+
+      {/* Job Description */}
       <div className="space-y-1">
         <label className="block">Job Description</label>
-        <input name="jobDescription" value={formData.jobDescription} onChange={handleChange} className="input rounded-lg" />
+        <input
+          name="jobDescription"
+          value={formData.jobDescription}
+          onChange={handleChange}
+          className="input rounded-lg"
+        />
       </div>
- 
+
+      {/* Highest Qualifications */}
       <div className="space-y-1">
         <label className="block">Highest Qualifications</label>
         <Select
@@ -150,12 +205,25 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
           onChange={(value) => setFormData({ ...formData, highestQualifications: value })}
           className="w-full"
         >
-          {["M.Tech", "MCA", "MBA", "M.Com", "B.Tech", "BCA", "B.Com", "BBA", "Diploma"].map((qual) => (
-            <Option key={qual} value={qual}>{qual}</Option>
+          {[
+            "M.Tech",
+            "MCA",
+            "MBA",
+            "M.Com",
+            "B.Tech",
+            "BCA",
+            "B.Com",
+            "BBA",
+            "Diploma",
+          ].map((qual) => (
+            <Option key={qual} value={qual}>
+              {qual}
+            </Option>
           ))}
         </Select>
       </div>
- 
+
+      {/* Preferred Skills */}
       <div className="space-y-1">
         <label className="block">Preferred Skills</label>
         <div className="border rounded-lg p-2 flex flex-wrap gap-2">
@@ -164,7 +232,11 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
               key={index}
               closable
               onClose={() => handleSkillRemove(skill)}
-              style={{ border: "1px solid #DA2129", color: "#DA2129", borderRadius: "999px" }}
+              style={{
+                border: "1px solid #DA2129",
+                color: "#DA2129",
+                borderRadius: "999px",
+              }}
             >
               {skill}
             </Tag>
@@ -180,10 +252,19 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
           />
         </div>
       </div>
+
+      {/* Key Responsibilities */}
       <div className="space-y-1">
         <label className="block">Key Responsibilities</label>
-        <input name="keyResponsibilities" value={formData.keyResponsibilities} onChange={handleChange} className="input rounded-lg" />
+        <input
+          name="keyResponsibilities"
+          value={formData.keyResponsibilities}
+          onChange={handleChange}
+          className="input rounded-lg"
+        />
       </div>
+
+      {/* Submit Button */}
       <div>
         <button
           type="button"
@@ -197,3 +278,4 @@ export default function JobForm({ formData, setFormData, onGenerate, disabled })
     </div>
   );
 }
+ 
