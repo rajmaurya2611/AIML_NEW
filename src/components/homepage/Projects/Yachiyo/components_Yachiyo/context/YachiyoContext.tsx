@@ -37,7 +37,7 @@ export const YachiyoProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [apiResponse, setApiResponse] = useState<any>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
 
 
 

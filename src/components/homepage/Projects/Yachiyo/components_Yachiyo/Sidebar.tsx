@@ -78,7 +78,7 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
     const [user, setUser] = useState<UserProfile | null>(null);
  
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
 
   // reference optional prop so it's not reported as unused by TS
   void onNewChat;

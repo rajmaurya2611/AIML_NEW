@@ -423,7 +423,7 @@ console.log("Extracted message_id:", messageId);
         : msg
     ));
 
-    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_UR;
+    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
     await fetch(`${API_BASE_URL}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -445,7 +445,7 @@ console.log("Extracted message_id:", messageId);
 
 
 
-    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_UR;
+    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
     await fetch(`${API_BASE_URL}/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -470,7 +470,7 @@ console.log("Extracted message_id:", messageId);
     console.log(rating);
     console.log(comment);
 
-    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_UR;
+    const API_BASE_URL = import.meta.env.VITE_YACHIYO_API_BASE_URL;
     if (selectedMessageId) {
       // await fetch(`${API_BASE_URL}/feedback`, {
       await fetch(`${API_BASE_URL}/submit-feedback-question`, {
