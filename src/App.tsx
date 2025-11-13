@@ -36,7 +36,7 @@ import SMPBI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
 import KnowledgeRoot from './components/homepage/Projects/Marcom/okta/root.jsx';
 import CapexRoot from './components/homepage/Projects/CapexForecasting/okta/root.tsx';
 //import App_Yachiyo from './components/homepage/Projects/Yachiyo/App_Yachiyo.tsx';
-import YachiyoRoot from './components/homepage/Projects/Yachiyo/components_Yachiyo/yachiyoroot.tsx';
+import YachiyoRoot from './components/homepage/Projects/Yachiyo/components_Yachiyo/root.tsx';
  
 function App() {
   return (

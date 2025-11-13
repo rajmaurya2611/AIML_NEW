@@ -6,10 +6,11 @@ export const oktaAuthYachiyo = new OktaAuth({
   //redirectUri: import.meta.env.VITE_YACHIYO_OKTA_REDIRECT_URI!,
   redirectUri: `${window.location.origin}/yachiyo/login/callback`,
   scopes: ["openid", "profile", "email"],
-  pkce: false,  // Enable PKCE for enhanced security
+  pkce: true,  // Enable PKCE for enhanced security
   tokenManager: { storage: "sessionStorage" },  // or "localStorage"
 
 
   
 
 });
+

@@ -3,9 +3,9 @@ import { Security as OktaProvider, LoginCallback } from "@okta/okta-react";  // 
 //                ^^^^^^^^^^^
 import { Routes, Route } from "react-router-dom";
 import { oktaAuthYachiyo } from "./oktaConfigYachiyo";
-         
+import YachiyoAuthRoute from "./YachiyoAuthRoute";         
 import App_Yachiyo from "../App_Yachiyo";
-import YachiyoAuthRoute from "./YachiyoAuthRoute";
+
 
 const restore = async (_: any, uri?: string) =>
   window.location.replace(uri || "/yachiyo");
