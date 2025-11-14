@@ -247,18 +247,18 @@ const Index = () => {
             chartConfig: { ...data.bp_chart, barDataKeys: bpBarKeys },
           });
         }
-        if (data.bp_line_chart) {
-          const bpLineKeys = Object.keys(data.bp_line_chart.data[0] || {}).filter(
-            (k) => k !== "name" && k !== "formattedValue"
-          );
-          newMessages.push({
-            id: uuidv4(),
-            content: data.bp_line_chart.title || "BP Line Chart",
-            sender: "bot",
-            timestamp: new Date(),
-            chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
-          });
-        }
+        // if (data.bp_line_chart) {
+        //   const bpLineKeys = Object.keys(data.bp_line_chart.data[0] || {}).filter(
+        //     (k) => k !== "name" && k !== "formattedValue"
+        //   );
+        //   newMessages.push({
+        //     id: uuidv4(),
+        //     content: data.bp_line_chart.title || "BP Line Chart",
+        //     sender: "bot",
+        //     timestamp: new Date(),
+        //     chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
+        //   });
+        // }
         if (data.bet_chart) {
           const betBarKeys = Object.keys(data.bet_chart.data[0] || {}).filter(
             (k) => k !== "name" && k !== "formattedValue"
@@ -271,18 +271,18 @@ const Index = () => {
             chartConfig: { ...data.bet_chart, barDataKeys: betBarKeys },
           });
         }
-        if (data.bet_line_chart) {
-          const betLineKeys = Object.keys(data.bet_line_chart.data[0] || {}).filter(
-            (k) => k !== "name" && k !== "formattedValue"
-          );
-          newMessages.push({
-            id: uuidv4(),
-            content: data.bet_line_chart.title || "BET Line Chart",
-            sender: "bot",
-            timestamp: new Date(),
-            chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
-          });
-        }
+        // if (data.bet_line_chart) {
+        //   const betLineKeys = Object.keys(data.bet_line_chart.data[0] || {}).filter(
+        //     (k) => k !== "name" && k !== "formattedValue"
+        //   );
+        //   newMessages.push({
+        //     id: uuidv4(),
+        //     content: data.bet_line_chart.title || "BET Line Chart",
+        //     sender: "bot",
+        //     timestamp: new Date(),
+        //     chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
+        //   });
+        // }
         if (newMessages.length > 0) {
           setMessages((prev) => [...prev, ...newMessages]);
           return;
