@@ -154,7 +154,7 @@ const AvatarPanel = forwardRef(
 
         const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(apiKey, region);
         // Choose your preferred voice (keep aligned with backend expectations)
-        speechConfig.speechSynthesisVoiceName = "en-US-GuyNeural";
+        speechConfig.speechSynthesisVoiceName = "en-US-AlloyTurboMultilingualNeural";
 
         const avatarCfg = new SpeechSDK.AvatarConfig("Max", "business");
         avatarCfg.useBuiltInVoice = false; // use the voice set above
