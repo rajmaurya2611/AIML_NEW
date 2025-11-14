@@ -143,29 +143,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onFileChang
 };
 
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const selectedFile = files[0];
-      // const validTypes = [
-      //   'application/pdf',
-      //   'application/vnd.ms-excel',
-      //   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      // ];
-      const validTypes = [
-        'application/pdf',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
-      if (!validTypes.includes(selectedFile.type)) {
-        alert('Please upload only PDF, Excel, or Word files.');
-        return;
-      }
-      onFileChange?.(selectedFile); // <-- pass up to parent
-    }
-  };
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = e.target.files;
+  //   if (files && files.length > 0) {
+  //     const selectedFile = files[0];
+  //     // const validTypes = [
+  //     //   'application/pdf',
+  //     //   'application/vnd.ms-excel',
+  //     //   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  //     // ];
+  //     const validTypes = [
+  //       'application/pdf',
+  //       'application/vnd.ms-excel',
+  //       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  //       'application/msword',
+  //       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  //     ];
+  //     if (!validTypes.includes(selectedFile.type)) {
+  //       alert('Please upload only PDF, Excel, or Word files.');
+  //       return;
+  //     }
+  //     onFileChange?.(selectedFile); // <-- pass up to parent
+  //   }
+  // };
 
   // const removeFile = () => {
   //   onFileChange?.(null); // <-- clear in parent
@@ -185,18 +185,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onFileChang
   };
 
 
-  const triggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
+  // const triggerFileInput = () => {
+  //   if (fileInputRef.current) {
+  //     fileInputRef.current.click();
+  //   }
+  // };
 
   return (
      <div className="p-4 "> 
      {/* style={{ border: "1px solid #D9D9D9", borderRadius: "20px" }}> */}
       <form onSubmit={handleSubmit} className="flex items-end gap-3">
         
-        {/* File upload button + hidden input (used) */}
+        {/* File upload button + hidden input (used)
         <input
           type="file"
           ref={fileInputRef}
@@ -216,7 +216,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, onFileChang
           >
             <Paperclip size={18} />
           </Button>
-        </div>
+        </div> */}
 
 
 <div className="relative w-full">

@@ -29,6 +29,7 @@ interface UserProfile {
   role?: string;
 }
 
+
 interface Session {
   sessionId: string;
   title: string;
@@ -47,6 +48,8 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onNewChat?: () => void; // optional prop
 }
+
+
 ) {
 
   const { triggerNewChat,createNewSession ,setApiResponse  } = useYachiyoContext();
@@ -74,6 +77,7 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
   const [renameModal, setRenameModal] = useState<boolean>(false);
   const [renameValue, setRenameValue] = useState<string>("");
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<string>("User");
 
     const [user, setUser] = useState<UserProfile | null>(null);
  
@@ -119,43 +123,84 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
 
 
 
-  useEffect(() => {
+//   useEffect(() => {
+//   async function fetchUser() {
+//     try {
+//       // 1️⃣ Try from localStorage first
+//       const savedUser = localStorage.getItem("user");
+//       if (savedUser) {
+//         setUser(JSON.parse(savedUser));
+//         return;
+//       }
+
+//       // 2️⃣ Otherwise fetch from Okta
+//   const profile = await getUserProfile();
+
+//   const email = profile.email?.toLowerCase();
+//   const role = userRoles[email?.toLowerCase()] || "User";
+
+//   // attach computed role to profile to avoid unused var and persist it
+//   const profileWithRole = { ...profile, role };
+//   setUser(profileWithRole);
+
+//   // 3️⃣ Save it for persistence
+//   localStorage.setItem("user", JSON.stringify(profileWithRole));
+//     } catch (error) {
+//       console.error("Failed to load user profile:", error);
+//     }
+//   }
+
+//   fetchUser();
+// }, []);
+
+
+
+// changed 
+
+
+
+useEffect(() => {
   async function fetchUser() {
     try {
       // 1️⃣ Try from localStorage first
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+ 
+        // set role based on email
+        const email = parsedUser.email?.toLowerCase();
+        setRole(userRoles[email] || "User");
         return;
       }
-
+ 
       // 2️⃣ Otherwise fetch from Okta
-  const profile = await getUserProfile();
-
-  const email = profile.email?.toLowerCase();
-  const role = userRoles[email?.toLowerCase()] || "User";
-
-  // attach computed role to profile to avoid unused var and persist it
-  const profileWithRole = { ...profile, role };
-  setUser(profileWithRole);
-
-  // 3️⃣ Save it for persistence
-  localStorage.setItem("user", JSON.stringify(profileWithRole));
+      const profile = await getUserProfile();
+      const email = profile.email?.toLowerCase();
+      const userRole = userRoles[email] || "User";
+ 
+      setUser(profile);
+      setRole(userRole);
+ 
+      // 3️⃣ Save it for persistence
+      localStorage.setItem("user", JSON.stringify(profile));
     } catch (error) {
       console.error("Failed to load user profile:", error);
     }
   }
-
+ 
   fetchUser();
 }, []);
 
-  
+
 
 //   const handleLogout = () => {
 //   localStorage.removeItem("accessToken");
 //   localStorage.removeItem("user");
 //   window.location.href = "https://motherson.workvivo.com/";
 // };
+
+
 
   const handleLogout = () => {
   localStorage.removeItem("user");
@@ -709,23 +754,31 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
     className="w-10 h-10 rounded-full object-cover flex-shrink-0"
   />
 
-  {/* Text Details — visible only when expanded */}
-  {isOpen && (
-    <div className="flex flex-col overflow-hidden">
-      <div className="flex items-center gap-3">
-        <span className="font-semibold text-xs text-gray-900 truncate max-w-[120px] pr-[45px]">
-          {user?.given_name || ""}
-        </span>
-        {/* <span className="text-red-500 text-xs font-medium">{user.role||""}</span> */}
-      </div>
+ {isOpen && (
+  <div className="flex flex-col overflow-hidden">
+    <div className="flex items-center gap-3">
+      <span className="font-semibold text-xs text-gray-900 truncate max-w-[120px] pr-[45px]">
+        {user?.given_name || ""}
+      </span>
+ 
+      {/* ✅ Role beside name */}
       <span
-        className="text-xs text-gray-500 truncate max-w-[195px]"
-        title={user?.email || ""}
+        className={`text-xs font-medium ${
+          role === "Admin" ? "text-red-500" : "text-blue-500"
+        }`}
       >
-        {user?.email || ""}
+        {role}
       </span>
     </div>
-  )}
+ 
+    <span
+      className="text-xs text-gray-500 truncate max-w-[195px]"
+      title={user?.email || ""}
+    >
+      {user?.email || ""}
+    </span>
+  </div>
+)}
 </div>
 
 
