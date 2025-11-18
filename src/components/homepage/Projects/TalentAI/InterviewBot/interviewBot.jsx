@@ -276,19 +276,23 @@ export default function InterviewBot() {
   // ================== Azure STT Setup ==================
   function createSpeechConfig(key, region) {
     const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
-    speechConfig.speechRecognitionLanguage = "en-IN";
+    // speechConfig.speechRecognitionLanguage = "en-IN";
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceResponse_PostProcessingOption,
       "TrueText"
     );
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-      "2500"
+      "1500"
     );
     speechConfig.setProperty(
       SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
       "6000"
     );
+    speechConfig.setProperty(
+    SpeechSDK.PropertyId.SpeechServiceConnection_LanguageIdMode,
+    "Continuous"
+  );
     return speechConfig;
   }
 
@@ -368,8 +372,19 @@ export default function InterviewBot() {
     }
 
     const speechConfig = createSpeechConfig(key, region);
+    const autoDetectConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages([
+    "en-IN",
+    "hi-IN",
+  ]);
+
+  //const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+
     const audioCfg = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
-    const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioCfg);
+    const recognizer = SpeechSDK.SpeechRecognizer.FromConfig(
+  speechConfig,
+  autoDetectConfig,
+  audioCfg
+);
     recognizerRef.current = recognizer;
 
     flushSync(() => setPhase(PHASE.LISTENING));
