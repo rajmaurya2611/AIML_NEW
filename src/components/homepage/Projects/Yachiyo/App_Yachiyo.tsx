@@ -6,9 +6,9 @@ import { Routes, Route } from "react-router-dom";
 import Index from "./pages_Yachiyo/Index";
 import NotFound from "./pages_Yachiyo/NotFound";
 
-import {  Security as OktaProvider, LoginCallback } from "@okta/okta-react";
-import { oktaAuthYachiyo } from "./components_Yachiyo/oktaConfigYachiyo"
-import AuthRoute from "./components_Yachiyo/YachiyoAuthRoute";
+//import {  Security as OktaProvider, LoginCallback } from "@okta/okta-react";
+//import { oktaAuthYachiyo } from "./components_Yachiyo/oktaConfigYachiyo"
+//import AuthRoute from "./components_Yachiyo/YachiyoAuthRoute";
 import YachiyoDocuments from "./components_Yachiyo/YachiyoDocuments"
 import YachiyoLayout from "./components_Yachiyo/YachiyoLayout"
 import { YachiyoProvider } from "./components_Yachiyo/context/YachiyoContext"
