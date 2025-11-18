@@ -35,8 +35,8 @@ import SMPBI from './components/homepage/Projects/SMP_BI/App_SMP_BI.tsx';
 //import App_marcom from './components/homepage/Projects/Marcom/App_marcom.jsx';
 import KnowledgeRoot from './components/homepage/Projects/Marcom/okta/root.jsx';
 import CapexRoot from './components/homepage/Projects/CapexForecasting/okta/root.tsx';
-import App_Yachiyo from './components/homepage/Projects/Yachiyo/App_Yachiyo.tsx';
-//import YachiyoRoot from './components/homepage/Projects/Yachiyo/components_Yachiyo/yachiyoroot.tsx';
+//import App_Yachiyo from './components/homepage/Projects/Yachiyo/App_Yachiyo.tsx';
+import YachiyoRoot from './components/homepage/Projects/Yachiyo/components_Yachiyo/yachiyoroot.tsx';
  
 function App() {
   return (
@@ -124,8 +124,8 @@ function App() {
         <Route path="/capex-forecasting/*" element={<CapexRoot/>} />
         {/* <Route path="/capex-forecasting/*" element={<CapexApp/>}/> */}
         {/* <Route path="/capex-forecasting/data-viewer" element={<DataViewerPage />} /> */}
-        {/* <Route path="/yachiyo/*" element={<YachiyoRoot/>}/> */}
-        <Route path="/yachiyo" element={<App_Yachiyo/>}/>
+        <Route path="/yachiyo/*" element={<YachiyoRoot/>}/>
+        {/* <Route path="/yachiyo" element={<App_Yachiyo/>}/> */}
       </Routes>
     </BrowserRouter>
   );
