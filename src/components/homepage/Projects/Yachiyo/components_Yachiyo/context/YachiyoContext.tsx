@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { getUserProfile } from '../getUsersEmail';
 
 interface Handlers {
   onNewChat?: () => void;
@@ -41,9 +42,8 @@ export const YachiyoProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 
 
-  const createNewSession = useCallback(async (userId: string): Promise<string | null> => {
+   const createNewSession = useCallback(async (userId: string): Promise<string | null> => {
     try {
-
       const response = await fetch(`${API_BASE_URL}/new_session/${userId}`, {
         method: "POST",
       });
@@ -52,7 +52,8 @@ export const YachiyoProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const data = await response.json();
       setSessionId(data.session_id);
       localStorage.setItem("session_id", data.session_id);
-      console.log(data.session_id);
+      console.log("New session:", data.session_id);
+
       return data.session_id;
     } catch (error) {
       console.error("Error creating session:", error);
@@ -60,15 +61,17 @@ export const YachiyoProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
 
-  //  Register page-specific handlers
+
+   // Register page-specific handlers
   const registerHandlers = useCallback((newHandlers: Handlers) => {
     setHandlers(prev => ({ ...prev, ...newHandlers }));
   }, []);
 
   // Trigger New Chat — used by Sidebar
-  const triggerNewChat = useCallback(() => {
-    setNewChatTriggered(true); // mark that new chat is requested
+  const triggerNewChat = useCallback(() => { 
+    setNewChatTriggered(true);
   }, []);
+
 
   // Consume the trigger once ChatPage is mounted
   useEffect(() => {
@@ -81,6 +84,41 @@ export const YachiyoProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Direct triggers for others (no navigation issue)
   const triggerSearchChat = useCallback(() => handlers.onSearchChat?.(), [handlers]);
   const triggerSaved = useCallback(() => handlers.onSaved?.(), [handlers]);
+
+
+ // ---------------------------------------------------
+  // ✅ STEP 1 — Create Session Only Once on App Load
+  // ---------------------------------------------------
+  useEffect(() => {
+    const initSession = async () => {
+      const stored = localStorage.getItem("session_id");
+       console.log("old session:", stored);
+
+      if (stored) {
+        // Reuse previous session
+        setSessionId(stored);
+        return;
+      }
+
+      // No session stored → create first session
+      try {
+        const email = (await getUserProfile()).email.toLowerCase();
+        const newId = await createNewSession(email);
+         console.log("New session:", newId);
+
+        if (newId) {
+          localStorage.setItem("session_id", newId);
+          setSessionId(newId);
+        }
+      } catch (e) {
+        console.error("Failed to initialize session:", e);
+      }
+    };
+
+    initSession();
+  }, []); // 🔥 Runs ONCE on first app load
+
+
 
   return (
     <YachiyoContext.Provider

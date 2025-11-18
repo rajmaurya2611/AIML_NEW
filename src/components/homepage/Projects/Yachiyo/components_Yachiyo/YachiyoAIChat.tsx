@@ -32,7 +32,7 @@ interface Message {
 
 export const YachiyoAIChat: React.FC = () => {
 
-  const { registerHandlers, createNewSession, apiResponse } = useYachiyoContext();
+  const { registerHandlers,  apiResponse } = useYachiyoContext();
   const navigate = useNavigate();
   // not used in this component directly (sidebar handles navigation)
   void navigate;
@@ -100,22 +100,29 @@ export const YachiyoAIChat: React.FC = () => {
   }, [apiResponse]);
 
 
-   useEffect(() => {
-  const init = async () => {
-    // Step 1: Get user email
-    const email = ((await getUserProfile()).email).toLocaleLowerCase();
+//    useEffect(() => {
+//   const init = async () => {
+//     // Step 1: Get user email
+//     const email = ((await getUserProfile()).email).toLocaleLowerCase();
 
-    // Step 2: Create new session using context
-    await createNewSession(email);
+//     // Step 2: Create new session using context
+//     await createNewSession(email);
 
-    // Step 3: Register handlers
-    registerHandlers({
-      onNewChat: handleNewChat,
-    });
-  };
+//     // Step 3: Register handlers
+//     registerHandlers({
+//       onNewChat: handleNewChat,
+//     });
+//   };
 
-  init();
-}, [registerHandlers, createNewSession]);
+//   init();
+// }, [registerHandlers, createNewSession]);
+
+
+ useEffect(() => {
+  registerHandlers({ onNewChat: handleNewChat });
+}, [registerHandlers]);
+
+
   //  useEffect(() => {
   //   setTriggerNewChat(() => handleNewChat);
   // }, [setTriggerNewChat]);
@@ -335,7 +342,10 @@ const handleSpeak = (messageId: string, text: string) => {
       // const data = await response.json();
       // console.log('Received response data:', data);
 
-      const text = await response.text();
+      // const text = await response.text();
+      let text = await response.text();
+ 
+      text = text.replace(/\[Sources::\s*None\]/gi, '');
 
       const messageIdMatch = text.match(/\[message_id:([a-f0-9-]+)\]/i);
       const messageId = messageIdMatch ? messageIdMatch[1] : null;
@@ -559,7 +569,7 @@ console.log("Extracted message_id:", messageId);
 
     {/* Scrollable messages section */}
     <div
-      className={`flex-1 overflow-y-auto mt-5`}
+      className={`flex-1 overflow-y-auto mt-1`}
     >
       <div className="mx-auto border border-white/20"
         style={{ width: "768px", borderRadius: "8px" }}
@@ -648,7 +658,7 @@ console.log("Extracted message_id:", messageId);
     </div>
 
     {/* Fixed input area */}
-    <div className=" bg-gradient-ambient sticky bottom-0">
+    <div className=" bg-gradient-ambient sticky bottom-2.5">
       <div className="p-0 pt-0 mx-auto" style={{ width: "768px" }}>
         <div className="max-w-3xl mx-auto">
           <ChatInput

@@ -10,35 +10,35 @@ const Yachiyo = () => {
  
       {/* Title */}
 <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-        AI-Powered Intellectual Property Assistant – Knowledge IP Bot
+        AI-Powered HR & Compliance Assistant
 </h2>
  
       {/* Purpose */}
 <h3 className="text-xl font-bold text-gray-800 mb-4">Purpose</h3>
 <p className="text-neutral-800 text-base md:text-lg max-w-6xl mb-6">
-        Managing and retrieving patent-related information efficiently can be complex and time-consuming.
-        The AI-powered Knowledge IP Bot streamlines the patent process by integrating chatbots, a knowledge base, and real-time user interaction.
-        It leverages NLP, Generative AI, and a structured database to provide precise and insightful responses.
+       Employees often face difficulty finding the correct internal HR procedures and
+        policy details buried in lengthy company documents. The Yachiyo Bot leverages 
+        Retrieval Augmented Generation and Large Language Models to deliver instant, 
+        accurate, and bilingual (English & Japanese) answers to company policy and 
+        HR-related queries ensuring consistent and compliant communication across the organization.
 </p>
  
       {/* Expected Benefits */}
 <h3 className="text-xl font-bold text-gray-800 mb-4">Expected Benefits</h3>
 <ul className="text-neutral-700 text-lg text-left max-w-6xl space-y-2">
-<li><strong>Efficient Patent Assistance:</strong> Provides step-by-step guidance for patent submission and process understanding.</li>
-<li><strong>Real-Time Knowledge Access:</strong> Instantly retrieves patent-related documents and structured data.</li>
-<li><strong>Smart Query Resolution:</strong> AI-driven chatbot offers accurate answers to IP-related inquiries.</li>
-<li><strong>Data Security & Compliance:</strong> Ensures patent information is handled securely within a structured framework.</li>
+<li><strong>Improved Efficiency & Accessibility: </strong> Employees can instantly retrieve answers to HR or internal regulation queries without searching through lengthy manuals.</li>
+<li><strong>Policy Compliance & Consistency: </strong> Ensures that responses are fully aligned with official company regulations, reducing misinformation risk.</li>
+<li><strong>Smart Query Understanding: </strong> Handles a range of question types from simple to complex and recognizes when information is not available in the document.</li>
+<li><strong>Scalable & Secure Integration: </strong> Easily extended to other departments or document types while maintaining internal data security.</li>
 </ul>
  
       {/* Key Functionalities */}
-<h3 className="text-xl font-bold text-gray-800 mt-8 mb-4">Key Functionalities</h3>
+<h3 className="text-xl font-bold text-gray-800 mt-8 mb-4">Key Use Cases</h3>
 <ul className="text-neutral-800 text-lg text-left max-w-6xl space-y-2">
-<li><strong>Chatbots:</strong> Dedicated chatbots for patent process guidance and patent information retrieval.</li>
-<li><strong>Knowledge Base:</strong> Admins can upload documents to create a structured patent knowledge repository.</li>
-<li><strong>Training Data:</strong> Allows admins to add Q&A pairs for improved AI training and accuracy.</li>
-<li><strong>Patent Database:</strong> Stores and manages essential patent-related data for easy access.</li>
-<li><strong>Real-Time User Interaction:</strong> Enables users to upload documents and ask queries via chatbots.</li>
-<li><strong>Feedback System:</strong> Collects real-time feedback from users to enhance performance and response accuracy.</li>
+<li><strong>HR Policy Inquiry: </strong> Employees can ask about leave rules, resignation processes, benefits, or company procedures.</li>
+<li><strong>Compliance Guidance: </strong> Provides regulation-based responses to ensure internal and legal adherence.</li>
+<li><strong>Bilingual Communication: </strong> Seamlessly supports both English and Japanese, enabling smooth interaction for a diverse workforce.</li>
+<li><strong>Employee Support: </strong> Answers everyday workplace questions in natural language, improving employee experience.</li>
 </ul>
 </div>
   );

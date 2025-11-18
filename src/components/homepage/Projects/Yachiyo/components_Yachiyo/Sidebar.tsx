@@ -92,14 +92,16 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
   };
 
 
-  const userRoles: Record<string, string> = {
+   const userRoles: Record<string, string> = {
   "rahul.pal02@motherson.com": "Admin", // ✅ give yourself Admin access
   "susmit.banik@motherson.com": "Admin",
   "sai.ganesh@motherson.com": "Admin",
+  "Ketan.Kumar@motherson.com": "Admin",
   "sachin.singhal@motherson.com": "Admin",
   "sujit.sahu@motherson.com": "Admin",
-  "sonam.tripathi02@motherson.com": "User",
-  "ami.parmar@motherson.com": "User",
+  "sonam.tripathi02@motherson.com": "Admin",
+  "Raj.Maurya@motherson.com": "Admin",
+  "ami.parmar@motherson.com": "Admin",
   "chiranjeevi.kondaka@motherson.com": "User",
   "sunny.sharma02@motherson.com": "User",
   "pragati.bhatia@motherson.com": "Admin",
@@ -119,8 +121,10 @@ export default function YachiyoSidebar({ isOpen, setIsOpen,onNewChat
   "daisuke.sakuma@motherson.com": "User",
   "kenichi.shimada@motherson.com": "User",
   "hajime.mogi@motherson.com": "User",
+  "Yusuke.Hosaka@motherson.com": "Admin",
+  "Kazuki.Toyoshima@motherson.com": "Admin",
+  "Ikkei.Onishi@motherson.com": "User",
 };
-
 
 
 //   useEffect(() => {
@@ -393,7 +397,7 @@ useEffect(() => {
 
    const handleDocumentsClick = () => {
     setShowMenu(false); // close menu
-    navigate("/documents");
+    navigate("/yachiyo/documents");
   };
 
 
@@ -423,11 +427,7 @@ useEffect(() => {
   }, [isOpen]);
 
 
-   useEffect(() => {
-    if (!isOpen) {
-      setShowMenu(false);
-    }
-  }, [isOpen]);
+   
 
 
    useEffect(() => {
@@ -473,26 +473,7 @@ useEffect(() => {
 
 
 
-  //  const fakeChats: string[] = [
-  //   "How to fix SQL connection",
-  //   "Frontend build issue",
-  //   "React useEffect not working",
-  //   "API returning 500 error",
-  //   "Learn Tailwind basics",
-  //   "Debugging Okta auth issue",
-  //   "Optimize SQL joins",
-  //   "Create responsive layout",
-  //    "How to fix SQL connection",
-  //   "Frontend build issue",
-  //   "React useEffect not working",
-  //   "API returning 500 error",
-  //   "Learn Tailwind basics",
-  //   "Debugging Okta auth issue",
-  //   "Optimize SQL joins",
-  //   "Create responsive layout",
-  // ];
-
-
+  
 
   return (
     <div
@@ -789,7 +770,7 @@ useEffect(() => {
       border border-gray-100 p-2 ${isOpen ? "w-[260px]" : "w-[75px]"}`}
   >
     <ul className="text-sm text-gray-700">
-       {user?.role === "Admin" && (
+       {role === "Admin" && (
   <li
     onClick={handleDocumentsClick}
     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer"
