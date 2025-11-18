@@ -125,7 +125,7 @@ function App() {
         {/* <Route path="/capex-forecasting/*" element={<CapexApp/>}/> */}
         {/* <Route path="/capex-forecasting/data-viewer" element={<DataViewerPage />} /> */}
         {/* <Route path="/yachiyo/*" element={<YachiyoRoot/>}/> */}
-        <Route path="/yachiyo-app" element={<App_Yachiyo/>}/>
+        <Route path="/yachiyo" element={<App_Yachiyo/>}/>
       </Routes>
     </BrowserRouter>
   );
