@@ -15,10 +15,10 @@ import { YachiyoProvider } from "./components_Yachiyo/context/YachiyoContext"
 
 const queryClient = new QueryClient();
 
-const restoreOriginalUri = async (_oktaAuth: any, originalUri?: string) => {
-  // replace the current location with the originalUri (or yachiyo root)
-  window.location.replace(originalUri || "/yachiyo");
-};
+// const restoreOriginalUri = async (_oktaAuth: any, originalUri?: string) => {
+//   // replace the current location with the originalUri (or yachiyo root)
+//   window.location.replace(originalUri || "/yachiyo");
+// };
 
 // const restore = async (_: any, uri?: string) =>
 //   window.location.replace(uri || "/yachiyo");
@@ -31,10 +31,10 @@ const App_Yachiyo = () => (
       <TooltipProvider>
       <Toaster />
       <Sonner />
-      <OktaProvider oktaAuth={oktaAuthYachiyo} restoreOriginalUri={restoreOriginalUri}>
+      {/* <OktaProvider oktaAuth={oktaAuthYachiyo} restoreOriginalUri={restoreOriginalUri}> */}
         <Routes>
-           <Route path="login/callback" element={<LoginCallback />} />
-           <Route element={<AuthRoute />}>
+           {/* <Route path="login/callback" element={<LoginCallback />} />
+           <Route element={<AuthRoute />}> */}
 
           <Route element={<YachiyoLayout />}>
 
@@ -44,9 +44,9 @@ const App_Yachiyo = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
           </Route>
-           </Route>
+           {/* </Route> */}
         </Routes>
-  </OktaProvider>
+  {/* </OktaProvider> */}
     </TooltipProvider>
   </QueryClientProvider>
   </YachiyoProvider>
