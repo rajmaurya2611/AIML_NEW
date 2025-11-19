@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Message } from "../types_Capex/chat";
@@ -7,10 +5,7 @@ import ChatHeader from "../components_Capex/ChatHeader";
 import ChatContainer from "../components_Capex/ChatContainer";
 import ChatInput from "../components_Capex/ChatInput";
 import { useToast } from "../hooks_Capex/use-toast";
-import { motion } from "framer-motion";
-
-// ✅ Okta helper (adjust path if needed)
-import { getUserEmail } from "../okta/getUsersEmail";
+import { motion, AnimatePresence } from "framer-motion";
 
 const frequentPrompts = [
   "BP (MPP Investment)",
@@ -64,9 +59,9 @@ const AnimatedPrompts = ({
         </motion.button>
         <div
           className="absolute bottom-full mb-2 left-[-100px] -translate-x-1/2 hidden group-hover:block
-          text-sm text-[#858585] bg-gray-100 rounded shadow-lg
-          px-3 py-2 text-left whitespace-normal break-words
-          min-w-[320px] w-full"
+            text-sm text-[#858585] bg-gray-100 rounded shadow-lg
+            px-3 py-2 text-left whitespace-normal break-words
+            min-w-[320px] w-full"
         >
           Click this to exit from your area of interest
         </div>
@@ -78,121 +73,63 @@ const AnimatedPrompts = ({
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Input is disabled on first paint; unlock on CTA click (so user can type), or on file select.
-  const [isInputEnabled, setIsInputEnabled] = useState(false);
-  const hasEnabledOnceRef = useRef(false); // prevent toggling back off
-
-  // Show CTAs on first load (after silent Exit)
+  const [isInputEnabled, setIsInputEnabled] = useState(true);
   const [showPrompts, setShowPrompts] = useState(false);
-
+  const [awaitingFileType, setAwaitingFileType] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const { toast } = useToast();
   const [queryType] = useState(0);
 
-  // 🔐 Okta email is the ONLY session identifier
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  // ✅ Local session ID instead of Okta email
+  const [sessionId] = useState<string>(() => {
+    const existing = localStorage.getItem("capex_session_id");
+    if (existing) return existing;
+    const newId = `local_${uuidv4()}`;
+    localStorage.setItem("capex_session_id", newId);
+    return newId;
+  });
 
-  // Fire "Exit" silently once on first load
-  const didFireExitRef = useRef(false);
-
-  // When a CTA is clicked, we store its text here to auto-resolve against the next menu
-  const pendingCTARef = useRef<string | null>(null);
-
-  // Track if the user has chosen a file once (for future logic if needed)
-  const hasChosenFileRef = useRef(false);
-
+  // Splash screen
   useEffect(() => {
-    let mounted = true;
+    if (!showSplash) return;
+    const timer = setTimeout(() => setShowSplash(false), 3000);
+    return () => clearTimeout(timer);
+  }, [showSplash]);
+
+  const autoExitOnce = useRef(false);
+
+  // Auto-fire "Exit" on mount
+  useEffect(() => {
+    if (!sessionId || autoExitOnce.current) return;
+    autoExitOnce.current = true;
+
+    setIsInputEnabled(true);
+    setShowPrompts(false);
+    setAwaitingFileType(true);
+
     (async () => {
-      try {
-        const email = await getUserEmail();
-        if (mounted) setSessionEmail(email ? email.toLowerCase() : null);
-      } catch (e) {
-        console.warn("Could not fetch Okta email:", e);
-        if (mounted) setSessionEmail(null);
-      }
+      await sendMessageToBackend("Exit");
     })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  }, [sessionId]);
 
-  useEffect(() => {
-    if (!sessionEmail) return;
-    if (didFireExitRef.current) return;
-
-    didFireExitRef.current = true;
-    setShowPrompts(true); // show CTAs on first load
-    void sendMessageToBackend("Exit", { silent: true }); // discard response
-  }, [sessionEmail]);
-
-  const pushMissingEmailMessage = () => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: uuidv4(),
-        content:
-          "⚠️ Authentication issue: No Okta email detected. Please re-login with Okta to continue.",
-        sender: "bot",
-        timestamp: new Date(),
-      },
-    ]);
-  };
-
-  const sendMessageToBackend = async (
-    content: string | null,
-    opts?: { silent?: boolean }
-  ) => {
-    const silent = !!opts?.silent;
-
-    if (!sessionEmail) {
-      if (!silent) {
-        toast({
-          title: "Authentication issue",
-          description:
-            "Your Okta session email isn’t available. Please re-login and try again.",
-          variant: "destructive",
-        });
-        pushMissingEmailMessage();
-      }
-      return;
-    }
-
-    if (!silent) setIsLoading(true);
+  const sendMessageToBackend = async (content: string | null) => {
+    setIsLoading(true);
     try {
       const payload: any = {};
       if (content !== null) payload.message = content;
-      payload.session_id = sessionEmail;
+      payload.session_id = sessionId; // ✅ Local ID used
 
       const res = await fetch(`${import.meta.env.VITE_CAPEX_BASE_URL}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = await res.json();
 
-      if (silent) return;
-
-      // ---- AUTO-RESOLVE CTA → MENU OPTION (by text match) ----
+      // Menu-type
       if (data.type === "menu" && Array.isArray(data.options)) {
-        const cta = pendingCTARef.current;
-        if (cta) {
-          const match = data.options.find((opt: any) => {
-            const a = (opt.text || "").trim().toLowerCase();
-            const b = cta.trim().toLowerCase();
-            return a === b || a.includes(b) || b.includes(a);
-          });
-
-          if (match?.id) {
-            // Clear pending CTA and auto-send the selected option id without showing menu
-            pendingCTARef.current = null;
-            await sendMessageToBackend(match.id);
-            return;
-          }
-        }
-
-        // No CTA pending or no match → show the menu as normal
         const menuMessage: Message = {
           id: uuidv4(),
           content: `Please select your area of interest:`,
@@ -204,9 +141,11 @@ const Index = () => {
           })),
         };
         setMessages((prev) => [...prev, menuMessage]);
+        setAwaitingFileType(true);
         return;
       }
 
+      // Clarification
       if (data.type === "clarification") {
         setMessages((prev) => [
           ...prev,
@@ -217,24 +156,36 @@ const Index = () => {
             timestamp: new Date(),
           },
         ]);
+        setAwaitingFileType(false);
         return;
       }
 
+      // Result handling
       if (data.type === "result") {
         const parts: string[] = [];
-        if (data.bp_table_md) parts.push(`### Motherson Investment (BP)\n\n${data.bp_table_md}`);
-        if (data.bet_table_md) parts.push(`### Customer Investment (BET)\n\n${data.bet_table_md}`);
-        if (data.total_table_md) parts.push(`### Total Investment\n\n${data.total_table_md}`);
+        if (data.bp_table_md)
+          parts.push(`### Motherson Investment (BP)\n\n${data.bp_table_md}`);
+        if (data.bet_table_md)
+          parts.push(`### Customer Investment (BET)\n\n${data.bet_table_md}`);
+        if (data.total_table_md)
+          parts.push(`### Total Investment\n\n${data.total_table_md}`);
         if (data.message) parts.push(`### Note\n\n${data.message}`);
 
         const resultContent = parts.join("\n\n");
         setMessages((prev) => [
           ...prev,
-          { id: uuidv4(), content: resultContent, sender: "bot", timestamp: new Date(), sources: [] },
+          {
+            id: uuidv4(),
+            content: resultContent,
+            sender: "bot",
+            timestamp: new Date(),
+            sources: [],
+          },
         ]);
 
         const newMessages: Message[] = [];
 
+        // BP Charts
         if (data.bp_chart) {
           const bpBarKeys = Object.keys(data.bp_chart.data[0] || {}).filter(
             (k) => k !== "name" && k !== "formattedValue"
@@ -259,6 +210,8 @@ const Index = () => {
         //     chartConfig: { ...data.bp_line_chart, lineDataKeys: bpLineKeys },
         //   });
         // }
+
+        // BET Charts
         if (data.bet_chart) {
           const betBarKeys = Object.keys(data.bet_chart.data[0] || {}).filter(
             (k) => k !== "name" && k !== "formattedValue"
@@ -283,33 +236,42 @@ const Index = () => {
         //     chartConfig: { ...data.bet_line_chart, lineDataKeys: betLineKeys },
         //   });
         // }
-        if (newMessages.length > 0) {
+
+        if (newMessages.length > 0)
           setMessages((prev) => [...prev, ...newMessages]);
-          return;
-        }
+
+        setAwaitingFileType(false);
         return;
       }
 
-      const text = data?.response?.message ?? data?.message ?? JSON.stringify(data);
+      // Fallback
+      const text =
+        data?.response?.message ?? data?.message ?? JSON.stringify(data);
       setMessages((prev) => [
         ...prev,
-        { id: uuidv4(), content: text, sender: "bot", timestamp: new Date(), sources: [] },
+        {
+          id: uuidv4(),
+          content: text,
+          sender: "bot",
+          timestamp: new Date(),
+          sources: [],
+        },
       ]);
+      setAwaitingFileType(false);
     } catch (error) {
       console.error("Backend error:", error);
-      if (!silent) {
-        toast({ title: "Error", description: "Failed to get response from server.", variant: "destructive" });
-      }
+      toast({
+        title: "Error",
+        description: "Failed to get response from server.",
+        variant: "destructive",
+      });
+      setAwaitingFileType(false);
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleSendMessage = (content: string) => {
-    if (!sessionEmail) {
-      pushMissingEmailMessage();
-      return;
-    }
     const userMessage: Message = {
       id: uuidv4(),
       content,
@@ -320,24 +282,7 @@ const Index = () => {
     sendMessageToBackend(content);
   };
 
-  // ✅ CTA click: enable input immediately, hide CTAs, remember CTA to auto-resolve
   const handlePromptClick = async (query: string) => {
-    if (!sessionEmail) {
-      pushMissingEmailMessage();
-      return;
-    }
-
-    setShowPrompts(false);
-
-    // Unlock typing as soon as a CTA is chosen (one-time)
-    if (!hasEnabledOnceRef.current) {
-      hasEnabledOnceRef.current = true;
-      setIsInputEnabled(true);
-    }
-
-    // Store CTA so that when backend sends a menu, we auto-pick the matching option
-    pendingCTARef.current = query;
-
     const userMessage: Message = {
       id: uuidv4(),
       content: query,
@@ -345,20 +290,13 @@ const Index = () => {
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
-
     await sendMessageToBackend(query);
   };
 
-  // File menu selection → normal flow; we also mark that files were chosen once
   const handleMenuOptionClick = async (
     messageId: string,
     option: { id: string; text: string }
   ) => {
-    if (!sessionEmail) {
-      pushMissingEmailMessage();
-      return;
-    }
-
     const userSelectionMsg: Message = {
       id: uuidv4(),
       content: option.text,
@@ -367,14 +305,17 @@ const Index = () => {
     };
     setMessages((prev) => [...prev, userSelectionMsg]);
 
-    hasChosenFileRef.current = true;
-
     await sendMessageToBackend(option.id);
+    setAwaitingFileType(false);
 
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId
-          ? { ...msg, options: [], content: `${msg.content} (Selected: ${option.text})` }
+          ? {
+              ...msg,
+              options: [],
+              content: `${msg.content} (Selected: ${option.text})`,
+            }
           : msg
       )
     );
@@ -384,46 +325,88 @@ const Index = () => {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId
-          ? { ...msg, liked: msg.liked ? false : true, disliked: false, feedbackGiven: !msg.liked }
+          ? {
+              ...msg,
+              liked: !msg.liked,
+              disliked: false,
+            }
           : msg
       )
     );
-    toast({ title: "Thank you!", description: "Your feedback has been recorded." });
+    toast({
+      title: "Thank you!",
+      description: "Your feedback has been recorded.",
+    });
   };
 
   const handleDislike = (messageId: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId
-          ? { ...msg, disliked: msg.disliked ? false : true, liked: false, feedbackGiven: !msg.disliked }
+          ? {
+              ...msg,
+              disliked: !msg.disliked,
+              liked: false,
+            }
           : msg
       )
     );
-    toast({ title: "Feedback received", description: "We'll use your feedback to improve." });
+    toast({
+      title: "Feedback received",
+      description: "We'll use your feedback to improve.",
+    });
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <ChatHeader />
       <main className="flex-1 flex flex-col max-w-5xl w-full mx-auto px-4 sm:px-6 py-4">
-        <div className="capex-chat-wrapper flex-1 flex flex-col rounded-xl overflow-hidden shadow-sm">
-          <ChatContainer
-            messages={messages}
-            isLoading={isLoading}
-            onLike={handleLike}
-            onDislike={handleDislike}
-            onMenuOptionClick={handleMenuOptionClick}
-          />
-          <div className="p-4 input-wrappper">
-            <AnimatedPrompts onPromptClick={handlePromptClick} showPrompts={showPrompts} />
-            <ChatInput
-              onSendMessage={handleSendMessage}
+        {showSplash ? (
+          <AnimatePresence>
+            <motion.div
+              key="splash"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.8 }}
+              className="fixed inset-0 flex flex-col items-center justify-center bg-white z-50"
+            >
+              <h3 className="welcome-heading-capex mb-1">
+                <span
+                  className="welcome-heading-gradient-capex gradient-animation"
+                  style={{ fontSize: "32px" }}
+                >
+                  CAPEX Forecasting
+                </span>
+              </h3>
+              <p className="welcome-text-capex">
+                Smarter Conversations. Measurable Outcomes.
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <div className="capex-chat-wrapper flex-1 flex flex-col rounded-xl overflow-hidden shadow-sm">
+            <ChatContainer
+              messages={messages}
               isLoading={isLoading}
-              queryType={queryType}
-              disabled={!isInputEnabled}
+              onLike={handleLike}
+              onDislike={handleDislike}
+              onMenuOptionClick={handleMenuOptionClick}
             />
+            <div className="p-4 input-wrappper">
+              <AnimatedPrompts
+                onPromptClick={handlePromptClick}
+                showPrompts={showPrompts}
+              />
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                queryType={queryType}
+                disabled={!isInputEnabled || awaitingFileType}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
