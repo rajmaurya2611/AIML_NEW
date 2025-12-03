@@ -56,11 +56,11 @@ function Sidebar({ isOpen, setIsOpen, sliderValue, setSliderValue, headerTitle, 
           <div className={`marcom-menu-expanded ${isOpen ? "visible" : ""}`}>
             <img
               src={activeBot === "knowledge" ? persona_icon : knowledge_icon}
-              alt={activeBot === "knowledge" ? "Persona Bot" : "Knowledge Bot"}
+              alt={activeBot === "knowledge" ? "MyEcho" : "MyInsight"}
               className="marcom-menu-icon"
             />
             <span className="marcom-menu-text">
-              {activeBot === "knowledge" ? "Persona Bot" : "Knowledge Bot"}
+              {activeBot === "knowledge" ? "MyEcho" : "MyInsight"}
             </span>
           </div>
         </div>

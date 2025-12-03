@@ -13,10 +13,10 @@ function Header({
   return (
     <div className={`marcom-header ${isSidebarOpen ? "shifted" : ""}`}>
       {headerTitle === "Persona Bot" && (Boolean(personaMessages.length)|| Boolean(personaHistoryMessages.length)) && (
-        <h1 className="marcom-header-title">Persona Bot</h1>
+        <h1 className="marcom-header-title">MyEcho</h1>
       )}
       {headerTitle === "Knowledge Bot" && (Boolean(knowledgeMessages.length) || Boolean(knowledgeHistoryMessages.length)) && (
-        <h1 className="marcom-header-title">Knowledge Bot</h1>
+        <h1 className="marcom-header-title">MyInsight</h1>
       )}
 
       <div className="marcom-profile-icon-container" style={{ display: "flex", alignItems: "center", gap: "8px" }}>

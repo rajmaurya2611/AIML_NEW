@@ -21,6 +21,7 @@ function ChatBox({
   sliderValue,
   knowledgeHistoryMessages,
   personaHistoryMessages,
+  onExternalPrompt
 }) {
   
   const messagesEndRef = useRef(null);
@@ -116,6 +117,17 @@ function ChatBox({
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (onExternalPrompt && onExternalPrompt.length > 0) {
+      // Set the input text
+      setInputMessage(onExternalPrompt);
+      // Small delay to ensure input is updated, then send
+      setTimeout(() => {
+        handleSend();
+      }, 100);
+    }
+  }, [onExternalPrompt]);
 
   // Loader
   const [isLoading, setIsLoading] = useState(false);
