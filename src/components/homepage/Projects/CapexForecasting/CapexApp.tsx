@@ -8,13 +8,12 @@ import Index from "./pages_Capex/Index";
 
 const queryClient = new QueryClient();
 
-console.log("capex app")
 const CapexApp = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-    <Index/>
+      <Index />
     </TooltipProvider>
   </QueryClientProvider>
 );

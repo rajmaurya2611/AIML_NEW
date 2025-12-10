@@ -6,7 +6,6 @@ import { ChatOption } from "../types_Capex/chat";
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 interface ChatInputProps {
-  // allow option to be nullable/optional and forward queryType
   onSendMessage: (
     content: string,
     option?: ChatOption | null,
@@ -22,7 +21,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   isLoading,
   queryType,
-  disabled
+  disabled,
 }) => {
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(""); // Live (partial) text
@@ -35,7 +34,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSend = () => {
     if ((message.trim() || selectedFiles.length > 0) && !isLoading) {
-      // Forward queryType as the 4th parameter (may be undefined)
       onSendMessage(message, null as ChatOption | null, selectedFiles, queryType);
       setMessage("");
       setSelectedFiles([]);
@@ -50,20 +48,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  // const handleAttachmentClick = () => fileInputRef.current?.click();
-
-  // const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   const files = event.target.files ? Array.from(event.target.files) : [];
-  //   if (files.length > 0) {
-  //     setSelectedFiles((prev) => [...prev, ...files]);
-  //   }
-  // };
-
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // 🎤 Start/Stop Speech Recognition with auto language detection
+  // Start/Stop Speech Recognition with auto language detection
   const toggleMic = async () => {
     if (listening && recognizer) {
       recognizer.stopContinuousRecognitionAsync();
@@ -73,54 +62,41 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
 
     try {
-      // 🔑 Use your endpoint + key directly
       const speechConfig = sdk.SpeechConfig.fromSubscription(
         import.meta.env.VITE_AZURE_SPEECH_KEY_CAPEX as string,
         import.meta.env.VITE_AZURE_SPEECH_REGION_CAPEX as string
       );
 
-      // 🎙️ Microphone input
       const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
 
-      // 🌍 Auto detect languages
       const autoDetectConfig = sdk.AutoDetectSourceLanguageConfig.fromLanguages([
         "en-US",
         "fr-FR",
         "es-ES",
         "de-DE",
-        // "pt-PT",
-        // "hu-HU",
       ]);
 
-      // 🔥 Create recognizer with auto-detect
       const recognizerInstance = sdk.SpeechRecognizer.FromConfig(
         speechConfig,
         autoDetectConfig,
         audioConfig
       );
 
-      // 🟢 Live (preview)
+      // Live (preview)
       recognizerInstance.recognizing = (_s, e) => {
         setPreview(e.result.text);
-        console.log("Recognizing:", e.result.text);
       };
 
-      // 🟢 Finalized result
+      // Finalized result
       recognizerInstance.recognized = (_s, e) => {
         if (e.result.reason === sdk.ResultReason.RecognizedSpeech) {
-          const langResult = sdk.AutoDetectSourceLanguageResult.fromResult(e.result);
-          const detectedLang = langResult.language;
-
-          console.log("Detected language:", detectedLang);
-          console.log("Final text:", e.result.text);
-
+          // we don't currently use the detected language, so we removed it to avoid TS/ESLint warnings
           setMessage((prev) => (prev + " " + e.result.text).trim());
           setPreview("");
         }
       };
 
-      recognizerInstance.canceled = (_s, e) => {
-        console.error("Recognition canceled:", e);
+      recognizerInstance.canceled = (_s, _e) => {
         recognizerInstance.stopContinuousRecognitionAsync();
         setListening(false);
       };
@@ -183,16 +159,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
               disabled={isLoading}
               variant="outline"
               size="sm"
-              className={`flex items-center gap-1 text-xs ${listening ? "bg-red-100 text-red-600" : "text-[#da2128] hover:bg-gray-100"
-                }`}
+              className={`flex items-center gap-1 text-xs ${
+                listening
+                  ? "bg-red-100 text-red-600"
+                  : "text-[#da2128] hover:bg-gray-100"
+              }`}
               aria-label={listening ? "Stop Recording" : "Start Recording"}
               title={listening ? "Stop" : "Speak"}
             >
               {listening ? (
                 <div className="relative flex items-center justify-center">
-                  {/* Rotating Circle */}
                   <div className="absolute w-6 h-6 rounded-full border-2 border-red-400 border-t-transparent animate-spin"></div>
-                  {/* Stop Icon */}
                   <Square className="w-2 h-2 relative z-10 text-red-600" />
                 </div>
               ) : (

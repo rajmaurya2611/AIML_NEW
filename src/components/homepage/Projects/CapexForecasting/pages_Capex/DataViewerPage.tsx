@@ -327,9 +327,8 @@ export default function DataViewerPage() {
             const yes = v === "1" || /^(true|yes)$/i.test(v);
             return (
               <span
-                className={`px-2 py-0.5 rounded text-xs ${
-                  yes ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-600"
-                }`}
+                className={`px-2 py-0.5 rounded text-xs ${yes ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-600"
+                  }`}
               >
                 {yes ? "Yes" : "No"}
               </span>

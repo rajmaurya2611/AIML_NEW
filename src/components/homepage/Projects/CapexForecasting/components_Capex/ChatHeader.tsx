@@ -1,33 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Logo from '../assets_Capex/logo.png';
-import { Upload, MoreVertical, Files, Eye, Download } from "lucide-react";
+import { Upload, MoreVertical, Files, Eye, Download, MapPin } from "lucide-react";
 import { useToast } from '../hooks_Capex/use-toast';
 import { motion, AnimatePresence } from "framer-motion";
 
+
 const ChatHeader: React.FC = () => {
   const { toast } = useToast();
+
 
   // Store uploaded filenames separately for BET and BP
   const [uploadedBETFile, setUploadedBETFile] = useState<string | null>(null);
   const [uploadedBPFile, setUploadedBPFile] = useState<string | null>(null);
 
+
   // State to show/hide filename tooltip or panel for BET and BP
   const [showBetFileName, setShowBetFileName] = useState(false);
   const [showBpFileName, setShowBpFileName] = useState(false);
 
+
   const [ellipsisOpen, setEllipsisOpen] = useState(false);
   const ellipsisRef = useRef<HTMLDivElement>(null);
 
+
   const [showFilesPopup, setShowFilesPopup] = useState(false);
   const [filesData, setFilesData] = useState<string[]>([]);
+
 
   // New state for managing selected files
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
 
+
   const [showMppUploadPopup, setShowMppUploadPopup] = useState(false);
   const [mppFile, setMppFile] = useState<File | null>(null);
   const [mppUploading, setMppUploading] = useState(false);
+
 
   const handleOpenMppViewer = () => {
     // set your default MPP table name here or via env
@@ -38,6 +46,34 @@ const ChatHeader: React.FC = () => {
     window.open(url, "_blank", "noopener,noreferrer");
     setEllipsisOpen(false);
   };
+
+
+  const handleOpenSiteRegionViewer = () => {
+    // Use the frontend base (Vite BASE_URL). Do NOT use backend base (VITE_CAPEX_BASE_URL_LOCAL)
+    const base = (import.meta as any).env?.BASE_URL ?? "/";
+    const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+
+    // Build the route under the app mount path
+    const url = `${normalized}/capex-forecasting/site-region-viewer`;
+
+    // Open in a new tab
+    window.open(url, "_blank", "noopener,noreferrer");
+    setEllipsisOpen(false);
+  };
+
+  const handleOpenCommodityTranslation = () => {
+    const base = (import.meta as any).env?.BASE_URL ?? "/";
+    const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+    const url = `${normalized}/capex-forecasting/commodity-translation`;
+    console.log("Opening CommodityTranslation URL:", url);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setEllipsisOpen(false);
+  };
+
+
+
+
+
 
   // Handle checkbox changes
   const handleFileSelection = (fileName: string, isChecked: boolean) => {
@@ -52,6 +88,7 @@ const ChatHeader: React.FC = () => {
     });
   };
 
+
   // Handle select all checkbox
   const handleSelectAll = (isChecked: boolean) => {
     if (isChecked) {
@@ -60,6 +97,7 @@ const ChatHeader: React.FC = () => {
       setSelectedFiles(new Set());
     }
   };
+
 
   // Download selected files
   const handleDownloadFiles = async () => {
@@ -71,6 +109,7 @@ const ChatHeader: React.FC = () => {
       });
       return;
     }
+
 
     setIsDownloading(true);
     try {
@@ -84,20 +123,22 @@ const ChatHeader: React.FC = () => {
         })
       });
 
+
       if (!response.ok) {
         throw new Error(`Download failed with status ${response.status}`);
       }
+
 
       // Handle file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
+
       // Set filename based on response headers or default
       const contentDisposition = response.headers.get('Content-Disposition');
       let fileName = 'download.zip';
-      
+
       if (contentDisposition) {
         const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
         if (fileNameMatch) {
@@ -107,12 +148,13 @@ const ChatHeader: React.FC = () => {
         // If single file, use the original filename
         fileName = Array.from(selectedFiles)[0];
       }
-      
+
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
 
       toast({
         title: "Success",
@@ -120,12 +162,13 @@ const ChatHeader: React.FC = () => {
         variant: "default",
       });
 
+
       // Close popup and reset selections
       setShowFilesPopup(false);
       setSelectedFiles(new Set());
 
+
     } catch (error: any) {
-      console.error('Download error:', error);
       toast({
         title: "Download Failed",
         description: "Failed to download selected files. Please try again.",
@@ -136,11 +179,13 @@ const ChatHeader: React.FC = () => {
     }
   };
 
+
   // Handle cancel button
   const handleCancelFilesPopup = () => {
     setShowFilesPopup(false);
     setSelectedFiles(new Set());
   };
+
 
   // Handle upload button clicks and hit respective APIs
   const handleUpload = async (fileType: "BET" | "BP") => {
@@ -150,15 +195,18 @@ const ChatHeader: React.FC = () => {
       input.type = 'file';
       input.accept = ".xlsx,.xls,.csv";
 
+
       input.onchange = async () => {
         if (input.files && input.files.length > 0) {
           const file = input.files[0];
           const formData = new FormData();
           formData.append('file', file);
 
+
           let uploadUrl = "";
           if (fileType === "BET") uploadUrl = `${import.meta.env.VITE_CAPEX_BASE_URL}/upload_bet`;
           else if (fileType === "BP") uploadUrl = `${import.meta.env.VITE_CAPEX_BASE_URL}/upload_bp`;
+
 
           try {
             const res = await fetch(uploadUrl, {
@@ -166,13 +214,16 @@ const ChatHeader: React.FC = () => {
               body: formData,
             });
 
+
             if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
+
 
             toast({
               title: "Success",
               description: `Successfully uploaded ${fileType} file`,
               variant: "default",
             });
+
 
             if (fileType === "BET") {
               setUploadedBETFile(file.name);
@@ -182,7 +233,7 @@ const ChatHeader: React.FC = () => {
               setShowBpFileName(false);
             }
           } catch (uploadError: any) {
-            console.error(`${fileType} upload error:`, uploadError);
+
 
             if (
               uploadError.message.includes("Failed to fetch") ||
@@ -205,9 +256,9 @@ const ChatHeader: React.FC = () => {
         }
       };
 
+
       input.click();
     } catch (error) {
-      console.error(`${fileType} upload error outer:`, error);
       toast({
         title: "Error",
         description: `Failed to upload ${fileType} file.`,
@@ -216,11 +267,13 @@ const ChatHeader: React.FC = () => {
     }
   };
 
+
   // Animations for the filename tooltip/panel
   const tooltipVariants = {
     hidden: { opacity: 0, y: -8 },
     visible: { opacity: 1, y: 0 }
   };
+
 
   const filenameDisplay = (fileName: string | null, show: boolean, toggle: () => void) => {
     if (!fileName) return null;
@@ -256,6 +309,7 @@ const ChatHeader: React.FC = () => {
     );
   };
 
+
   // Close menu on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -272,6 +326,7 @@ const ChatHeader: React.FC = () => {
         document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [ellipsisOpen]);
+
 
   // Dropdown menu component
   const ellipsisMenu = (
@@ -295,6 +350,7 @@ const ChatHeader: React.FC = () => {
                 setFilesData(["Error fetching files"]);
               }
 
+
               setShowFilesPopup(true);
               setSelectedFiles(new Set()); // Reset selections when opening popup
               setEllipsisOpen(false);
@@ -304,17 +360,36 @@ const ChatHeader: React.FC = () => {
             Show all files
           </button>
 
+
           <button
             className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             onClick={handleOpenMppViewer}
           >
             <Eye className="w-3 h-3 text-red-600" />
-            View / Edit MPP data
+            View/Edit MPP data
+          </button>
+
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            onClick={handleOpenCommodityTranslation}
+          >
+            <Files className="w-3 h-3 text-red-600" />
+            View Commodity Translation
+          </button>
+
+
+          <button
+            className="w-full flex items-center text-left text-xs gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t"
+            onClick={handleOpenSiteRegionViewer}
+          >
+            <MapPin className="w-3 h-3 text-red-600" />
+            View/Edit Site Region
           </button>
         </motion.div>
       )}
     </AnimatePresence>
   );
+
 
   return (
     <header className="w-full pt-4 pb-3 px-4 sm:px-6">
@@ -338,6 +413,7 @@ const ChatHeader: React.FC = () => {
             </button>
             {filenameDisplay(uploadedBETFile, showBetFileName, () => setShowBetFileName(!showBetFileName))}
           </div>
+
 
           {/* Upload BP File button */}
           <div className="flex items-center">
@@ -363,6 +439,7 @@ const ChatHeader: React.FC = () => {
         </div>
       </div>
 
+
       {/* Files Popup with Checkboxes */}
       <AnimatePresence>
         {showFilesPopup && (
@@ -385,6 +462,7 @@ const ChatHeader: React.FC = () => {
                 </button>
               </div>
 
+
               {filesData.length > 0 && (
                 <div className="mb-4 pb-2 border-b border-gray-200">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -398,6 +476,7 @@ const ChatHeader: React.FC = () => {
                   </label>
                 </div>
               )}
+
 
               <div className="flex-1 overflow-auto mb-4">
                 <div className="space-y-2">
@@ -414,6 +493,7 @@ const ChatHeader: React.FC = () => {
                   ))}
                 </div>
 
+
                 {filesData.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     <Files className="w-12 h-12 mx-auto mb-2 text-gray-300" />
@@ -421,6 +501,7 @@ const ChatHeader: React.FC = () => {
                   </div>
                 )}
               </div>
+
 
               {/* Action Buttons */}
               <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
@@ -434,15 +515,14 @@ const ChatHeader: React.FC = () => {
                 <button
                   onClick={handleDownloadFiles}
                   disabled={selectedFiles.size === 0 || isDownloading}
-                  className={`px-4 py-2 text-sm rounded transition-colors flex items-center gap-2 ${
-                    selectedFiles.size === 0 || isDownloading
+                  className={`px-4 py-2 text-sm rounded transition-colors flex items-center gap-2 ${selectedFiles.size === 0 || isDownloading
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-[#da2128] text-white hover:bg-[#ae1b22]'
-                  }`}
+                    }`}
                 >
                   <Download className="w-4 h-4" />
-                  {isDownloading 
-                    ? 'Downloading...' 
+                  {isDownloading
+                    ? 'Downloading...'
                     : `Download${selectedFiles.size > 0 ? ` (${selectedFiles.size})` : ''}`
                   }
                 </button>
@@ -451,6 +531,7 @@ const ChatHeader: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* MPP files upload popup */}
       <AnimatePresence>
@@ -546,5 +627,6 @@ const ChatHeader: React.FC = () => {
     </header>
   );
 };
+
 
 export default ChatHeader;
