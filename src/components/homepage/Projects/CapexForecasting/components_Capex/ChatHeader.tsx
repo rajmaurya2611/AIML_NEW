@@ -366,7 +366,7 @@ const ChatHeader: React.FC = () => {
             onClick={handleOpenMppViewer}
           >
             <Eye className="w-3 h-3 text-red-600" />
-            View/Edit MPP data
+            MPP Budget & GSP Commodity Mapping
           </button>
 
           <button
@@ -374,7 +374,7 @@ const ChatHeader: React.FC = () => {
             onClick={handleOpenCommodityTranslation}
           >
             <Files className="w-3 h-3 text-red-600" />
-            View Commodity Translation
+            Order BET Commodity Mapping & Timing
           </button>
 
 
